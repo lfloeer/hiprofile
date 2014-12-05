@@ -12,9 +12,11 @@ cdef extern from 'math.h':
     double j0(double a)
     double j1(double a)
     double exp(double a)
+    
 
 cdef extern from 'complex.h':
     complex cexp(complex a)
+
 
 cdef class LineModel:
 
