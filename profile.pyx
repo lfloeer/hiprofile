@@ -12,16 +12,36 @@ cdef extern from 'math.h':
     double j0(double a)
     double j1(double a)
     double exp(double a)
-    
+
 
 cdef extern from 'complex.h':
     complex cexp(complex a)
 
 
+cdef extern from 'fftw3.h':
+    
+    ctypedef struct fftw_plan:
+        pass
+
+    double *fftw_alloc_real(size_t n) nogil
+    complex *fftw_alloc_complex(size_t n) nogil
+    void fftw_free(void *p) nogil
+    void fftw_cleanup() nogil
+    
+    void fftw_destroy_plan(fftw_plan plan) nogil
+    fftw_plan fftw_plan_dft_c2r_1d(int n, complex *input, double *output, unsigned flags) nogil
+    void fftw_execute(const fftw_plan plan) nogil
+
+
 cdef class LineModel:
 
     cdef:
-        np.ndarray _ft_model_values
+        # FFTW3 related members
+        double *_output_array
+        complex *_input_array
+        fftw_plan _plan
+        
+        np.ndarray _model_array
         double _dtau,
         double _v_high, _v_low, _v_chan
         int _supersample, _N
@@ -35,13 +55,27 @@ cdef class LineModel:
         self._v_chan = (velocities[1] - velocities[0]) / float(self._supersample)
         self._N = velocities.size * self._supersample
 
-        self._ft_model_values = np.empty(self._N + 1, dtype=complex)
-        self._dtau = M_PI / (2. * self._N * self._v_chan)
+        # Dtau is twice as large as given in the paper
+        self._dtau = M_PI / (self._N * self._v_chan)
+
+        self._output_array = fftw_alloc_real(self._N)
+        self._input_array = fftw_alloc_complex(self._N / 2 + 1)
+
+        self._plan = fftw_plan_dft_c2r_1d(
+            self._N,
+            self._input_array,
+            self._output_array,
+            64) #FFTW ESTIMATE
+
+        self._model_array = np.asarray(<double[:self._N]>self._output_array)
 
 
-    property ft_model_values:
-        def __get__(self):
-            return self._ft_model_values
+    def __dealloc__(self):
+
+        fftw_free(self._output_array)
+        fftw_free(self._input_array)
+        fftw_destroy_plan(self._plan)
+        fftw_cleanup()
 
     
     def model(self, double[:] p):
@@ -54,23 +88,23 @@ cdef class LineModel:
             order: 0) total_flux, 1) v_center, 2) v_width, 3) v_random,
             4) f_solid and 5) asymmetry.
         """
-        self.ft_model(p)
-        m = np.fft.irfft(self._ft_model_values)
+        self.make_ft_model(p)
+        self.transform_model()
         
-        return m[ : self._N : self._supersample]
+        return self._model_array[::self._supersample]
 
 
-    cdef void ft_model(self, double[:] p):
+    cdef void make_ft_model(self, double[:] p):
         
         cdef:
-            complex[:] model = self._ft_model_values
+            complex[:] model = <complex[:self._N / 2 + 1]> self._input_array
             int i
             double phi, j0tau, j1tau, tau, j_tau, e
             complex bvalue
 
         phi = 2. * (p[1] - self._v_low) / p[2]
 
-        for i in range(self._N + 1):
+        for i in range(self._N / 2 + 1):
             
             tau = self._dtau * p[2] * i * -1.0
             j0tau = j0(tau)
@@ -92,3 +126,15 @@ cdef class LineModel:
             model[i] *= bvalue
 
             model[i] *= exp(-2. * (p[3] / p[2] * tau) ** 2)
+
+
+    cdef void transform_model(self):
+
+        cdef:
+            double[:] model = <double[:self._N]> self._output_array
+
+        fftw_execute(self._plan)
+        
+        # Normalize FFT
+        for i in range(self._N):
+            model[i] /= self._N
