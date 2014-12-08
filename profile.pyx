@@ -29,11 +29,20 @@ cdef extern from 'fftw3.h':
     void fftw_cleanup() nogil
     
     void fftw_destroy_plan(fftw_plan plan) nogil
-    fftw_plan fftw_plan_dft_c2r_1d(int n, complex *input, double *output, unsigned flags) nogil
+    fftw_plan fftw_plan_dft_c2r_1d(
+        int n, complex *input, double *output, unsigned flags) nogil
     void fftw_execute(const fftw_plan plan) nogil
 
 
 cdef class LineModel:
+    """
+    Model for the global profiles of HI in galaxies
+    after
+
+    Stewart et al., 2014
+    A simple model for global H i profiles of galaxies
+    http://adsabs.harvard.edu/abs/2014A%26A...567A..61S
+    """
 
     cdef:
         # FFTW3 related members
@@ -48,6 +57,21 @@ cdef class LineModel:
 
 
     def __init__(self, velocities, supersample=2):
+        """
+        Create a new model object on the given velocity grid
+
+        Parameters
+        ----------
+
+        velocities : (N,) ndarray
+            The velocities on which the model is to be sampled.
+            Currently, the algorithm assumes the velocities to be
+            sorted in increasing order.
+
+        supersample : int, optional
+            The degree to which the model is oversampled.
+            Default: 2
+        """
         
         self._v_high = velocities[velocities.size - 1]
         self._v_low = velocities[0]
@@ -71,6 +95,10 @@ cdef class LineModel:
 
 
     def __dealloc__(self):
+        """
+        Free the input and output array
+        during deallocation of the object.
+        """
 
         fftw_free(self._output_array)
         fftw_free(self._input_array)
@@ -95,6 +123,11 @@ cdef class LineModel:
 
 
     cdef void make_ft_model(self, double[:] p):
+        """
+        Populate the input array of the FFT with the
+        fourier transform of the profile model given
+        the parameters.
+        """
         
         cdef:
             complex[:] model = <complex[:self._N / 2 + 1]> self._input_array
@@ -129,6 +162,10 @@ cdef class LineModel:
 
 
     cdef void transform_model(self):
+        """
+        Execute the fourier transform of the model
+        and apply the necessary normalization.
+        """
 
         cdef:
             double[:] model = <double[:self._N]> self._output_array
