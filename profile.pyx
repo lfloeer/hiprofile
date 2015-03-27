@@ -1,6 +1,9 @@
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: cdivision=True
+#cython: initializedcheck=False
+
+STUFF = "Hi"
 
 import numpy as np
 
@@ -55,6 +58,9 @@ cdef class LineModel:
         double _v_high, _v_low, _v_chan
         int _supersample, _N
 
+        complex[:] _input_view
+        double[:] _output_view
+
 
     def __init__(self, velocities, supersample=2):
         """
@@ -85,11 +91,14 @@ cdef class LineModel:
         self._output_array = fftw_alloc_real(self._N)
         self._input_array = fftw_alloc_complex(self._N / 2 + 1)
 
+        self._input_view = <complex[:self._N / 2 + 1]> self._input_array
+        self._output_view = <double[:self._N]> self._output_array
+
         self._plan = fftw_plan_dft_c2r_1d(
             self._N,
             self._input_array,
             self._output_array,
-            64) #FFTW ESTIMATE
+            1) #FFTW MEASURE | DESTROY INPUT
 
         self._model_array = np.asarray(<double[:self._N]>self._output_array)
 
@@ -130,7 +139,6 @@ cdef class LineModel:
         """
         
         cdef:
-            complex[:] model = <complex[:self._N / 2 + 1]> self._input_array
             int i
             double phi, j0tau, j1tau, tau, j_tau, e
             complex bvalue
@@ -151,14 +159,14 @@ cdef class LineModel:
                 j_tau = j1tau / tau
                 e = 1. / tau * (2. / tau * j1tau - j0tau)
             
-            model[i] = p[0] / self._v_chan * cexp(1.0j * phi * tau)
+            self._input_view[i] = p[0] / self._v_chan * cexp(1.0j * phi * tau)
             
             bvalue = (1 - p[4]) * j0tau + 2. * p[4] * j_tau
             bvalue += 1.0j * p[5] * ((1 - p[4]) * j1tau + 2. * p[4] * e)
 
-            model[i] *= bvalue
+            self._input_view[i] *= bvalue
 
-            model[i] *= exp(-2. * (p[3] / p[2] * tau) ** 2)
+            self._input_view[i] *= exp(-2. * (p[3] / p[2] * tau) ** 2)
 
 
     cdef void transform_model(self):
@@ -167,11 +175,8 @@ cdef class LineModel:
         and apply the necessary normalization.
         """
 
-        cdef:
-            double[:] model = <double[:self._N]> self._output_array
-
         fftw_execute(self._plan)
         
         # Normalize FFT
         for i in range(self._N):
-            model[i] /= self._N
+            self._output_view[i] /= self._N
