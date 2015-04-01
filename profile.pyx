@@ -139,34 +139,43 @@ cdef class LineModel:
         """
         
         cdef:
-            int i
+            int i, profile, n_profiles
             double phi, j0tau, j1tau, tau, j_tau, e
-            complex bvalue
+            complex bvalue, tmp
 
-        phi = 2. * (p[1] - self._v_low) / p[2]
+        n_profiles = p.shape[0] / 6
 
-        for i in range(self._N / 2 + 1):
-            
-            tau = self._dtau * p[2] * i * -1.0
-            j0tau = j0(tau)
-            j1tau = j1(tau)
-            
-            # Approximations for singularities at tau == 0
-            if tau == 0.:
-                j_tau = 0.5
-                e = 0.
-            else:
-                j_tau = j1tau / tau
-                e = 1. / tau * (2. / tau * j1tau - j0tau)
-            
-            self._input_view[i] = p[0] / self._v_chan * cexp(1.0j * phi * tau)
-            
-            bvalue = (1 - p[4]) * j0tau + 2. * p[4] * j_tau
-            bvalue += 1.0j * p[5] * ((1 - p[4]) * j1tau + 2. * p[4] * e)
+        for profile in range(n_profiles):
 
-            self._input_view[i] *= bvalue
+            phi = 2. * (p[1] - self._v_low) / p[2]
 
-            self._input_view[i] *= exp(-2. * (p[3] / p[2] * tau) ** 2)
+            for i in range(self._N / 2 + 1):
+                
+                if profile == 0:
+                    self._input_view[i] = 0.
+
+                tau = self._dtau * p[2] * i * -1.0
+                j0tau = j0(tau)
+                j1tau = j1(tau)
+                
+                # Approximations for singularities at tau == 0
+                if tau == 0.:
+                    j_tau = 0.5
+                    e = 0.
+                else:
+                    j_tau = j1tau / tau
+                    e = 1. / tau * (2. / tau * j1tau - j0tau)
+                
+                tmp = p[0] / self._v_chan * cexp(1.0j * phi * tau)
+                
+                bvalue = (1 - p[4]) * j0tau + 2. * p[4] * j_tau
+                bvalue += 1.0j * p[5] * ((1 - p[4]) * j1tau + 2. * p[4] * e)
+
+                tmp *= bvalue
+
+                tmp *= exp(-2. * (p[3] / p[2] * tau) ** 2)
+
+                self._input_view[i] += tmp
 
 
     cdef void transform_model(self):
