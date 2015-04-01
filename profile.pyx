@@ -56,13 +56,14 @@ cdef class LineModel:
         np.ndarray _model_array
         double _dtau,
         double _v_high, _v_low, _v_chan
-        int _supersample, _N, _n_profiles
+        int _supersample, _N
+        int _n_profiles, _n_gaussians, _n_baseline
 
         complex[:] _input_view
         double[:] _output_view
 
 
-    def __init__(self, velocities, n_profiles=1, supersample=2):
+    def __init__(self, velocities, n_profiles=1, n_gaussians=0, n_baseline=0, supersample=2):
         """
         Create a new model object on the given velocity grid
 
@@ -71,7 +72,7 @@ cdef class LineModel:
 
         velocities : (N,) ndarray
             The velocities on which the model is to be sampled.
-            Currently, the algorithm assumes the velocities to be
+            The algorithm assumes the velocities to be
             sorted in increasing order.
 
         supersample : int, optional
@@ -84,7 +85,10 @@ cdef class LineModel:
         self._supersample = supersample
         self._v_chan = (velocities[1] - velocities[0]) / float(self._supersample)
         self._N = velocities.size * self._supersample
+        
         self._n_profiles = n_profiles
+        self._n_gaussians = n_gaussians
+        self._n_baseline = n_baseline
 
         # Dtau is twice as large as given in the paper
         self._dtau = M_PI / (self._N * self._v_chan)
@@ -126,11 +130,43 @@ cdef class LineModel:
             order: 0) total_flux, 1) v_center, 2) v_width, 3) v_random,
             4) f_solid and 5) asymmetry.
         """
-        self.make_ft_model(p)
-        self.transform_model()
+        self.reset_output()
+        self.eval_profiles(p)
+        self.eval_gaussians(p)
+        self.eval_baseline(p)
         
         return self._model_array[::self._supersample]
 
+    cdef void reset_output(self):
+        cdef int i
+        # Reset output array if no FFT is performed
+        if self._n_profiles == 0:
+            for i in range(self._N):
+                self._output_array[i] = 0.0
+
+    cdef void eval_profiles(self, double[:] p):
+        self.make_ft_model(p)
+        self.transform_model()
+
+    cdef void eval_gaussians(self, double[:] p):
+        
+        cdef:
+            int gaussian, i, offset
+            double velocity, tmp
+
+        for gaussian in range(self._n_gaussians):
+
+            offset = self._n_profiles * 6 + gaussian * 3
+
+            for i from 0 <= i < self._N by self._supersample:
+
+                velocity = i * self._v_chan * self._supersample + self._v_low
+                tmp = velocity - p[offset + 1]
+                tmp *= tmp
+                self._output_array[i] += p[offset + 0] * exp(-0.5 * tmp / p[offset + 2] / p[offset + 2])
+
+    cdef void eval_baseline(self, double[:] p):
+        pass
 
     cdef void make_ft_model(self, double[:] p):
         """
