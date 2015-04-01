@@ -139,7 +139,7 @@ cdef class LineModel:
         """
         
         cdef:
-            int i, profile, n_profiles
+            int i, profile, n_profiles, offset
             double phi, j0tau, j1tau, tau, j_tau, e
             complex bvalue, tmp
 
@@ -147,14 +147,16 @@ cdef class LineModel:
 
         for profile in range(n_profiles):
 
-            phi = 2. * (p[1] - self._v_low) / p[2]
+            offset = profile * 6
+
+            phi = 2. * (p[offset + 1] - self._v_low) / p[offset + 2]
 
             for i in range(self._N / 2 + 1):
                 
                 if profile == 0:
                     self._input_view[i] = 0.
 
-                tau = self._dtau * p[2] * i * -1.0
+                tau = self._dtau * p[offset + 2] * i * -1.0
                 j0tau = j0(tau)
                 j1tau = j1(tau)
                 
@@ -166,14 +168,14 @@ cdef class LineModel:
                     j_tau = j1tau / tau
                     e = 1. / tau * (2. / tau * j1tau - j0tau)
                 
-                tmp = p[0] / self._v_chan * cexp(1.0j * phi * tau)
+                tmp = p[offset + 0] / self._v_chan * cexp(1.0j * phi * tau)
                 
-                bvalue = (1 - p[4]) * j0tau + 2. * p[4] * j_tau
-                bvalue += 1.0j * p[5] * ((1 - p[4]) * j1tau + 2. * p[4] * e)
+                bvalue = (1 - p[offset + 4]) * j0tau + 2. * p[offset + 4] * j_tau
+                bvalue += 1.0j * p[offset + 5] * ((1 - p[offset + 4]) * j1tau + 2. * p[offset + 4] * e)
 
                 tmp *= bvalue
 
-                tmp *= exp(-2. * (p[3] / p[2] * tau) ** 2)
+                tmp *= exp(-2. * (p[offset + 3] / p[offset + 2] * tau) ** 2)
 
                 self._input_view[i] += tmp
 
