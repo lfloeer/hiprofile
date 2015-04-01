@@ -56,13 +56,13 @@ cdef class LineModel:
         np.ndarray _model_array
         double _dtau,
         double _v_high, _v_low, _v_chan
-        int _supersample, _N
+        int _supersample, _N, _n_profiles
 
         complex[:] _input_view
         double[:] _output_view
 
 
-    def __init__(self, velocities, supersample=2):
+    def __init__(self, velocities, n_profiles=1, supersample=2):
         """
         Create a new model object on the given velocity grid
 
@@ -84,6 +84,7 @@ cdef class LineModel:
         self._supersample = supersample
         self._v_chan = (velocities[1] - velocities[0]) / float(self._supersample)
         self._N = velocities.size * self._supersample
+        self._n_profiles = n_profiles
 
         # Dtau is twice as large as given in the paper
         self._dtau = M_PI / (self._N * self._v_chan)
@@ -139,13 +140,11 @@ cdef class LineModel:
         """
         
         cdef:
-            int i, profile, n_profiles, offset
+            int i, profile, offset
             double phi, j0tau, j1tau, tau, j_tau, e
             complex bvalue, tmp
 
-        n_profiles = p.shape[0] / 6
-
-        for profile in range(n_profiles):
+        for profile in range(self._n_profiles):
 
             offset = profile * 6
 
