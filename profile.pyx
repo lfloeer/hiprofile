@@ -145,8 +145,9 @@ cdef class LineModel:
                 self._output_array[i] = 0.0
 
     cdef void eval_profiles(self, double[:] p):
-        self.make_ft_model(p)
-        self.transform_model()
+        if self._n_profiles > 0:
+            self.make_ft_model(p)
+            self.transform_model()
 
     cdef void eval_gaussians(self, double[:] p):
         
