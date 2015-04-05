@@ -112,7 +112,7 @@ cdef class LineModel:
         self.eval_gaussians(p)
         self.eval_baseline(p)
         
-        return self.model_array
+        return np.asarray(self.model_array)
 
     cdef void reset_model(self):
         cdef int i

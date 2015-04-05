@@ -6,8 +6,8 @@
 STUFF = "Hi"
 
 import numpy as np
-
 cimport numpy as np
+
 cimport cython
 
 from numpy.math cimport INFINITY as inf
@@ -19,7 +19,7 @@ cdef class FitGaussian(LineModel):
 
     def __init__(self, velocities, data, weights=None, **kwargs):
 
-        super(self, FitGaussian).__init__(velocities, **kwargs)
+        super(FitGaussian, self).__init__(velocities, **kwargs)
         self.data = data
 
         if weights is None:
@@ -36,8 +36,8 @@ cdef class FitGaussian(LineModel):
             double vmin, vmax
 
         offset = 0
-        vmin = self._velo_array_view[0]
-        vmax = self._velo_array_view[self._velo_array_view.shape[0] - 1]
+        vmin = self.velocities[0]
+        vmax = self.velocities[self.velocities.shape[0] - 1]
 
         for i in range(self._n_profiles):
             # Positive integrated flux density
@@ -48,16 +48,16 @@ cdef class FitGaussian(LineModel):
                (p[offset + 1] + p[offset + 2] / 2.) > vmax:
                return -inf
             # Positive rotation
-            if p[offset + 2] < 0.:
+            if p[offset + 2] <= 0.:
                 return -inf
             # Positive dispersion
             if p[offset + 3] <= self.min_turbulence:
                 return -inf
             # Bounded solid rotating fraction
-            if p[offset + 4] < 0. or p[offset + 4] > 1.:
+            if p[offset + 4] <= 0. or p[offset + 4] >= 1.:
                 return -inf
             # Bounded asymmetry
-            if p[offset + 5] < -1.0 or p[offset + 5] > 1.0:
+            if p[offset + 5] <= -1.0 or p[offset + 5] >= 1.0:
                 return -inf
 
             offset += 6
@@ -151,7 +151,7 @@ cdef class FitGaussian(LineModel):
 
         for i in range(self.data.shape[0]):
             ln_value += ln_likes.ln_normal(self.data[i],
-                                           self._model_array_view[i],
+                                           self.model_array[i],
                                            p[offset])
 
         return ln_value

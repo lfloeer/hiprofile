@@ -21,6 +21,7 @@ fitter_module = Extension(
 
 setup(
     name='lineprofile',
+    version='0.0.1',
     cmdclass={'build_ext': build_ext},
     ext_modules=[model_module, fitter_module],
     packages=['lineprofile']
