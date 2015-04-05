@@ -95,6 +95,16 @@ cdef class LineModel:
         fftw_free(self._fft_output)
         fftw_free(self._fft_input)
         fftw_cleanup()
+
+    property model_array:
+
+        def __get__(self):
+            return np.asarray(self.model_array)
+
+    property velocities:
+
+        def __get__(self):
+            return np.asarray(self.velocities)
     
     def model(self, double[:] p):
         """

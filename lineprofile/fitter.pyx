@@ -27,7 +27,52 @@ cdef class FitGaussian(LineModel):
         else:
             self.weights = weights
 
-        self.min_turbulence = 5.0
+        self.v_rot_k = 4.38
+        self.v_rot_theta = 55.40
+
+        self.fsolid_p = 1.0
+        self.fsolid_q = 5.0
+
+        self.asym_p = 10.0
+        self.asym_q = 10.0
+
+        self.turbulence_min = 5.0
+        self.turbulence_k = 5.0
+        self.turbulence_theta = 2.0
+
+        self.baseline_std = 1.0
+
+    property data:
+
+        def __get__(self):
+            return np.asarray(self.data)
+
+        def __set__(self, value):
+            self.data = np.asarray(value, dtype=np.double)
+
+    property weights:
+
+        def __get__(self):
+            return np.asarray(self.weights)
+
+        def __set__(self, value):
+            self.weights = np.asarray(value, dtype=np.double)
+
+    property v_center_mean:
+
+        def __get__(self):
+            return np.asarray(self.v_center_mean)
+
+        def __set__(self, value):
+            self.v_center_mean = np.asarray(value, dtype=np.double)
+
+    property v_center_std:
+
+        def __get__(self):
+            return np.asarray(self.v_center_std)
+
+        def __set__(self, value):
+            self.v_center_std = np.asarray(value, dtype=np.double)
 
     cdef double ln_bounds(self, double[:] p):
         "Evaluate the hard bounds for each parameter"
@@ -51,7 +96,7 @@ cdef class FitGaussian(LineModel):
             if p[offset + 2] <= 0.:
                 return -inf
             # Positive dispersion
-            if p[offset + 3] <= self.min_turbulence:
+            if p[offset + 3] <= self.turbulence_min:
                 return -inf
             # Bounded solid rotating fraction
             if p[offset + 4] <= 0. or p[offset + 4] >= 1.:
@@ -102,14 +147,14 @@ cdef class FitGaussian(LineModel):
                                            self.v_center_std[component])
             # Gamma prior on profile width
             # Prior parameters are from a ML fit to HIPASS data
-            ln_value += ln_likes.ln_gamma(p[offset + 2], 4.38, 55.40)
+            ln_value += ln_likes.ln_gamma(p[offset + 2], self.v_rot_k, self.v_rot_theta)
             # Gamma prior on turbulent motion. Parameters roughly guided
             # by the paper of Stewart et al. 2014
-            ln_value += ln_likes.ln_gamma(p[offset + 3] - self.min_turbulence, 5, 2)
+            ln_value += ln_likes.ln_gamma(p[offset + 3] - self.turbulence_min, self.turbulence_k, self.turbulence_theta)
             # Beta distribution on fraction of solid body rotation
-            ln_value += ln_likes.ln_beta(p[offset + 4], 1, 5)
+            ln_value += ln_likes.ln_beta(p[offset + 4], self.fsolid_p, self.fsolid_q)
             # Beta distribution on asymmetry
-            ln_value += ln_likes.ln_beta(0.5 * (p[offset + 5] + 1.0), 10, 10)
+            ln_value += ln_likes.ln_beta(0.5 * (p[offset + 5] + 1.0), self.asym_p, self.asym_q)
 
             offset += 6
             component += 1
@@ -129,7 +174,7 @@ cdef class FitGaussian(LineModel):
 
         for i in range(self._n_baseline):
             # Normal prior on baseline coefficients
-            ln_value += ln_likes.ln_normal(p[offset], 0.0, 1.0)
+            ln_value += ln_likes.ln_normal(p[offset], 0.0, self.baseline_std)
             offset += 1
 
         # Log prior on posterior variance

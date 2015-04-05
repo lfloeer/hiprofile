@@ -20,8 +20,8 @@ cdef class LineModel:
         int _supersample, _N
         int _n_profiles, _n_gaussians, _n_baseline
 
-        readonly double[:] model_array
-        readonly double[:] velocities
+        double[:] model_array
+        double[:] velocities
 
     cdef void reset_model(self)
     cdef void eval_profiles(self, double[:] p)
