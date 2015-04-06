@@ -74,8 +74,11 @@ cdef class FitGaussian(LineModel):
         def __set__(self, value):
             self.v_center_std = np.asarray(value, dtype=np.double)
 
-    cdef double ln_bounds(self, double[:] p):
-        "Evaluate the hard bounds for each parameter"
+    cdef int model_params_offset(self):
+        return 6 * self._n_profiles + 3 * self._n_gaussians + self._n_baseline
+
+    cdef double ln_bounds_components(self, double[:] p):
+        "Evaluate the hard bounds for each parameter of the model components"
         cdef:
             int i, offset
             double vmin, vmax
@@ -124,13 +127,23 @@ cdef class FitGaussian(LineModel):
         for i in range(self._n_baseline):
             offset += 1
 
+        return 0.0
+
+    cdef double ln_bounds_model(self, double[:] p):
+        "Evaluate the hard bounds for each parameter"
+        cdef:
+            int i, offset
+            double vmin, vmax
+
+        offset = self.model_params_offset()
+
         # Positive likelihood stddev
         if p[offset] <= 0.:
             return -inf
 
         return 0.0
 
-    cdef double ln_prior(self, double[:] p):
+    cdef double ln_prior_components(self, double[:] p):
         cdef:
             int i, offset, component
             double ln_value = 0.0
@@ -177,6 +190,15 @@ cdef class FitGaussian(LineModel):
             ln_value += ln_likes.ln_normal(p[offset], 0.0, self.baseline_std)
             offset += 1
 
+        return ln_value
+
+    cdef double ln_prior_model(self, double[:] p):
+        cdef:
+            int i, offset
+            double ln_value = 0.0
+
+        offset = self.model_params_offset()
+        
         # Log prior on posterior variance
         ln_value += ln_likes.ln_log(p[offset] * p[offset])
 
@@ -187,7 +209,7 @@ cdef class FitGaussian(LineModel):
             int i, offset
             double ln_value = 0.0
 
-        offset = 6 * self._n_profiles + 3 * self._n_gaussians + self._n_baseline
+        offset = self.model_params_offset()
 
         for i in range(self.data.shape[0]):
             ln_value += ln_likes.ln_normal(self.data[i],
@@ -197,13 +219,18 @@ cdef class FitGaussian(LineModel):
         return ln_value
 
     def ln_posterior(self, double[:] p):
-        cdef double ln_value = self.ln_bounds(p)
-        
+        cdef double ln_value = self.ln_bounds_model(p)
+
         if ln_value == 0.0:
-            self.eval_model(p)
-            
-            ln_value += self.ln_prior(p)
-            ln_value += self.ln_likelihood(p)
+
+            ln_value = self.ln_bounds_components(p)
+
+            if ln_value == 0.0:
+                self.eval_model(p)
+                
+                ln_value += self.ln_prior_components(p)
+                ln_value += self.ln_prior_model(p)
+                ln_value += self.ln_likelihood(p)
 
         return ln_value
 
@@ -214,11 +241,23 @@ cdef class FitLaplacian(FitGaussian):
             int i, offset
             double ln_value = 0.0
 
-        offset = 6 * self._n_profiles + 3 * self._n_gaussians + self._n_baseline
+        offset = self.model_params_offset()
 
         for i in range(self.data.shape[0]):
             ln_value += ln_likes.ln_laplace(self.data[i],
                                             self.model_array[i],
                                             p[offset])
+
+        return ln_value
+
+    cdef double ln_prior_model(self, double[:] p):
+        cdef:
+            int i, offset
+            double ln_value = 0.0
+
+        offset = self.model_params_offset()
+        
+        # Log prior on posterior variance
+        ln_value += ln_likes.ln_log(p[offset])
 
         return ln_value
