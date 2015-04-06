@@ -27,7 +27,7 @@ cdef class FitGaussian(LineModel):
 
         # Turbulent motions
         public double turbulence_min
-        public double turbulence_alpha
+        public double turbulence_k
         public double turbulence_theta
 
         # Baseline

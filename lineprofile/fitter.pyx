@@ -187,11 +187,6 @@ cdef class FitGaussian(LineModel):
             int i, offset
             double ln_value = 0.0
 
-        self.reset_model()
-        self.eval_profiles(p)
-        self.eval_gaussians(p)
-        self.eval_baseline(p)
-
         offset = 6 * self._n_profiles + 3 * self._n_gaussians + self._n_baseline
 
         for i in range(self.data.shape[0]):
@@ -205,7 +200,25 @@ cdef class FitGaussian(LineModel):
         cdef double ln_value = self.ln_bounds(p)
         
         if ln_value == 0.0:
+            self.eval_model(p)
+            
             ln_value += self.ln_prior(p)
             ln_value += self.ln_likelihood(p)
+
+        return ln_value
+
+cdef class FitLaplacian(FitGaussian):
+
+    cdef double ln_likelihood(self, double[:] p):
+        cdef:
+            int i, offset
+            double ln_value = 0.0
+
+        offset = 6 * self._n_profiles + 3 * self._n_gaussians + self._n_baseline
+
+        for i in range(self.data.shape[0]):
+            ln_value += ln_likes.ln_laplace(self.data[i],
+                                            self.model_array[i],
+                                            p[offset])
 
         return ln_value

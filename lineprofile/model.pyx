@@ -116,13 +116,15 @@ cdef class LineModel:
             order: 0) total_flux, 1) v_center, 2) v_width, 3) v_random,
             4) f_solid and 5) asymmetry.
         """
-        self.reset_model()
+        self.eval_model()
+        
+        return np.asarray(self.model_array)
 
+    cdef void eval_model(self, double[:] p):
+        self.reset_model()
         self.eval_profiles(p)
         self.eval_gaussians(p)
         self.eval_baseline(p)
-        
-        return np.asarray(self.model_array)
 
     cdef void reset_model(self):
         cdef int i

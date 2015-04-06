@@ -23,6 +23,7 @@ cdef class LineModel:
         double[:] model_array
         double[:] velocities
 
+    cdef void eval_model(self, double[:] p)
     cdef void reset_model(self)
     cdef void eval_profiles(self, double[:] p)
     cdef void eval_gaussians(self, double[:] p)
