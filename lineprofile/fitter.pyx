@@ -2,6 +2,7 @@
 #cython: wraparound=False
 #cython: cdivision=True
 #cython: initializedcheck=False
+#cython: embedsignature=True
 
 STUFF = "Hi"
 
@@ -93,9 +94,9 @@ cdef class FitGaussian(LineModel):
             if p[offset + 0] < 0.:
                 return -inf
             # Profile fully in bounds
-            if (p[offset + 1] - p[offset + 2] / 2.) < vmin or \
-               (p[offset + 1] + p[offset + 2] / 2.) > vmax:
-               return -inf
+            #if (p[offset + 1] - p[offset + 2] / 2.) < vmin or \
+            #   (p[offset + 1] + p[offset + 2] / 2.) > vmax:
+            #   return -inf
             # Positive rotation
             if p[offset + 2] <= 0.:
                 return -inf
@@ -116,9 +117,9 @@ cdef class FitGaussian(LineModel):
             if p[offset + 0] < 0.:
                 return -inf
             # In bounds
-            if p[offset + 1] - p[offset + 2] < vmin or \
-               p[offset + 1] + p[offset + 2] > vmax:
-               return -inf
+            #if p[offset + 1] - p[offset + 2] < vmin or \
+            #   p[offset + 1] + p[offset + 2] > vmax:
+            #   return -inf
             # Positive dispersion
             if p[offset + 2] <= 0.:
                 return -inf
@@ -272,7 +273,78 @@ cdef class FitLaplacian(FitGaussian):
 
         offset = self.model_params_offset()
         
-        # Log prior on posterior variance
+        # Log prior on posterior standard deviation
         ln_value += ln_likes.ln_log(p[offset])
 
         return ln_value
+
+cdef class FitMixture(FitGaussian):
+    """
+    Parameters of the posterior (offset + x):
+    0: fraction of good samples (1. means all good!)
+    1: stddev of good samples
+    2: offset of bad samples
+    3: stddev of bad samples
+    """
+    
+    cdef double ln_likelihood(self, double[:] p):
+        cdef i, j, offset
+        cdef double p_value
+        cdef double fraction, good_stddev, bad_offset, bad_stddev
+        cdef double ln_value = 0.0
+
+        offset = self.model_params_offset()
+        fraction = p[offset + 0]
+        good_stddev = p[offset + 1]
+        bad_offset = p[offset + 2]
+        bad_stddev = p[offset + 3]
+
+        for i in range(self.data.shape[0]):
+            p_value = fraction * ln_likes.normal(self.data[i],
+                                                 self.model_array[i],
+                                                 good_stddev)
+            p_value += (1. - fraction) * ln_likes.normal(self.data[i],
+                                                         self.model_array[i] + bad_stddev,
+                                                         bad_stddev)
+            ln_value += log(p_value)
+
+        return ln_value
+
+    cdef double ln_prior_model(self, double[:] p):
+        cdef offset
+        cdef double fraction, good_stddev, bad_offset, bad_stddev
+        cdef double ln_value = 0.0
+
+        offset = self.model_params_offset()
+        fraction = p[offset + 0]
+        good_stddev = p[offset + 1]
+        bad_offset = p[offset + 2]
+        bad_stddev = p[offset + 3]
+
+        ln_value += ln_likes.ln_beta(fraction, 10, 1)
+        ln_value += ln_likes.ln_log(good_stddev * good_stddev)
+        ln_value += ln_likes.ln_normal(bad_offset, 0., 0.1)
+        ln_value += ln_likes.ln_log(bad_stddev * bad_stddev)
+
+        return ln_value
+
+    cdef double ln_bounds_model(self, double[:] p):
+        cdef offset
+        cdef double fraction, good_stddev, bad_offset, bad_stddev
+
+        offset = self.model_params_offset()
+        fraction = p[offset + 0]
+        good_stddev = p[offset + 1]
+        bad_offset = p[offset + 2]
+        bad_stddev = p[offset + 3]
+
+        if fraction <= 0. or fraction >= 1.:
+            return -inf
+
+        if good_stddev <= 0.:
+            return -inf
+
+        if bad_stddev <= 0.:
+            return -inf
+
+        return 0.0
