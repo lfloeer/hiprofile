@@ -7,10 +7,10 @@ cdef inline double ln_normal(double value, double mean, double stddev):
     return -0.5 * tmp - log(stddev)
 
 cdef inline double ln_laplace(double value, double mean, double stddev):
-    return -0.5 * fabs(value - mean) / stddev
+    return -1.0 * fabs(value - mean) / stddev - log(stddev)
 
 cdef inline double ln_log(double value):
-    return 1. / value
+    return -1.0 * log(value)
 
 cdef inline double ln_gamma(double value, double k, double theta):
     return (k - 1.0) * log(value) - value / theta
