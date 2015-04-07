@@ -1,5 +1,5 @@
 "A bunch of improper (not normalized) prior distributions"
-from libc.math cimport log, fabs
+from libc.math cimport log, fabs, sqrt, exp, M_PI
 
 cdef inline double ln_normal(double value, double mean, double stddev):
     cdef double tmp = (value - mean) / stddev
@@ -17,3 +17,8 @@ cdef inline double ln_gamma(double value, double k, double theta):
 
 cdef inline double ln_beta(double value, double p, double q):
     return (p - 1.0) * log(value) + (q - 1.0) * log(1 - value)
+
+cdef inline double normal(double value, double mean, double stddev):
+    cdef double tmp = (value - mean) / stddev
+    tmp *= tmp
+    return exp(-0.5 * tmp) / sqrt(2. * M_PI) / stddev
