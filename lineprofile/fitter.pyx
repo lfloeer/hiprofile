@@ -11,6 +11,7 @@ cimport numpy as np
 cimport cython
 
 from numpy.math cimport INFINITY as inf
+from libc.math cimport log
 
 cimport ln_likes
 
@@ -133,7 +134,6 @@ cdef class FitGaussian(LineModel):
         "Evaluate the hard bounds for each parameter"
         cdef:
             int i, offset
-            double vmin, vmax
 
         offset = self.model_params_offset()
 
@@ -173,7 +173,7 @@ cdef class FitGaussian(LineModel):
             component += 1
 
         for i in range(self._n_gaussians):
-            # Log-prior on amplitude
+            # Unifrom in log-amplitude (scale parameter)
             ln_value += ln_likes.ln_log(p[offset + 0])
             # Normal prior on center
             ln_value += ln_likes.ln_normal(p[offset + 1],
@@ -199,7 +199,7 @@ cdef class FitGaussian(LineModel):
 
         offset = self.model_params_offset()
         
-        # Log prior on posterior variance
+        # Log prior on posterior stddev
         ln_value += ln_likes.ln_log(p[offset] * p[offset])
 
         return ln_value
@@ -231,6 +231,21 @@ cdef class FitGaussian(LineModel):
                 ln_value += self.ln_prior_components(p)
                 ln_value += self.ln_prior_model(p)
                 ln_value += self.ln_likelihood(p)
+
+        return ln_value
+
+    def ln_prior(self, double[:] p):
+        cdef double ln_value = self.ln_bounds_model(p)
+
+        if ln_value == 0.0:
+
+            ln_value = self.ln_bounds_components(p)
+
+            if ln_value == 0.0:
+                self.eval_model(p)
+                
+                ln_value += self.ln_prior_components(p)
+                ln_value += self.ln_prior_model(p)
 
         return ln_value
 

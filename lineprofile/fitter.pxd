@@ -33,6 +33,12 @@ cdef class FitGaussian(LineModel):
         # Baseline
         public double baseline_std
 
-    cdef double ln_bounds(self, double[:] p)
-    cdef double ln_prior(self, double[:] p)
+    cdef int model_params_offset(self)
+    cdef double ln_bounds_model(self, double[:] p)
+    cdef double ln_prior_model(self, double[:] p)
+    cdef double ln_bounds_components(self, double[:] p)
+    cdef double ln_prior_components(self, double[:] p)
     cdef double ln_likelihood(self, double[:] p)
+
+cdef class FitLaplacian(FitGaussian):
+    pass

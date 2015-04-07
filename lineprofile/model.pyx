@@ -116,7 +116,7 @@ cdef class LineModel:
             order: 0) total_flux, 1) v_center, 2) v_width, 3) v_random,
             4) f_solid and 5) asymmetry.
         """
-        self.eval_model()
+        self.eval_model(p)
         
         return np.asarray(self.model_array)
 
