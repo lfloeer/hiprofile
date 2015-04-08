@@ -12,7 +12,7 @@ cimport numpy as np
 cimport cython
 
 from numpy.math cimport INFINITY as inf
-from libc.math cimport log
+from libc.math cimport log, fabs
 
 cimport ln_likes
 
@@ -82,10 +82,11 @@ cdef class FitGaussian(LineModel):
     cdef double ln_bounds_components(self, double[:] p):
         "Evaluate the hard bounds for each parameter of the model components"
         cdef:
-            int i, offset
+            int i, offset, component
             double vmin, vmax
 
         offset = 0
+        component = 0
         vmin = self.velocities[0]
         vmax = self.velocities[self.velocities.shape[0] - 1]
 
@@ -94,9 +95,8 @@ cdef class FitGaussian(LineModel):
             if p[offset + 0] < 0.:
                 return -inf
             # Profile fully in bounds
-            #if (p[offset + 1] - p[offset + 2] / 2.) < vmin or \
-            #   (p[offset + 1] + p[offset + 2] / 2.) > vmax:
-            #   return -inf
+            if fabs(p[offset + 1] - self.v_center_mean[component]) > 5. * self.v_center_std[component]:
+               return -inf
             # Positive rotation
             if p[offset + 2] <= 0.:
                 return -inf
@@ -111,6 +111,7 @@ cdef class FitGaussian(LineModel):
                 return -inf
 
             offset += 6
+            component += 1
 
         for i in range(self._n_gaussians):
             # Positive amplitude
@@ -125,6 +126,7 @@ cdef class FitGaussian(LineModel):
                 return -inf
 
             offset += 3
+            component += 1
 
         for i in range(self._n_baseline):
             offset += 1
@@ -288,7 +290,7 @@ cdef class FitMixture(FitGaussian):
     """
     
     cdef double ln_likelihood(self, double[:] p):
-        cdef i, j, offset
+        cdef int i, j, offset
         cdef double p_value
         cdef double fraction, good_stddev, bad_offset, bad_stddev
         cdef double ln_value = 0.0
@@ -304,14 +306,14 @@ cdef class FitMixture(FitGaussian):
                                                  self.model_array[i],
                                                  good_stddev)
             p_value += (1. - fraction) * ln_likes.normal(self.data[i],
-                                                         self.model_array[i] + bad_stddev,
+                                                         self.model_array[i] + bad_offset,
                                                          bad_stddev)
             ln_value += log(p_value)
 
         return ln_value
 
     cdef double ln_prior_model(self, double[:] p):
-        cdef offset
+        cdef int offset
         cdef double fraction, good_stddev, bad_offset, bad_stddev
         cdef double ln_value = 0.0
 
@@ -321,7 +323,7 @@ cdef class FitMixture(FitGaussian):
         bad_offset = p[offset + 2]
         bad_stddev = p[offset + 3]
 
-        ln_value += ln_likes.ln_beta(fraction, 10, 1)
+        ln_value += ln_likes.ln_beta(fraction, 9, 1)
         ln_value += ln_likes.ln_log(good_stddev * good_stddev)
         ln_value += ln_likes.ln_normal(bad_offset, 0., 0.1)
         ln_value += ln_likes.ln_log(bad_stddev * bad_stddev)
@@ -329,7 +331,7 @@ cdef class FitMixture(FitGaussian):
         return ln_value
 
     cdef double ln_bounds_model(self, double[:] p):
-        cdef offset
+        cdef int offset
         cdef double fraction, good_stddev, bad_offset, bad_stddev
 
         offset = self.model_params_offset()
