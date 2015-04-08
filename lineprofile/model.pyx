@@ -2,6 +2,7 @@
 #cython: wraparound=False
 #cython: cdivision=True
 #cython: initializedcheck=False
+#cython: embedsignature=True
 
 import numpy as np
 cimport numpy as np
@@ -105,6 +106,18 @@ cdef class LineModel:
 
         def __get__(self):
             return np.asarray(self.velocities)
+
+    property n_profiles:
+        def __get__(self):
+            return self._n_profiles
+
+    property n_gaussians:
+        def __get__(self):
+            return self._n_gaussians
+
+    property n_baseline:
+        def __get__(self):
+            return self._n_baseline
     
     def model(self, double[:] p):
         """

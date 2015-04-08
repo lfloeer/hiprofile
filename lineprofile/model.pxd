@@ -18,7 +18,7 @@ cdef class LineModel:
         double _dtau,
         double _v_high, _v_low, _v_chan
         int _supersample, _N
-        readonly int _n_profiles, _n_gaussians, _n_baseline
+        int _n_profiles, _n_gaussians, _n_baseline
 
         double[:] model_array
         double[:] velocities
