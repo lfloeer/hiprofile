@@ -223,7 +223,7 @@ cdef class LineModel:
                     j_tau = j1tau / tau
                     e = 1. / tau * (2. / tau * j1tau - j0tau)
                 
-                tmp = p[offset + 0] / self._v_chan * cexp(1.0j * phi * tau)
+                tmp = (10.0 ** p[offset + 0]) / self._v_chan * cexp(1.0j * phi * tau)
                 
                 bvalue = (1 - p[offset + 4]) * j0tau + 2. * p[offset + 4] * j_tau
                 bvalue += 1.0j * p[offset + 5] * ((1 - p[offset + 4]) * j1tau + 2. * p[offset + 4] * e)
