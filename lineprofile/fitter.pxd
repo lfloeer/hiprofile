@@ -42,3 +42,6 @@ cdef class FitGaussian(LineModel):
 
 cdef class FitLaplacian(FitGaussian):
     pass
+
+cdef class FitMixture(FitGaussian):
+    pass
