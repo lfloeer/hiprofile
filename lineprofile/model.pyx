@@ -198,6 +198,7 @@ cdef class LineModel:
         cdef:
             int i, profile, offset
             double phi, j0tau, j1tau, tau, j_tau, e
+            double fint, tmp2
             complex bvalue, tmp
 
         for profile in range(self._n_profiles):
@@ -205,6 +206,7 @@ cdef class LineModel:
             offset = profile * 6
 
             phi = 2. * (p[offset + 1] - self._v_low) / p[offset + 2]
+            fint = 10.0 ** p[offset + 0]
 
             for i in range(self._N / 2 + 1):
                 
@@ -223,14 +225,17 @@ cdef class LineModel:
                     j_tau = j1tau / tau
                     e = 1. / tau * (2. / tau * j1tau - j0tau)
                 
-                tmp = (10.0 ** p[offset + 0]) / self._v_chan * cexp(1.0j * phi * tau)
+                tmp = fint / self._v_chan * cexp(1.0j * phi * tau)
                 
                 bvalue = (1 - p[offset + 4]) * j0tau + 2. * p[offset + 4] * j_tau
                 bvalue += 1.0j * p[offset + 5] * ((1 - p[offset + 4]) * j1tau + 2. * p[offset + 4] * e)
 
                 tmp *= bvalue
 
-                tmp *= exp(-2. * (p[offset + 3] / p[offset + 2] * tau) ** 2)
+                tmp2 = (p[offset + 3] / p[offset + 2] * tau)
+                tmp2 *= tmp2
+
+                tmp *= exp(-2. * tmp2)
 
                 self.fft_input[i] += tmp
 
