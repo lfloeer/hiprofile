@@ -155,7 +155,7 @@ cdef class LineModel:
 
         offset = self._n_profiles * 6 + self._n_gaussians * 3
         x = -1.0
-        dx = 2. / self.velocities.shape[0]
+        dx = 2. / (self.velocities.shape[0] - 1.)
 
         for i in range(self.model_array.shape[0]):
 
