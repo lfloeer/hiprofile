@@ -6,7 +6,7 @@ import numpy
 model_module = Extension(
     "lineprofile.model",
     ["lineprofile/model.pyx"],
-    extra_compile_args=['-O3'],
+    extra_compile_args=['-O3','-ffast-math'],
     extra_link_args=['-lfftw3'],
     include_dirs=[numpy.get_include()]
 )
@@ -14,7 +14,7 @@ model_module = Extension(
 fitter_module = Extension(
     "lineprofile.fitter",
     ["lineprofile/fitter.pyx"],
-    extra_compile_args=['-O3'],
+    extra_compile_args=['-O3','-ffast-math'],
     extra_link_args=['-lfftw3'],
     include_dirs=[numpy.get_include()]
 )
