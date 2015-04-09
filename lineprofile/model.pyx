@@ -177,22 +177,27 @@ cdef class LineModel:
         cdef:
             int i, profile, offset
             double phi, j0tau, j1tau, tau, j_tau, e
-            double fint, tmp2
+            double fint, vsys, vrot, vturb, fsolid, asym, tmp2
             complex bvalue, tmp
 
         for profile in range(self._n_profiles):
 
             offset = profile * 6
-
-            phi = 2. * (p[offset + 1] - self._v_low) / p[offset + 2]
             fint = 10.0 ** p[offset + 0]
+            vsys = p[offset + 1]
+            vrot = p[offset + 2]
+            vturb = p[offset + 3]
+            fsolid = p[offset + 4]
+            asym = p[offset + 5]
+
+            phi = 2. * (vsys - self._v_low) / vrot
 
             for i in range(self._N / 2 + 1):
                 
                 if profile == 0:
                     self.fft_input[i] = 0.
 
-                tau = self._dtau * p[offset + 2] * i * -1.0
+                tau = self._dtau * vrot * i * -1.0
                 j0tau = j0(tau)
                 j1tau = j1(tau)
                 
@@ -206,12 +211,12 @@ cdef class LineModel:
                 
                 tmp = fint / self._v_chan * cexp(1.0j * phi * tau)
                 
-                bvalue = (1 - p[offset + 4]) * j0tau + 2. * p[offset + 4] * j_tau
-                bvalue += 1.0j * p[offset + 5] * ((1 - p[offset + 4]) * j1tau + 2. * p[offset + 4] * e)
+                bvalue = (1 - fsolid) * j0tau + 2. * fsolid * j_tau
+                bvalue += 1.0j * asym * ((1 - fsolid) * j1tau + 2. * fsolid * e)
 
                 tmp *= bvalue
 
-                tmp2 = (p[offset + 3] / p[offset + 2] * tau)
+                tmp2 = (vturb / vrot * tau)
                 tmp2 *= tmp2
 
                 tmp *= exp(-2. * tmp2)
