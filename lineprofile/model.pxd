@@ -22,6 +22,11 @@ cdef extern from 'fftw3.h' nogil:
         int n, complex *input, double *output, unsigned flags)
     void fftw_execute(const fftw_plan plan)
 
+cdef extern from 'make_model.h' nogil:
+    void make_model(complex *fft_input, double *fft_output, int fft_size, fftw_plan plan,
+                    double *parameters, int n_profiles,
+                    double d_tau, double v_chan, double v_low)
+
 cdef class LineModel:
     
     cdef:
@@ -47,6 +52,3 @@ cdef class LineModel:
     cdef void eval_profiles(self, double[:] p)
     cdef void eval_gaussians(self, double[:] p)
     cdef void eval_baseline(self, double[:] p)
-
-    cdef void make_ft_model(self, double[:] p)
-    cdef void transform_model(self)
