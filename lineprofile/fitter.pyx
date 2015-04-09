@@ -12,7 +12,7 @@ cimport numpy as np
 cimport cython
 
 from numpy.math cimport INFINITY as inf
-from libc.math cimport log, fabs
+from libc.math cimport log, fabs, exp
 
 cimport ln_likes
 
@@ -213,7 +213,6 @@ cdef class FitGaussian(LineModel):
 
     def ln_posterior(self, double[:] p):
         cdef double ln_value = self.ln_bounds_model(p)
-        cdef int component
 
         if ln_value == 0.0:
 
@@ -274,7 +273,7 @@ cdef class FitMixture(FitGaussian):
     
     cdef double ln_likelihood(self, double[:] p):
         cdef int i, j, offset
-        cdef double p_value
+        cdef double p_value, diff_dm, tmp
         cdef double fraction, good_stddev, bad_offset, bad_stddev
         cdef double ln_value = 0.0
 
@@ -285,12 +284,16 @@ cdef class FitMixture(FitGaussian):
         bad_stddev = 10.0 ** p[offset + 3] + good_stddev
 
         for i in range(self.data.shape[0]):
-            p_value = (1. - fraction) * ln_likes.normal(self.data[i],
-                                                 self.model_array[i],
-                                                 good_stddev)
-            p_value += fraction * ln_likes.normal(self.data[i],
-                                                  self.model_array[i] + bad_offset,
-                                                  bad_stddev)
+            diff_dm = self.data[i] - self.model_array[i]
+            
+            tmp = diff_dm / good_stddev
+            tmp *= tmp
+            p_value = (1. - fraction) * exp(-0.5 * tmp) / good_stddev
+
+            tmp = (diff_dm + bad_offset) / bad_stddev
+            tmp *= tmp
+            p_value += fraction * exp(-0.5 * tmp) / bad_stddev
+            
             ln_value += log(p_value)
 
         return ln_value
