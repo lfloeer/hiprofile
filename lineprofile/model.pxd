@@ -1,26 +1,26 @@
-cdef extern from 'math.h':
+cdef extern from 'math.h' nogil:
     double M_PI
-    double j0(double a) nogil
-    double j1(double a) nogil
-    double exp(double a) nogil
+    double j0(double a)
+    double j1(double a)
+    double exp(double a)
 
-cdef extern from 'complex.h':
-    complex cexp(complex a) nogil
+cdef extern from 'complex.h' nogil:
+    complex cexp(complex a)
 
-cdef extern from 'fftw3.h':
+cdef extern from 'fftw3.h' nogil:
 
     ctypedef struct fftw_plan:
         pass
 
-    double *fftw_alloc_real(size_t n) nogil
-    complex *fftw_alloc_complex(size_t n) nogil
-    void fftw_free(void *p) nogil
-    void fftw_cleanup() nogil
+    double *fftw_alloc_real(size_t n)
+    complex *fftw_alloc_complex(size_t n)
+    void fftw_free(void *p)
+    void fftw_cleanup()
     
-    void fftw_destroy_plan(fftw_plan plan) nogil
+    void fftw_destroy_plan(fftw_plan plan)
     fftw_plan fftw_plan_dft_c2r_1d(
-        int n, complex *input, double *output, unsigned flags) nogil
-    void fftw_execute(const fftw_plan plan) nogil
+        int n, complex *input, double *output, unsigned flags)
+    void fftw_execute(const fftw_plan plan)
 
 cdef class LineModel:
     
