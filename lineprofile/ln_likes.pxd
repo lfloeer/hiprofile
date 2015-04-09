@@ -21,4 +21,4 @@ cdef inline double ln_beta(double value, double p, double q):
 cdef inline double normal(double value, double mean, double stddev):
     cdef double tmp = (value - mean) / stddev
     tmp *= tmp
-    return exp(-0.5 * tmp) / sqrt(2. * M_PI) / stddev
+    return exp(-0.5 * tmp) / stddev
