@@ -8,27 +8,6 @@ import numpy as np
 cimport numpy as np
 cimport cython
 
-cdef extern from 'math.h':
-    double M_PI
-    double j0(double a)
-    double j1(double a)
-    double exp(double a)
-
-cdef extern from 'complex.h':
-    complex cexp(complex a)
-
-cdef extern from 'fftw3.h':
-
-    double *fftw_alloc_real(size_t n) nogil
-    complex *fftw_alloc_complex(size_t n) nogil
-    void fftw_free(void *p) nogil
-    void fftw_cleanup() nogil
-    
-    void fftw_destroy_plan(fftw_plan plan) nogil
-    fftw_plan fftw_plan_dft_c2r_1d(
-        int n, complex *input, double *output, unsigned flags) nogil
-    void fftw_execute(const fftw_plan plan) nogil
-
 cdef class LineModel:
     """
     Model for the global profiles of HI in galaxies
