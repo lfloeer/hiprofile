@@ -126,8 +126,10 @@ cdef class LineModel:
     cdef void eval_profiles(self, double[:] p):
         cdef int i
         if self._n_profiles > 0:
-            self.make_ft_model(p)
-            self.transform_model()
+
+            make_model(self._fft_input, self._fft_output, self._N, self._plan,
+                       &p[0], self._n_profiles,
+                       self._dtau, self._v_chan, self._v_low)
 
             for i in range(self.model_array.shape[0]):
                 self.model_array[i] += self.fft_output[i * self._supersample]
@@ -166,71 +168,3 @@ cdef class LineModel:
 
             self.model_array[i] += tmp
             x += dx
-
-    cdef void make_ft_model(self, double[:] p):
-        """
-        Populate the input array of the FFT with the
-        fourier transform of the profile model given
-        the parameters.
-        """
-        
-        cdef:
-            int i, profile, offset
-            double phi, j0tau, j1tau, tau, j_tau, e
-            double fint, vsys, vrot, vturb, fsolid, asym, tmp2
-            complex bvalue, tmp
-
-        for profile in range(self._n_profiles):
-
-            offset = profile * 6
-            fint = 10.0 ** p[offset + 0]
-            vsys = p[offset + 1]
-            vrot = p[offset + 2]
-            vturb = p[offset + 3]
-            fsolid = p[offset + 4]
-            asym = p[offset + 5]
-
-            phi = 2. * (vsys - self._v_low) / vrot
-
-            for i in range(self._N / 2 + 1):
-                
-                if profile == 0:
-                    self.fft_input[i] = 0.
-
-                tau = self._dtau * vrot * i * -1.0
-                j0tau = j0(tau)
-                j1tau = j1(tau)
-                
-                # Approximations for singularities at tau == 0
-                if tau == 0.:
-                    j_tau = 0.5
-                    e = 0.
-                else:
-                    j_tau = j1tau / tau
-                    e = 1. / tau * (2. / tau * j1tau - j0tau)
-                
-                tmp = fint / self._v_chan * cexp(1.0j * phi * tau)
-                
-                bvalue = (1 - fsolid) * j0tau + 2. * fsolid * j_tau
-                bvalue += 1.0j * asym * ((1 - fsolid) * j1tau + 2. * fsolid * e)
-
-                tmp *= bvalue
-
-                tmp2 = (vturb / vrot * tau)
-                tmp2 *= tmp2
-
-                tmp *= exp(-2. * tmp2)
-
-                self.fft_input[i] += tmp
-
-    cdef void transform_model(self):
-        """
-        Execute the fourier transform of the model
-        and apply the necessary normalization.
-        """
-
-        fftw_execute(self._plan)
-        
-        # Normalize FFT
-        for i in range(self._N):
-            self.fft_output[i] /= self._N
