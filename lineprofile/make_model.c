@@ -9,6 +9,11 @@ void make_model(_Complex double *fft_input, double *fft_output, int fft_size, ff
     double fint, vsys, vrot, vturb, fsolid, asym, tmp2;
     _Complex double bvalue, tmp;
 
+    for (int i = 0; i < fft_size / 2 + 1; ++i)
+    {
+        fft_input[i] = 0;
+    }
+
     for (int profile = 0; profile < n_profiles; ++profile)
     {
         offset = profile * 6;
@@ -23,10 +28,6 @@ void make_model(_Complex double *fft_input, double *fft_output, int fft_size, ff
 
         for (int i = 0; i < fft_size / 2 + 1; ++i)
         {
-            if (profile == 0)
-            {
-                fft_input[i] = 0;
-            }
 
             tau = d_tau * vrot * i * -1.0;
             j0tau = j0(tau);
