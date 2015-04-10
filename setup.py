@@ -3,26 +3,30 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 import numpy
 
-model_module = Extension(
+EXTRA_COMPILE_ARGS = ['-Ofast', '-std=c11', '-march=native', '-Wa,-q']
+EXTRA_LINK_ARGS = ['-lfftw3', '-lm']
+INCLUDE_DIRS = [numpy.get_include()]
+
+MODEL_MODULE = Extension(
     "lineprofile.model",
-    ["lineprofile/model.pyx"],
-    extra_compile_args=['-O3','-ffast-math'],
-    extra_link_args=['-lfftw3','-lm'],
-    include_dirs=[numpy.get_include()]
+    ["lineprofile/model.pyx", "lineprofile/make_model.c"],
+    extra_compile_args=EXTRA_COMPILE_ARGS,
+    extra_link_args=EXTRA_LINK_ARGS,
+    include_dirs=INCLUDE_DIRS
 )
 
-fitter_module = Extension(
+FITTER_MODULE = Extension(
     "lineprofile.fitter",
     ["lineprofile/fitter.pyx"],
-    extra_compile_args=['-O3','-ffast-math'],
-    extra_link_args=['-lfftw3','-lm'],
-    include_dirs=[numpy.get_include()]
+    extra_compile_args=EXTRA_COMPILE_ARGS,
+    extra_link_args=EXTRA_LINK_ARGS,
+    include_dirs=INCLUDE_DIRS
 )
 
 setup(
     name='lineprofile',
     version='0.0.1',
     cmdclass={'build_ext': build_ext},
-    ext_modules=[model_module, fitter_module],
+    ext_modules=[MODEL_MODULE, FITTER_MODULE],
     packages=['lineprofile']
 )
