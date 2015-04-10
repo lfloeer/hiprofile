@@ -271,7 +271,7 @@ cdef class FitMixture(FitGaussian):
     3: stddev of bad samples
     """
 
-    def __init__(*args, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         super(FitMixture, self).__init__(*args, **kwargs)
 
