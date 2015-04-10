@@ -44,4 +44,11 @@ cdef class FitLaplacian(FitGaussian):
     pass
 
 cdef class FitMixture(FitGaussian):
-    pass
+    
+    public double fraction_min
+    public double fraction_max
+    public double std_in_min
+    public double std_in_max
+    public double std_out_min
+    public double std_out_max
+    public double mu_out_std

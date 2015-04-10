@@ -270,29 +270,41 @@ cdef class FitMixture(FitGaussian):
     2: offset of bad samples
     3: stddev of bad samples
     """
+
+    def __init__(*args, **kwargs):
+
+        super(FitMixture, self).__init__(*args, **kwargs)
+
+        self.fraction_min = -3
+        self.fraction_max = 0
+        self.std_in_min = -3
+        self.std_in_max = 0
+        self.std_out_min = -3
+        self.std_out_max = 1
+        self.mu_out_std = 0.1
     
     cdef double ln_likelihood(self, double[:] p):
         cdef int i, j, offset
         cdef double p_value, diff_dm, tmp
-        cdef double fraction, good_stddev, bad_offset, bad_stddev
+        cdef double fraction, std_in, mu_out, std_out
         cdef double ln_value = 0.0
 
         offset = self.model_params_offset()
         fraction = 10.0 ** p[offset + 0]
-        good_stddev = 10.0 ** p[offset + 1]
-        bad_offset = p[offset + 2]
-        bad_stddev = 10.0 ** p[offset + 3] + good_stddev
+        std_in = 10.0 ** p[offset + 1]
+        mu_out = p[offset + 2]
+        std_out = 10.0 ** p[offset + 3] + std_in
 
         for i in range(self.data.shape[0]):
             diff_dm = self.data[i] - self.model_array[i]
             
-            tmp = diff_dm / good_stddev
+            tmp = diff_dm / std_in
             tmp *= tmp
-            p_value = (1. - fraction) * exp(-0.5 * tmp) / good_stddev
+            p_value = (1. - fraction) * exp(-0.5 * tmp) / std_in
 
-            tmp = (diff_dm + bad_offset) / bad_stddev
+            tmp = (diff_dm + mu_out) / std_out
             tmp *= tmp
-            p_value += fraction * exp(-0.5 * tmp) / bad_stddev
+            p_value += fraction * exp(-0.5 * tmp) / std_out
             
             ln_value += log(p_value)
 
@@ -300,34 +312,32 @@ cdef class FitMixture(FitGaussian):
 
     cdef double ln_prior_model(self, double[:] p):
         cdef int offset
-        cdef double bad_offset
+        cdef double mu_out
         cdef double ln_value = 0.0
 
         offset = self.model_params_offset()
-        #fraction = p[offset + 0]
-        bad_offset = p[offset + 2]
+        mu_out = p[offset + 2]
 
-        #ln_value += ln_likes.ln_beta(fraction, 9, 1)
-        ln_value += ln_likes.ln_normal(bad_offset, 0., 0.1)
+        ln_value += ln_likes.ln_normal(mu_out, 0., self.mu_out_std)
 
         return ln_value
 
     cdef double ln_bounds_model(self, double[:] p):
         cdef int offset
-        cdef double fraction, good_stddev, bad_offset, bad_stddev
+        cdef double fraction, std_in, std_out
 
         offset = self.model_params_offset()
         fraction = p[offset + 0]
-        good_stddev = p[offset + 1]
-        bad_stddev = p[offset + 3]
+        std_in = p[offset + 1]
+        std_out = p[offset + 3]
 
-        if fraction <= -3 or fraction >= 0.:
+        if fraction <= self.fraction_min or fraction >= self.fraction_max:
             return -inf
 
-        if good_stddev <= -3.0 or good_stddev >= 1.0:
+        if std_in <= self.std_in_min or std_in >= self.std_in_max:
             return -inf
 
-        if bad_stddev <= -3.0 or bad_stddev >= 2.0:
+        if std_out <= self.std_out_min or std_out >= self.std_out_max:
             return -inf
 
         return 0.0
