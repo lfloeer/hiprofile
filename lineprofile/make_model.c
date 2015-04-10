@@ -1,6 +1,6 @@
 #include "make_model.h"
 
-void make_model(_Complex double *fft_input, double *fft_output, int fft_size, fftw_plan plan,
+void make_model(_Complex double *fft_input, int fft_size,
                 double *parameters, int n_profiles,
                 double d_tau, double v_chan, double v_low) {
 
@@ -56,12 +56,5 @@ void make_model(_Complex double *fft_input, double *fft_output, int fft_size, ff
 
             fft_input[i] += tmp;
         }
-    }
-
-    fftw_execute(plan);
-
-    for (int i = 0; i < fft_size; ++i)
-    {
-        fft_output[i] /= fft_size;
     }
 }

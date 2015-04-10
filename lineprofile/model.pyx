@@ -127,12 +127,14 @@ cdef class LineModel:
         cdef int i
         if self._n_profiles > 0:
 
-            make_model(self._fft_input, self._fft_output, self._N, self._plan,
+            make_model(self._fft_input, self._N,
                        &p[0], self._n_profiles,
                        self._dtau, self._v_chan, self._v_low)
 
+            fftw_execute(self._plan)
+
             for i in range(self.model_array.shape[0]):
-                self.model_array[i] += self.fft_output[i * self._supersample]
+                self.model_array[i] += self.fft_output[i * self._supersample] / self._N
 
     cdef void eval_gaussians(self, double[:] p):
         

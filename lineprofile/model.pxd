@@ -23,7 +23,7 @@ cdef extern from 'fftw3.h' nogil:
     void fftw_execute(const fftw_plan plan)
 
 cdef extern from 'make_model.h' nogil:
-    void make_model(complex *fft_input, double *fft_output, int fft_size, fftw_plan plan,
+    void make_model(complex *fft_input, int fft_size,
                     double *parameters, int n_profiles,
                     double d_tau, double v_chan, double v_low)
 
