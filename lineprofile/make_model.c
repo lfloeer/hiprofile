@@ -1,15 +1,18 @@
 #include "make_model.h"
 
-void make_model(_Complex double *fft_input, int fft_size,
+void make_model(double complex *fft_input, int fft_size,
                 double *parameters, int n_profiles,
                 double d_tau, double v_chan, double v_low) {
 
     int offset;
     double phi, j0tau, j1tau, tau, j_tau, e;
     double fint, vsys, vrot, vturb, fsolid, asym, tmp2;
-    _Complex double bvalue, tmp;
+    double b_real, b_imag;
+    double complex tmp;
 
-    for (int i = 0; i < fft_size / 2 + 1; ++i)
+    int n_values = fft_size / 2 + 1;
+
+    for (int i = 0; i < n_values; ++i)
     {
         fft_input[i] = 0;
     }
@@ -26,28 +29,24 @@ void make_model(_Complex double *fft_input, int fft_size,
 
         phi = 2. * (vsys - v_low) / vrot;
 
-        for (int i = 0; i < fft_size / 2 + 1; ++i)
+        fft_input[0] += fint / v_chan;
+
+        for (int i = 1; i < n_values; ++i)
         {
 
             tau = d_tau * vrot * i * -1.0;
             j0tau = j0(tau);
             j1tau = j1(tau);
 
-            if (tau == 0.0)
-            {
-                j_tau = 0.5;
-                e = 0.;
-            } else {
-                j_tau = j1tau / tau;
-                e = 1. / tau * (2. / tau * j1tau - j0tau);
-            }
+            j_tau = j1tau / tau;
+            e = 1. / tau * (2. / tau * j1tau - j0tau);
 
             tmp = fint / v_chan * cexp(_Complex_I * phi * tau);
 
-            bvalue = (1 - fsolid) * j0tau + 2. * fsolid * j_tau;
-            bvalue += _Complex_I * asym * ((1 - fsolid) * j1tau + 2. * fsolid * e);
+            b_real = (1 - fsolid) * j0tau + 2. * fsolid * j_tau;
+            b_imag = asym * ((1 - fsolid) * j1tau + 2. * fsolid * e);
 
-            tmp *= bvalue;
+            tmp *= b_real + _Complex_I * b_imag;
 
             tmp2 = (vturb / vrot * tau);
             tmp2 *= tmp2;
