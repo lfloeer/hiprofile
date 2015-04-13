@@ -24,7 +24,7 @@ cdef extern from 'fftw3.h' nogil:
 
 cdef extern from 'make_model.h' nogil:
     void make_model(complex *fft_input, int fft_size,
-                    double *parameters, int n_profiles,
+                    const double *parameters, int n_profiles,
                     double d_tau, double v_chan, double v_low)
 
 cdef class LineModel:
