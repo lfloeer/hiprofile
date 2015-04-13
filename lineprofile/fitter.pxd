@@ -7,6 +7,8 @@ cdef class FitGaussian(LineModel):
         double[:] weights
 
         # Prior parameters
+        public double fint_min
+        public double fint_max
 
         # Mean and center of the prior radial velocity
         # of each profile and gaussian.

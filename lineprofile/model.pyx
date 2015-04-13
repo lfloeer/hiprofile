@@ -35,7 +35,7 @@ cdef class LineModel:
             Default: 2
         """
 
-        self.velocities = velocities
+        self.velocities = np.array(velocities, dtype=np.double, copy=True)
         
         self._v_high = self.velocities[self.velocities.shape[0] - 1]
         self._v_low = self.velocities[0]
@@ -98,7 +98,7 @@ cdef class LineModel:
         def __get__(self):
             return self._n_baseline
     
-    def model(self, double[:] p):
+    def model(self, double[::1] p):
         """
         Evaluate the profile model for the given parameters
         and return the real-space representation

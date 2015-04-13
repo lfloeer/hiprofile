@@ -22,12 +22,15 @@ cdef class FitGaussian(LineModel):
     def __init__(self, velocities, data, weights=None, **kwargs):
 
         super(FitGaussian, self).__init__(velocities, **kwargs)
-        self.data = data
+        self.data = np.array(data, dtype=np.double, copy=True)
 
         if weights is None:
             self.weights = np.ones_like(data)
         else:
             self.weights = weights
+
+        self.fint_min = -3
+        self.fint_max = 3
 
         self.v_rot_k = 4.38
         self.v_rot_theta = 55.40
@@ -50,7 +53,7 @@ cdef class FitGaussian(LineModel):
             return np.asarray(self.data)
 
         def __set__(self, value):
-            self.data = np.asarray(value, dtype=np.double)
+            self.data = np.array(value, dtype=np.double, copy=True)
 
     property weights:
 
@@ -58,7 +61,7 @@ cdef class FitGaussian(LineModel):
             return np.asarray(self.weights)
 
         def __set__(self, value):
-            self.weights = np.asarray(value, dtype=np.double)
+            self.weights = np.array(value, dtype=np.double, copy=True)
 
     property v_center_mean:
 
@@ -66,7 +69,7 @@ cdef class FitGaussian(LineModel):
             return np.asarray(self.v_center_mean)
 
         def __set__(self, value):
-            self.v_center_mean = np.asarray(value, dtype=np.double)
+            self.v_center_mean = np.array(value, dtype=np.double, copy=True)
 
     property v_center_std:
 
@@ -74,7 +77,7 @@ cdef class FitGaussian(LineModel):
             return np.asarray(self.v_center_std)
 
         def __set__(self, value):
-            self.v_center_std = np.asarray(value, dtype=np.double)
+            self.v_center_std = np.array(value, dtype=np.double, copy=True)
 
     cdef int model_params_offset(self):
         return 6 * self._n_profiles + 3 * self._n_gaussians + self._n_baseline
@@ -83,7 +86,7 @@ cdef class FitGaussian(LineModel):
         "Evaluate the hard bounds for each parameter of the model components"
         cdef:
             int i, offset, component
-            double vmin, vmax
+            double vmin, vmax, prev_vcen
 
         offset = 0
         component = 0
@@ -92,7 +95,7 @@ cdef class FitGaussian(LineModel):
 
         for i in range(self._n_profiles):
             # Positive integrated flux density
-            if p[offset + 0] < -3.0:
+            if p[offset + 0] < self.fint_min or p[offset + 0] > self.fint_max:
                 return -inf
             # Profile fully in bounds
             #if fabs(p[offset + 1] - self.v_center_mean[component]) > 5. * self.v_center_std[component]:
@@ -110,6 +113,13 @@ cdef class FitGaussian(LineModel):
             if p[offset + 5] <= -1.0 or p[offset + 5] >= 1.0:
                 return -inf
 
+            if component == 0:
+                prev_vcen = p[offset + 1]
+            elif component > 0:
+                if p[offset + 1] < prev_vcen:
+                    return -inf
+                prev_vcen = p[offset + 1]
+
             offset += 6
             component += 1
 
@@ -123,6 +133,13 @@ cdef class FitGaussian(LineModel):
             # Positive dispersion
             if p[offset + 2] <= 0.:
                 return -inf
+
+            if component == 0:
+                prev_vcen = p[offset + 1]
+            elif component > 0:
+                if p[offset + 1] < prev_vcen:
+                    return -inf
+                prev_vcen = p[offset + 1]
 
             offset += 3
             component += 1
@@ -211,7 +228,7 @@ cdef class FitGaussian(LineModel):
 
         return ln_value
 
-    def ln_posterior(self, double[:] p):
+    def ln_posterior(self, double[::1] p):
         cdef double ln_value = self.ln_bounds_model(p)
 
         if ln_value == 0.0:
@@ -227,7 +244,7 @@ cdef class FitGaussian(LineModel):
 
         return ln_value
 
-    def ln_prior(self, double[:] p):
+    def ln_prior(self, double[::1] p):
         cdef double ln_value = self.ln_bounds_model(p)
 
         if ln_value == 0.0:
