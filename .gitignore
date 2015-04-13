@@ -2,3 +2,6 @@ build*
 *.c
 *.pyc
 *.so
+lineprofile/fitter.html
+lineprofile/model.html
+lineprofile/make_model.o
