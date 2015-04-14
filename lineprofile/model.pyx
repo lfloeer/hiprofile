@@ -140,16 +140,18 @@ cdef class LineModel:
         
         cdef:
             int gaussian, i, offset
-            double tmp
+            double tmp, normalization, dispersion
 
         for gaussian in range(self._n_gaussians):
 
             offset = self._n_profiles * 6 + gaussian * 3
+            dispersion = 10 ** p[offset + 2]
+            normalization = 10 ** p[offset + 0] / sqrt(2. * M_PI) / dispersion
 
             for i in range(self.model_array.shape[0]):
-                tmp = (self.velocities[i] - p[offset + 1]) / p[offset + 2]
+                tmp = (self.velocities[i] - p[offset + 1]) / dispersion
                 tmp *= tmp
-                self.model_array[i] += p[offset + 0] * exp(-0.5 * tmp)
+                self.model_array[i] += normalization * exp(-0.5 * tmp)
 
     cdef void eval_baseline(self, double[:] p):
         

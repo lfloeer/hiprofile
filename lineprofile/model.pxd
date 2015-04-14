@@ -3,6 +3,7 @@ cdef extern from 'math.h' nogil:
     double j0(double a)
     double j1(double a)
     double exp(double a)
+    double sqrt(double a)
 
 cdef extern from 'complex.h' nogil:
     complex cexp(complex a)

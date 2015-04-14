@@ -22,11 +22,11 @@ def sample_prior(n_sampler, fitter):
     def sample_gaussians():
         "Get samples from prior on gaussians"
         for component_idx in range(fitter.n_profiles, fitter.n_profiles + fitter.n_gaussians):
-            yield np.random.uniform(0, 10, n_sampler)
+            yield np.random.uniform(fitter.fint_min, fitter.fint_max, n_sampler)
             yield np.random.normal(fitter.v_center_mean[component_idx],
                                    fitter.v_center_std[component_idx],
                                    n_sampler)
-            yield np.random.uniform(10, 30, n_sampler)
+            yield np.random.uniform(fitter.gauss_disp_min, fitter.gauss_disp_max, n_sampler)
 
     def sample_baseline():
         "Get samples from prior on baseline"

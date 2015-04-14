@@ -32,6 +32,10 @@ cdef class FitGaussian(LineModel):
         public double turbulence_k
         public double turbulence_theta
 
+        # Gaussian dispersion
+        public double gauss_disp_min
+        public double gauss_disp_max
+
         # Baseline
         public double baseline_std
 

@@ -45,6 +45,9 @@ cdef class FitGaussian(LineModel):
         self.turbulence_k = 5.0
         self.turbulence_theta = 2.0
 
+        self.gauss_disp_min = -1
+        self.gauss_disp_max = 2
+
         self.baseline_std = 1.0
 
     property data:
@@ -97,9 +100,6 @@ cdef class FitGaussian(LineModel):
             # Positive integrated flux density
             if p[offset + 0] < self.fint_min or p[offset + 0] > self.fint_max:
                 return -inf
-            # Profile fully in bounds
-            #if fabs(p[offset + 1] - self.v_center_mean[component]) > 5. * self.v_center_std[component]:
-            #   return -inf
             # Positive rotation
             if p[offset + 2] <= 0.:
                 return -inf
@@ -116,8 +116,8 @@ cdef class FitGaussian(LineModel):
             if component == 0:
                 prev_vcen = p[offset + 1]
             elif component > 0:
-                if p[offset + 1] < prev_vcen:
-                    return -inf
+                #if p[offset + 1] < prev_vcen:
+                #    return -inf
                 prev_vcen = p[offset + 1]
 
             offset += 6
@@ -125,20 +125,17 @@ cdef class FitGaussian(LineModel):
 
         for i in range(self._n_gaussians):
             # Positive amplitude
-            if p[offset + 0] < 0.:
+            if p[offset + 0] < self.fint_min or p[offset + 0] > self.fint_max:
                 return -inf
-            # In bounds
-            #if fabs(p[offset + 1] - self.v_center_mean[component]) > 5. * self.v_center_std[component]:
-            #   return -inf
             # Positive dispersion
-            if p[offset + 2] <= 0.:
+            if p[offset + 2] < self.gauss_disp_min or p[offset + 2] > self.gauss_disp_max:
                 return -inf
 
             if component == 0:
                 prev_vcen = p[offset + 1]
             elif component > 0:
-                if p[offset + 1] < prev_vcen:
-                    return -inf
+                #if p[offset + 1] < prev_vcen:
+                #    return -inf
                 prev_vcen = p[offset + 1]
 
             offset += 3
@@ -190,14 +187,10 @@ cdef class FitGaussian(LineModel):
             component += 1
 
         for i in range(self._n_gaussians):
-            # Unifrom in log-amplitude (scale parameter)
-            ln_value += ln_likes.ln_log(p[offset + 0])
             # Normal prior on center
             ln_value += ln_likes.ln_normal(p[offset + 1],
                                            self.v_center_mean[component],
                                            self.v_center_std[component])
-            # Log-prior on dispersion
-            ln_value += ln_likes.ln_log(p[offset + 2])
 
             offset += 3
             component += 1
