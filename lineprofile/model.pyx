@@ -68,10 +68,9 @@ cdef class LineModel:
         Free the input and output array
         during deallocation of the object.
         """
-
-        fftw_destroy_plan(self._plan)
         fftw_free(self._fft_output)
         fftw_free(self._fft_input)
+        fftw_destroy_plan(self._plan)
         fftw_cleanup()
 
     property model_array:
