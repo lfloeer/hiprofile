@@ -23,11 +23,6 @@ cdef extern from 'fftw3.h' nogil:
         int n, complex *input, double *output, unsigned flags)
     void fftw_execute(const fftw_plan plan)
 
-cdef extern from 'make_model.h' nogil:
-    void make_model(complex *fft_input, int fft_size,
-                    const double *parameters, int n_disks,
-                    double d_tau, double v_chan, double v_low)
-
 cdef class LineModel:
     
     cdef:
@@ -40,6 +35,7 @@ cdef class LineModel:
         
         readonly int n_disks, n_gaussians, n_baseline
 
+        complex[:] fft_input
         double[:] fft_output
         double[:] model_array
         double[:] velocities

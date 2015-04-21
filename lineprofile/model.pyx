@@ -53,6 +53,7 @@ cdef class LineModel:
         self._fft_input = fftw_alloc_complex(self._N / 2 + 1)
 
         self.fft_output = <double[:self._N]> self._fft_output
+        self.fft_input = <complex[:self._N / 2 + 1]> self._fft_input
 
         self._plan = fftw_plan_dft_c2r_1d(
             self._N,
@@ -99,12 +100,57 @@ cdef class LineModel:
             self.model_array[i] = 0.0
 
     cdef void eval_disks(self, double[:] p):
-        cdef int i
+        cdef:
+            int offset, i, n_values, profile;
+            double j0tau, j1tau, tau, j_tau, e;
+            double fint, vsys, vrot, vturbrot, fsolid, asym, tmp2;
+            double two_fsolid, fdiff;
+            double b_real, b_imag;
+            complex tmp, phi;
+
         if self.n_disks > 0:
 
-            make_model(self._fft_input, self._N,
-                       &p[0], self.n_disks,
-                       self._dtau, self._v_chan, self._v_low)
+            n_values = self._N / 2 + 1;
+
+            for i in range(n_values):
+                self.fft_input[i] = 0
+
+            for profile in range(self.n_disks):
+                offset = profile * 6;
+                fint = pow(10.0, p[offset + 0]);
+                vsys = p[offset + 1];
+                vrot = p[offset + 2];
+                vturbrot = p[offset + 3] / vrot;
+                fsolid = p[offset + 4];
+                asym = p[offset + 5];
+                
+                two_fsolid = 2. * fsolid;
+                fdiff = 1 - fsolid;
+                phi = 2.0j * (vsys - self._v_low) / vrot;
+
+                self.fft_input[0] += fint / self._v_chan;
+
+                for i in range(1, n_values):
+                    tau = self._dtau * vrot * i * -1.0;
+                    j0tau = j0(tau);
+                    j1tau = j1(tau);
+
+                    j_tau = j1tau / tau;
+                    e = 1. / tau * (2. / tau * j1tau - j0tau);
+
+                    tmp = fint / self._v_chan * cexp(phi * tau);
+
+                    b_real = fdiff * j0tau + two_fsolid * j_tau;
+                    b_imag = asym * (fdiff * j1tau + two_fsolid * e);
+
+                    tmp *= b_real + 1.0j * b_imag;
+
+                    tmp2 = vturbrot * tau;
+                    tmp2 *= tmp2;
+
+                    tmp *= exp(-2. * tmp2);
+
+                    self.fft_input[i] += tmp;
 
             fftw_execute(self._plan)
 

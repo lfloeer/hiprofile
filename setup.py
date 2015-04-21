@@ -9,7 +9,7 @@ INCLUDE_DIRS = [numpy.get_include()]
 
 MODEL_MODULE = Extension(
     "lineprofile.model",
-    ["lineprofile/model.pyx", "lineprofile/make_model.c"],
+    ["lineprofile/model.pyx"],
     extra_compile_args=EXTRA_COMPILE_ARGS,
     extra_link_args=EXTRA_LINK_ARGS,
     include_dirs=INCLUDE_DIRS
