@@ -39,6 +39,9 @@ cdef class FitGaussian(LineModel):
         # Baseline
         public double baseline_std
 
+        # Enforce ordering
+        public bint enforce_ordering
+
     cdef int model_params_offset(self)
     cdef double ln_bounds_model(self, double[:] p)
     cdef double ln_prior_model(self, double[:] p)

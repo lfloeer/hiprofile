@@ -31,18 +31,16 @@ cdef extern from 'make_model.h' nogil:
 cdef class LineModel:
     
     cdef:
-        # FFTW3 related members
+        # FFT related members
         fftw_plan _plan
-
         complex *_fft_input
-
         double *_fft_output
-        double[:] fft_output
-
         double _dtau, _v_low, _v_chan
         int _supersample, _N
+        
         readonly int n_disks, n_gaussians, n_baseline
 
+        double[:] fft_output
         double[:] model_array
         double[:] velocities
 

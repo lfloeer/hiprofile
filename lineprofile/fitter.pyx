@@ -50,6 +50,8 @@ cdef class FitGaussian(LineModel):
 
         self.baseline_std = 1.0
 
+        self.enforce_ordering = 0
+
     property data:
 
         def __get__(self):
@@ -116,8 +118,8 @@ cdef class FitGaussian(LineModel):
             if component == 0:
                 prev_vcen = p[offset + 1]
             elif component > 0:
-                #if p[offset + 1] < prev_vcen:
-                #    return -inf
+                if self.enforce_ordering and p[offset + 1] < prev_vcen:
+                   return -inf
                 prev_vcen = p[offset + 1]
 
             offset += 6
@@ -134,8 +136,8 @@ cdef class FitGaussian(LineModel):
             if component == 0:
                 prev_vcen = p[offset + 1]
             elif component > 0:
-                #if p[offset + 1] < prev_vcen:
-                #    return -inf
+                if self.enforce_ordering and p[offset + 1] < prev_vcen:
+                   return -inf
                 prev_vcen = p[offset + 1]
 
             offset += 3
