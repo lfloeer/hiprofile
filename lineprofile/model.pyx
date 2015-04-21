@@ -18,7 +18,7 @@ cdef class LineModel:
     http://adsabs.harvard.edu/abs/2014A%26A...567A..61S
     """
 
-    def __init__(self, velocities, n_profiles=1, n_gaussians=0, n_baseline=0, supersample=2):
+    def __init__(self, velocities, n_disks=1, n_gaussians=0, n_baseline=0, supersample=2):
         """
         Create a new model object on the given velocity grid
 
@@ -42,7 +42,7 @@ cdef class LineModel:
         self._v_chan = (self.velocities[1] - self.velocities[0]) / float(self._supersample)
         self._N = self.velocities.shape[0] * self._supersample
         
-        self.n_profiles = n_profiles
+        self.n_disks = n_disks
         self.n_gaussians = n_gaussians
         self.n_baseline = n_baseline
 
@@ -84,23 +84,13 @@ cdef class LineModel:
         def __get__(self):
             return np.asarray(self.velocities)
     
-    def model(self, double[::1] p):
-        """
-        Evaluate the profile model for the given parameters
-        and return the real-space representation
-
-        p : (6,)-ndarray
-            The parameters of the line model in the following
-            order: 0) total_flux, 1) v_center, 2) v_width, 3) v_random,
-            4) f_solid and 5) asymmetry.
-        """
+    def model(self, double[::1] p, copy=True):
         self.eval_model(p)
-        
-        return np.asarray(self.model_array)
+        return np.array(self.model_array, copy=copy)
 
     cdef void eval_model(self, double[:] p):
         self.reset_model()
-        self.eval_profiles(p)
+        self.eval_disks(p)
         self.eval_gaussians(p)
         self.eval_baseline(p)
 
@@ -109,12 +99,12 @@ cdef class LineModel:
         for i in range(self.model_array.shape[0]):
             self.model_array[i] = 0.0
 
-    cdef void eval_profiles(self, double[:] p):
+    cdef void eval_disks(self, double[:] p):
         cdef int i
-        if self.n_profiles > 0:
+        if self.n_disks > 0:
 
             make_model(self._fft_input, self._N,
-                       &p[0], self.n_profiles,
+                       &p[0], self.n_disks,
                        self._dtau, self._v_chan, self._v_low)
 
             fftw_execute(self._plan)
@@ -130,7 +120,7 @@ cdef class LineModel:
 
         for gaussian in range(self.n_gaussians):
 
-            offset = self.n_profiles * 6 + gaussian * 3
+            offset = self.n_disks * 6 + gaussian * 3
             dispersion = 10 ** p[offset + 2]
             normalization = 10 ** p[offset + 0] / sqrt(2. * M_PI) / dispersion
 
@@ -145,7 +135,7 @@ cdef class LineModel:
             int order, i, offset
             double tmp, x, dx
 
-        offset = self.n_profiles * 6 + self.n_gaussians * 3
+        offset = self.n_disks * 6 + self.n_gaussians * 3
         x = -1.0
         dx = 2. / (self.velocities.shape[0] - 1.)
 

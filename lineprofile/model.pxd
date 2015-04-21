@@ -25,7 +25,7 @@ cdef extern from 'fftw3.h' nogil:
 
 cdef extern from 'make_model.h' nogil:
     void make_model(complex *fft_input, int fft_size,
-                    const double *parameters, int n_profiles,
+                    const double *parameters, int n_disks,
                     double d_tau, double v_chan, double v_low)
 
 cdef class LineModel:
@@ -41,13 +41,13 @@ cdef class LineModel:
 
         double _dtau, _v_low, _v_chan
         int _supersample, _N
-        readonly int n_profiles, n_gaussians, n_baseline
+        readonly int n_disks, n_gaussians, n_baseline
 
         double[:] model_array
         double[:] velocities
 
     cdef void eval_model(self, double[:] p)
     cdef void reset_model(self)
-    cdef void eval_profiles(self, double[:] p)
+    cdef void eval_disks(self, double[:] p)
     cdef void eval_gaussians(self, double[:] p)
     cdef void eval_baseline(self, double[:] p)

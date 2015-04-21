@@ -1,7 +1,7 @@
 #include "make_model.h"
 
 void make_model(double complex *fft_input, int fft_size,
-                const double *parameters, int n_profiles,
+                const double *parameters, int n_disks,
                 double d_tau, double v_chan, double v_low) {
 
     int offset;
@@ -18,7 +18,7 @@ void make_model(double complex *fft_input, int fft_size,
         fft_input[i] = 0;
     }
 
-    for (int profile = 0; profile < n_profiles; ++profile)
+    for (int profile = 0; profile < n_disks; ++profile)
     {
         offset = profile * 6;
         fint = pow(10.0, parameters[offset + 0]);
