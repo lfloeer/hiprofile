@@ -35,7 +35,6 @@ cdef class LineModel:
         fftw_plan _plan
 
         complex *_fft_input
-        complex[:] fft_input
 
         double *_fft_output
         double[:] fft_output

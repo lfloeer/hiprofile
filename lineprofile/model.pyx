@@ -53,7 +53,6 @@ cdef class LineModel:
         self._fft_output = fftw_alloc_real(self._N)
         self._fft_input = fftw_alloc_complex(self._N / 2 + 1)
 
-        self.fft_input = <complex[:self._N / 2 + 1]> self._fft_input
         self.fft_output = <double[:self._N]> self._fft_output
 
         self._plan = fftw_plan_dft_c2r_1d(
