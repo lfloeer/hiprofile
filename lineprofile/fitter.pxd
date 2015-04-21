@@ -42,9 +42,9 @@ cdef class FitGaussian(LineModel):
         # Enforce ordering
         public bint enforce_ordering
 
-    cdef int model_params_offset(self)
-    cdef double ln_bounds_model(self, double[:] p)
-    cdef double ln_prior_model(self, double[:] p)
+    cdef int likelihood_params_offset(self)
+    cdef double ln_bounds_likelihood(self, double[:] p)
+    cdef double ln_prior_likelihood(self, double[:] p)
     cdef double ln_bounds_components(self, double[:] p)
     cdef double ln_prior_components(self, double[:] p)
     cdef double ln_likelihood(self, double[:] p)

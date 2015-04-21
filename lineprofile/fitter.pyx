@@ -84,7 +84,7 @@ cdef class FitGaussian(LineModel):
         def __set__(self, value):
             self.v_center_std = np.array(value, dtype=np.double, copy=True)
 
-    cdef int model_params_offset(self):
+    cdef int likelihood_params_offset(self):
         return 6 * self.n_profiles + 3 * self.n_gaussians + self.n_baseline
 
     cdef double ln_bounds_components(self, double[:] p):
@@ -148,12 +148,12 @@ cdef class FitGaussian(LineModel):
 
         return 0.0
 
-    cdef double ln_bounds_model(self, double[:] p):
+    cdef double ln_bounds_likelihood(self, double[:] p):
         "Evaluate the hard bounds for each parameter"
         cdef:
             int i, offset
 
-        offset = self.model_params_offset()
+        offset = self.likelihood_params_offset()
 
         # Positive likelihood stddev
         if p[offset] <= -3.0:
@@ -204,7 +204,7 @@ cdef class FitGaussian(LineModel):
 
         return ln_value
 
-    cdef double ln_prior_model(self, double[:] p):
+    cdef double ln_prior_likelihood(self, double[:] p):
         return 0.0
 
     cdef double ln_likelihood(self, double[:] p):
@@ -213,7 +213,7 @@ cdef class FitGaussian(LineModel):
             double ln_value = 0.0
             double stddev
 
-        offset = self.model_params_offset()
+        offset = self.likelihood_params_offset()
         stddev = 10.0 ** p[offset]
 
         for i in range(self.data.shape[0]):
@@ -224,7 +224,7 @@ cdef class FitGaussian(LineModel):
         return ln_value
 
     def ln_posterior(self, double[::1] p):
-        cdef double ln_value = self.ln_bounds_model(p)
+        cdef double ln_value = self.ln_bounds_likelihood(p)
 
         if ln_value == 0.0:
 
@@ -234,13 +234,13 @@ cdef class FitGaussian(LineModel):
                 self.eval_model(p)
                 
                 ln_value += self.ln_prior_components(p)
-                ln_value += self.ln_prior_model(p)
+                ln_value += self.ln_prior_likelihood(p)
                 ln_value += self.ln_likelihood(p)
 
         return ln_value
 
     def ln_prior(self, double[::1] p):
-        cdef double ln_value = self.ln_bounds_model(p)
+        cdef double ln_value = self.ln_bounds_likelihood(p)
 
         if ln_value == 0.0:
 
@@ -249,7 +249,7 @@ cdef class FitGaussian(LineModel):
             if ln_value == 0.0:
                 
                 ln_value += self.ln_prior_components(p)
-                ln_value += self.ln_prior_model(p)
+                ln_value += self.ln_prior_likelihood(p)
 
         return ln_value
 
@@ -261,7 +261,7 @@ cdef class FitLaplacian(FitGaussian):
             double ln_value = 0.0
             double stddev
 
-        offset = self.model_params_offset()
+        offset = self.likelihood_params_offset()
         stddev = 10.0 ** p[offset]
 
         for i in range(self.data.shape[0]):
@@ -271,7 +271,7 @@ cdef class FitLaplacian(FitGaussian):
 
         return ln_value
 
-    cdef double ln_prior_model(self, double[:] p):
+    cdef double ln_prior_likelihood(self, double[:] p):
         return 0.0
 
 cdef class FitMixture(FitGaussian):
@@ -301,7 +301,7 @@ cdef class FitMixture(FitGaussian):
         cdef double fraction, std_in, mu_out, std_out
         cdef double ln_value = 0.0
 
-        offset = self.model_params_offset()
+        offset = self.likelihood_params_offset()
         fraction = 10.0 ** p[offset + 0]
         std_in = 10.0 ** p[offset + 1]
         mu_out = p[offset + 2]
@@ -322,23 +322,23 @@ cdef class FitMixture(FitGaussian):
 
         return ln_value
 
-    cdef double ln_prior_model(self, double[:] p):
+    cdef double ln_prior_likelihood(self, double[:] p):
         cdef int offset
         cdef double mu_out
         cdef double ln_value = 0.0
 
-        offset = self.model_params_offset()
+        offset = self.likelihood_params_offset()
         mu_out = p[offset + 2]
 
         ln_value += ln_likes.ln_normal(mu_out, 0., self.mu_out_std)
 
         return ln_value
 
-    cdef double ln_bounds_model(self, double[:] p):
+    cdef double ln_bounds_likelihood(self, double[:] p):
         cdef int offset
         cdef double fraction, std_in, std_out
 
-        offset = self.model_params_offset()
+        offset = self.likelihood_params_offset()
         fraction = p[offset + 0]
         std_in = p[offset + 1]
         std_out = p[offset + 3]
