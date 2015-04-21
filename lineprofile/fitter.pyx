@@ -17,7 +17,7 @@ from libc.math cimport log, fabs, exp
 cimport ln_likes
 
 cdef class FitGaussian(LineModel):
-    "Fit a LineModel to data assuming a Gaussian posterior"
+    "Fit a LineModel to data assuming a Gaussian likelihood"
 
     def __init__(self, velocities, data, weights=None, **kwargs):
 
@@ -219,7 +219,7 @@ cdef class FitGaussian(LineModel):
         for i in range(self.data.shape[0]):
             ln_value += ln_likes.ln_normal(self.data[i],
                                            self.model_array[i],
-                                           stddev)
+                                           stddev * self.weights[i])
 
         return ln_value
 
@@ -267,7 +267,7 @@ cdef class FitLaplacian(FitGaussian):
         for i in range(self.data.shape[0]):
             ln_value += ln_likes.ln_laplace(self.data[i],
                                             self.model_array[i],
-                                            stddev)
+                                            stddev * self.weights[i])
 
         return ln_value
 
@@ -276,7 +276,7 @@ cdef class FitLaplacian(FitGaussian):
 
 cdef class FitMixture(FitGaussian):
     """
-    Parameters of the posterior (offset + x):
+    Parameters of the likelihood (offset + x):
     0: fraction of good samples (1. means all good!)
     1: stddev of good samples
     2: offset of bad samples
@@ -296,10 +296,12 @@ cdef class FitMixture(FitGaussian):
         self.mu_out_std = 0.1
     
     cdef double ln_likelihood(self, double[:] p):
-        cdef int i, j, offset
-        cdef double p_value, diff_dm, tmp
-        cdef double fraction, std_in, mu_out, std_out
-        cdef double ln_value = 0.0
+        cdef:
+            int i, j, offset
+            double p_value, diff_dm, tmp
+            double fraction, std_in, mu_out, std_out
+            double scaled_std_in, scaled_std_out
+            double ln_value = 0.0
 
         offset = self.likelihood_params_offset()
         fraction = 10.0 ** p[offset + 0]
@@ -308,15 +310,18 @@ cdef class FitMixture(FitGaussian):
         std_out = 10.0 ** p[offset + 3] + std_in
 
         for i in range(self.data.shape[0]):
+            scaled_std_in = std_in * self.weights[i]
+            scaled_std_out = std_out * self.weights[i]
+            
             diff_dm = self.data[i] - self.model_array[i]
             
-            tmp = diff_dm / std_in
+            tmp = diff_dm / scaled_std_in
             tmp *= tmp
-            p_value = (1. - fraction) * exp(-0.5 * tmp) / std_in
+            p_value = (1. - fraction) * exp(-0.5 * tmp) / scaled_std_in
 
-            tmp = (diff_dm + mu_out) / std_out
+            tmp = (diff_dm + mu_out) / scaled_std_out
             tmp *= tmp
-            p_value += fraction * exp(-0.5 * tmp) / std_out
+            p_value += fraction * exp(-0.5 * tmp) / scaled_std_out
             
             ln_value += log(p_value)
 
