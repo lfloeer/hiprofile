@@ -39,10 +39,9 @@ cdef class LineModel:
         double *_fft_output
         double[:] fft_output
 
-        double _dtau,
-        double _v_high, _v_low, _v_chan
+        double _dtau, _v_low, _v_chan
         int _supersample, _N
-        int _n_profiles, _n_gaussians, _n_baseline
+        readonly int n_profiles, n_gaussians, n_baseline
 
         double[:] model_array
         double[:] velocities

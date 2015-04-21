@@ -37,15 +37,14 @@ cdef class LineModel:
 
         self.velocities = np.array(velocities, dtype=np.double, copy=True)
         
-        self._v_high = self.velocities[self.velocities.shape[0] - 1]
         self._v_low = self.velocities[0]
         self._supersample = supersample
         self._v_chan = (self.velocities[1] - self.velocities[0]) / float(self._supersample)
         self._N = self.velocities.shape[0] * self._supersample
         
-        self._n_profiles = n_profiles
-        self._n_gaussians = n_gaussians
-        self._n_baseline = n_baseline
+        self.n_profiles = n_profiles
+        self.n_gaussians = n_gaussians
+        self.n_baseline = n_baseline
 
         # Dtau is twice as large as given in the paper
         self._dtau = M_PI / (self._N * self._v_chan)
@@ -84,18 +83,6 @@ cdef class LineModel:
 
         def __get__(self):
             return np.asarray(self.velocities)
-
-    property n_profiles:
-        def __get__(self):
-            return self._n_profiles
-
-    property n_gaussians:
-        def __get__(self):
-            return self._n_gaussians
-
-    property n_baseline:
-        def __get__(self):
-            return self._n_baseline
     
     def model(self, double[::1] p):
         """
@@ -124,10 +111,10 @@ cdef class LineModel:
 
     cdef void eval_profiles(self, double[:] p):
         cdef int i
-        if self._n_profiles > 0:
+        if self.n_profiles > 0:
 
             make_model(self._fft_input, self._N,
-                       &p[0], self._n_profiles,
+                       &p[0], self.n_profiles,
                        self._dtau, self._v_chan, self._v_low)
 
             fftw_execute(self._plan)
@@ -141,9 +128,9 @@ cdef class LineModel:
             int gaussian, i, offset
             double tmp, normalization, dispersion
 
-        for gaussian in range(self._n_gaussians):
+        for gaussian in range(self.n_gaussians):
 
-            offset = self._n_profiles * 6 + gaussian * 3
+            offset = self.n_profiles * 6 + gaussian * 3
             dispersion = 10 ** p[offset + 2]
             normalization = 10 ** p[offset + 0] / sqrt(2. * M_PI) / dispersion
 
@@ -158,7 +145,7 @@ cdef class LineModel:
             int order, i, offset
             double tmp, x, dx
 
-        offset = self._n_profiles * 6 + self._n_gaussians * 3
+        offset = self.n_profiles * 6 + self.n_gaussians * 3
         x = -1.0
         dx = 2. / (self.velocities.shape[0] - 1.)
 
@@ -166,7 +153,7 @@ cdef class LineModel:
 
             tmp = 0.
 
-            for order in range(self._n_baseline):
+            for order in range(self.n_baseline):
                 tmp = tmp * x + p[offset + order]
 
             self.model_array[i] += tmp
