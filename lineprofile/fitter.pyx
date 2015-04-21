@@ -85,7 +85,7 @@ cdef class FitGaussian(LineModel):
             self.v_center_std = np.array(value, dtype=np.double, copy=True)
 
     cdef int likelihood_params_offset(self):
-        return 6 * self.n_profiles + 3 * self.n_gaussians + self.n_baseline
+        return 6 * self.n_disks + 3 * self.n_gaussians + self.n_baseline
 
     cdef double ln_bounds_components(self, double[:] p):
         "Evaluate the hard bounds for each parameter of the model components"
@@ -98,7 +98,7 @@ cdef class FitGaussian(LineModel):
         vmin = self.velocities[0]
         vmax = self.velocities[self.velocities.shape[0] - 1]
 
-        for i in range(self.n_profiles):
+        for i in range(self.n_disks):
             # Positive integrated flux density
             if p[offset + 0] < self.fint_min or p[offset + 0] > self.fint_max:
                 return -inf
@@ -169,7 +169,7 @@ cdef class FitGaussian(LineModel):
         offset = 0
         component = 0
 
-        for i in range(self.n_profiles):
+        for i in range(self.n_disks):
             # Normal prior on radial velocity
             ln_value += ln_likes.ln_normal(p[offset + 1],
                                            self.v_center_mean[component],

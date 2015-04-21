@@ -5,7 +5,7 @@ def sample_prior(n_sampler, fitter):
 
     def sample_components():
         "Get samples from prior on line profile"
-        for component_idx in range(fitter.n_profiles):
+        for component_idx in range(fitter.n_disks):
             yield np.random.uniform(fitter.fint_min, fitter.fint_max, n_sampler)
             yield np.random.normal(fitter.v_center_mean[component_idx],
                                    fitter.v_center_std[component_idx],
@@ -21,7 +21,7 @@ def sample_prior(n_sampler, fitter):
 
     def sample_gaussians():
         "Get samples from prior on gaussians"
-        for component_idx in range(fitter.n_profiles, fitter.n_profiles + fitter.n_gaussians):
+        for component_idx in range(fitter.n_disks, fitter.n_disks + fitter.n_gaussians):
             yield np.random.uniform(fitter.fint_min, fitter.fint_max, n_sampler)
             yield np.random.normal(fitter.v_center_mean[component_idx],
                                    fitter.v_center_std[component_idx],
@@ -46,9 +46,9 @@ def sample_prior(n_sampler, fitter):
 def resample_position(position, n_walkers, n_dim, fitter, ball_size=1e-2):
     "Use rejection sampling to resample the walker positions"
     scale_factors = np.ones(n_dim)
-    scale_factors[3:6 * fitter.n_profiles:6] = 10
-    scale_factors[2:6 * fitter.n_profiles:6] = 100
-    scale_factors[1:6 * fitter.n_profiles:6] = 10
+    scale_factors[3:6 * fitter.n_disks:6] = 10
+    scale_factors[2:6 * fitter.n_disks:6] = 100
+    scale_factors[1:6 * fitter.n_disks:6] = 10
     scale_factors *= ball_size
 
     new_positions = np.array([position + scale_factors * np.random.randn(n_dim)
