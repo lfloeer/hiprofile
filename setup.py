@@ -3,7 +3,7 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 import numpy
 
-EXTRA_COMPILE_ARGS = ['-Ofast', '-std=c11', '-march=native', '-Wa,-q']
+EXTRA_COMPILE_ARGS = ['-O3', '-std=c11', '-march=native', '-Wa,-q']
 EXTRA_LINK_ARGS = ['-lfftw3', '-lm']
 INCLUDE_DIRS = [numpy.get_include()]
 
