@@ -36,7 +36,7 @@ cdef class LineModel:
         """
 
         self.velocities = np.array(velocities, dtype=np.double, copy=True)
-        
+
         self._v_low = self.velocities[0]
         self._supersample = supersample
         self._v_chan = (self.velocities[1] - self.velocities[0]) / float(self._supersample)
@@ -60,7 +60,7 @@ cdef class LineModel:
             self._fft_output,
             1) #FFTW MEASURE | DESTROY INPUT
 
-        self.model_array = np.zeros(velocities.shape[0], dtype=np.float64)
+        self.model_array = np.zeros(velocities.shape[0], dtype=np.double)
 
 
     def __dealloc__(self):
