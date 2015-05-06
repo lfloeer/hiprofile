@@ -207,7 +207,7 @@ cdef class FitGaussian(LineModel):
     cdef double ln_prior_likelihood(self, double[:] p):
         return 0.0
 
-    cdef double ln_likelihood(self, double[:] p):
+    cpdef double ln_likelihood(self, double[:] p):
         cdef:
             int i, offset
             double ln_value = 0.0
@@ -255,7 +255,7 @@ cdef class FitGaussian(LineModel):
 
 cdef class FitLaplacian(FitGaussian):
 
-    cdef double ln_likelihood(self, double[:] p):
+    cpdef double ln_likelihood(self, double[:] p):
         cdef:
             int i, offset
             double ln_value = 0.0
@@ -295,7 +295,7 @@ cdef class FitMixture(FitGaussian):
         self.std_out_max = 1
         self.mu_out_std = 0.1
     
-    cdef double ln_likelihood(self, double[:] p):
+    cpdef double ln_likelihood(self, double[:] p):
         cdef:
             int i, j, offset
             double p_value, diff_dm, tmp

@@ -47,7 +47,7 @@ cdef class FitGaussian(LineModel):
     cdef double ln_prior_likelihood(self, double[:] p)
     cdef double ln_bounds_components(self, double[:] p)
     cdef double ln_prior_components(self, double[:] p)
-    cdef double ln_likelihood(self, double[:] p)
+    cpdef double ln_likelihood(self, double[:] p)
 
 cdef class FitLaplacian(FitGaussian):
     pass
