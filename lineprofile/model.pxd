@@ -40,8 +40,8 @@ cdef class LineModel:
         double[:] model_array
         double[:] velocities
 
-    cdef void eval_model(self, double[:] p)
+    cdef void eval_model(self, double[::1] p)
     cdef void reset_model(self)
-    cdef void eval_disks(self, double[:] p)
-    cdef void eval_gaussians(self, double[:] p)
-    cdef void eval_baseline(self, double[:] p)
+    cdef void eval_disks(self, double[::1] p)
+    cdef void eval_gaussians(self, double[::1] p)
+    cdef void eval_baseline(self, double[::1] p)

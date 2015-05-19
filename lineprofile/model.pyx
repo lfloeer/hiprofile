@@ -88,7 +88,7 @@ cdef class LineModel:
         self.eval_model(p)
         return np.array(self.model_array, copy=copy)
 
-    cdef void eval_model(self, double[:] p):
+    cdef void eval_model(self, double[::1] p):
         self.reset_model()
         self.eval_disks(p)
         self.eval_gaussians(p)
@@ -99,7 +99,7 @@ cdef class LineModel:
         for i in range(self.model_array.shape[0]):
             self.model_array[i] = 0.0
 
-    cdef void eval_disks(self, double[:] p):
+    cdef void eval_disks(self, double[::1] p):
         cdef:
             int offset, i, n_values, profile;
             double j0tau, j1tau, tau, j_tau, e;
@@ -157,7 +157,7 @@ cdef class LineModel:
             for i in range(self.model_array.shape[0]):
                 self.model_array[i] += self.fft_output[i * self._supersample] / self._N
 
-    cdef void eval_gaussians(self, double[:] p):
+    cdef void eval_gaussians(self, double[::1] p):
         
         cdef:
             int gaussian, i, offset
@@ -174,7 +174,7 @@ cdef class LineModel:
                 tmp *= tmp
                 self.model_array[i] += normalization * exp(-0.5 * tmp)
 
-    cdef void eval_baseline(self, double[:] p):
+    cdef void eval_baseline(self, double[::1] p):
         
         cdef:
             int order, i, offset

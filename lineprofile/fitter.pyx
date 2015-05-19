@@ -87,7 +87,7 @@ cdef class FitGaussian(LineModel):
     cdef int likelihood_params_offset(self):
         return 6 * self.n_disks + 3 * self.n_gaussians + self.n_baseline
 
-    cdef double ln_bounds_components(self, double[:] p):
+    cdef double ln_bounds_components(self, double[::1] p):
         "Evaluate the hard bounds for each parameter of the model components"
         cdef:
             int i, offset, component
@@ -148,7 +148,7 @@ cdef class FitGaussian(LineModel):
 
         return 0.0
 
-    cdef double ln_bounds_likelihood(self, double[:] p):
+    cdef double ln_bounds_likelihood(self, double[::1] p):
         "Evaluate the hard bounds for each parameter"
         cdef:
             int i, offset
@@ -161,7 +161,7 @@ cdef class FitGaussian(LineModel):
 
         return 0.0
 
-    cdef double ln_prior_components(self, double[:] p):
+    cdef double ln_prior_components(self, double[::1] p):
         cdef:
             int i, offset, component
             double ln_value = 0.0
@@ -204,10 +204,10 @@ cdef class FitGaussian(LineModel):
 
         return ln_value
 
-    cdef double ln_prior_likelihood(self, double[:] p):
+    cdef double ln_prior_likelihood(self, double[::1] p):
         return 0.0
 
-    cpdef double ln_likelihood(self, double[:] p):
+    cpdef double ln_likelihood(self, double[::1] p):
         cdef:
             int i, offset
             double ln_value = 0.0
@@ -255,7 +255,7 @@ cdef class FitGaussian(LineModel):
 
 cdef class FitLaplacian(FitGaussian):
 
-    cpdef double ln_likelihood(self, double[:] p):
+    cpdef double ln_likelihood(self, double[::1] p):
         cdef:
             int i, offset
             double ln_value = 0.0
@@ -271,13 +271,13 @@ cdef class FitLaplacian(FitGaussian):
 
         return ln_value
 
-    cdef double ln_prior_likelihood(self, double[:] p):
+    cdef double ln_prior_likelihood(self, double[::1] p):
         return 0.0
 
 cdef class FitMixture(FitGaussian):
     """
     Parameters of the likelihood (offset + x):
-    0: fraction of good samples (1. means all good!)
+    0: fraction of bad samples
     1: stddev of good samples
     2: offset of bad samples
     3: stddev of bad samples
@@ -295,7 +295,7 @@ cdef class FitMixture(FitGaussian):
         self.std_out_max = 1
         self.mu_out_std = 0.1
     
-    cpdef double ln_likelihood(self, double[:] p):
+    cpdef double ln_likelihood(self, double[::1] p):
         cdef:
             int i, j, offset
             double p_value, diff_dm, tmp
@@ -327,7 +327,7 @@ cdef class FitMixture(FitGaussian):
 
         return ln_value
 
-    cdef double ln_prior_likelihood(self, double[:] p):
+    cdef double ln_prior_likelihood(self, double[::1] p):
         cdef int offset
         cdef double mu_out
         cdef double ln_value = 0.0
@@ -339,7 +339,7 @@ cdef class FitMixture(FitGaussian):
 
         return ln_value
 
-    cdef double ln_bounds_likelihood(self, double[:] p):
+    cdef double ln_bounds_likelihood(self, double[::1] p):
         cdef int offset
         cdef double fraction, std_in, std_out
 
