@@ -213,6 +213,8 @@ cdef class FitGaussian(LineModel):
             double ln_value = 0.0
             double stddev
 
+        self.eval_model(p)
+        
         offset = self.likelihood_params_offset()
         stddev = 10.0 ** p[offset]
 
@@ -231,7 +233,6 @@ cdef class FitGaussian(LineModel):
             ln_value = self.ln_bounds_components(p)
 
             if ln_value == 0.0:
-                self.eval_model(p)
                 
                 ln_value += self.ln_prior_components(p)
                 ln_value += self.ln_prior_likelihood(p)
@@ -260,6 +261,8 @@ cdef class FitLaplacian(FitGaussian):
             int i, offset
             double ln_value = 0.0
             double stddev
+
+        self.eval_model(p)
 
         offset = self.likelihood_params_offset()
         stddev = 10.0 ** p[offset]
@@ -302,6 +305,8 @@ cdef class FitMixture(FitGaussian):
             double fraction, std_in, mu_out, std_out
             double scaled_std_in, scaled_std_out
             double ln_value = 0.0
+
+        self.eval_model(p)
 
         offset = self.likelihood_params_offset()
         fraction = 10.0 ** p[offset + 0]
