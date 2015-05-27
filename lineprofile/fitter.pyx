@@ -12,7 +12,7 @@ cimport numpy as np
 cimport cython
 
 from numpy.math cimport INFINITY as inf
-from libc.math cimport log, fabs, exp
+from libc.math cimport log, exp, M_PI
 
 cimport ln_likes
 
@@ -51,6 +51,7 @@ cdef class FitGaussian(LineModel):
         self.baseline_std = 1.0
 
         self.enforce_ordering = 0
+        self.normalize_priors = 0
 
     property data:
 
@@ -156,7 +157,7 @@ cdef class FitGaussian(LineModel):
         offset = self.likelihood_params_offset()
 
         # Positive likelihood stddev
-        if p[offset] <= -3.0:
+        if p[offset] <= -3.0 and p[offset] >= 3.0:
             return -inf
 
         return 0.0
@@ -204,8 +205,56 @@ cdef class FitGaussian(LineModel):
 
         return ln_value
 
+    cdef double ln_prior_components_normalization(self):
+        cdef:
+            int i, offset, component
+            double ln_value = 0.0
+
+        offset = 0
+        component = 0
+
+        for i in range(self.n_disks):
+            # Unifrom prior on integrated flux
+            ln_value += ln_likes.ln_uniform_norm(self.fint_min, self.fint_max)
+            # Normal prior on radial velocity
+            ln_value += ln_likes.ln_normal_norm()
+            # Gamma prior on profile width
+            # Prior parameters are from a ML fit to HIPASS data
+            ln_value += ln_likes.ln_gamma_norm(self.v_rot_k, self.v_rot_theta)
+            # Gamma prior on turbulent motion. Parameters roughly guided
+            # by the paper of Stewart et al. 2014
+            ln_value += ln_likes.ln_gamma_norm(self.turbulence_k, self.turbulence_theta)
+            # Beta distribution on fraction of solid body rotation
+            ln_value += ln_likes.ln_beta_norm(self.fsolid_p, self.fsolid_q)
+            # Beta distribution on asymmetry
+            ln_value += ln_likes.ln_beta_norm(self.asym_p, self.asym_q)
+
+            offset += 6
+            component += 1
+
+        for i in range(self.n_gaussians):
+            # Normal prior on center
+            ln_value += ln_likes.ln_normal_norm()
+
+            offset += 3
+            component += 1
+
+        for i in range(self.n_baseline):
+            # Normal prior on baseline coefficients
+            ln_value += ln_likes.ln_normal_norm()
+            offset += 1
+
+        return ln_value
+
     cdef double ln_prior_likelihood(self, double[::1] p):
         return 0.0
+
+    cdef double ln_prior_likelihood_normalization(self):
+        cdef ln_value = 0.0
+
+        ln_value += ln_likes.ln_uniform_norm(-3.0, 3.0)
+
+        return ln_value
 
     cpdef double ln_likelihood(self, double[::1] p):
         cdef:
@@ -251,6 +300,10 @@ cdef class FitGaussian(LineModel):
                 
                 ln_value += self.ln_prior_components(p)
                 ln_value += self.ln_prior_likelihood(p)
+
+                if self.normalize_priors:
+                    ln_value += self.ln_prior_likelihood_normalization()
+                    ln_value += self.ln_prior_components_normalization()
 
         return ln_value
 
@@ -341,6 +394,16 @@ cdef class FitMixture(FitGaussian):
         mu_out = p[offset + 2]
 
         ln_value += ln_likes.ln_normal(mu_out, 0., self.mu_out_std)
+
+        return ln_value
+
+    cdef double ln_prior_likelihood_normalization(self):
+        cdef ln_value = 0.0
+
+        ln_value += ln_likes.ln_uniform_norm(self.fraction_min, self.fraction_max)
+        ln_value += ln_likes.ln_uniform_norm(self.std_in_min, self.std_in_max)
+        ln_value += ln_likes.ln_uniform_norm(self.std_out_min, self.std_out_max)
+        ln_value += ln_likes.ln_normal_norm()
 
         return ln_value
 
