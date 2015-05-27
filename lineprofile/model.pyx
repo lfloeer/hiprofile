@@ -101,7 +101,7 @@ cdef class LineModel:
 
     cdef void eval_disks(self, double[::1] p):
         cdef:
-            int offset, i, n_values, profile;
+            int offset, i, j, n_values, profile;
             double j0tau, j1tau, tau, j_tau, e;
             double fint, vsys, vrot, vturbrot, fsolid, asym, tmp2;
             double two_fsolid, fdiff;
@@ -155,7 +155,9 @@ cdef class LineModel:
             fftw_execute(self._plan)
 
             for i in range(self.model_array.shape[0]):
-                self.model_array[i] += self.fft_output[i * self._supersample] / self._N
+                for j in range(self._supersample):
+                    self.model_array[i] += self.fft_output[i * self._supersample + j] / self._N
+                self.model_array[i] /= self._supersample
 
     cdef void eval_gaussians(self, double[::1] p):
         
