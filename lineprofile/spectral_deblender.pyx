@@ -90,8 +90,11 @@ cdef class SpectralDeblender(fitter.FitMixture):
         cdef:
             int flux_offset = spectrum * self.n_disks
             int n_fluxes = self.n_disks * self.n_disks
-            int baseline_offset = n_fluxes + 5 * self.n_disks + spectrum * self.n_baseline
-            int likelihood_offset = n_fluxes + 5 * self.n_disks + self.n_disks * self.n_baseline + 4 * spectrum
+            int baseline_offset = (n_fluxes + 5 * self.n_disks +
+                                   spectrum * self.n_baseline)
+            int likelihood_offset = (n_fluxes + 5 * self.n_disks +
+                                     self.n_disks * self.n_baseline +
+                                     4 * spectrum)
             int parameter = 0
             int source, i
 
