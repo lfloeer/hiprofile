@@ -354,19 +354,28 @@ cdef class FitMixture(FitGaussian):
     cpdef double ln_likelihood(self, double[::1] p):
         cdef:
             int i, j, offset
-            double p_value, diff_dm, tmp
+            double diff_dm, tmp
             double fraction, std_in, mu_out, std_out
             double scaled_std_in, scaled_std_out
             double ln_value = 0.0
+            double ln_in, ln_out
+            double ln_frac_in, ln_frac_out
 
         self.eval_model(p)
 
         offset = self.likelihood_params_offset()
+
         fraction = 10.0 ** p[offset + 0]
+        ln_frac_in = log(1. - fraction)
+        ln_frac_out = log(fraction)
+
         std_in = 10.0 ** p[offset + 1]
+
         mu_out = p[offset + 2]
         std_out = 10.0 ** p[offset + 3] + std_in
 
+        # The individual data point likelihoods are added using the
+        # "log-sum-exp trick" to prevent underflow.
         for i in range(self.data.shape[0]):
             scaled_std_in = std_in * self.weights[i]
             scaled_std_out = std_out * self.weights[i]
@@ -375,13 +384,16 @@ cdef class FitMixture(FitGaussian):
             
             tmp = diff_dm / scaled_std_in
             tmp *= tmp
-            p_value = (1. - fraction) * exp(-0.5 * tmp) / scaled_std_in
+            ln_in = ln_frac_in - 0.5 * tmp - log(scaled_std_in)
 
             tmp = (diff_dm + mu_out) / scaled_std_out
             tmp *= tmp
-            p_value += fraction * exp(-0.5 * tmp) / scaled_std_out
-            
-            ln_value += log(p_value)
+            ln_out = ln_frac_out - 0.5 * tmp - log(scaled_std_out)
+
+            if ln_out > ln_in:
+                ln_value += ln_out + log(1. + exp(ln_in - ln_out))
+            else:
+                ln_value += ln_in + log(1. + exp(ln_out - ln_in))
 
         return ln_value
 
