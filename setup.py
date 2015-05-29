@@ -23,18 +23,10 @@ FITTER_MODULE = Extension(
     include_dirs=INCLUDE_DIRS,
 )
 
-DEBLENDER_MODULE = Extension(
-    "lineprofile.spectral_deblender",
-    ["lineprofile/spectral_deblender.pyx"],
-    extra_compile_args=EXTRA_COMPILE_ARGS,
-    extra_link_args=EXTRA_LINK_ARGS,
-    include_dirs=INCLUDE_DIRS,
-)
-
 setup(
     name='lineprofile',
     version='0.0.1',
     cmdclass={'build_ext': build_ext},
-    ext_modules=[MODEL_MODULE, FITTER_MODULE, DEBLENDER_MODULE],
+    ext_modules=[MODEL_MODULE, FITTER_MODULE],
     packages=['lineprofile'],
 )
