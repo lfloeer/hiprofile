@@ -241,10 +241,6 @@ cdef class FitGaussian(LineModel):
                 ln_value += self.ln_prior_components(p)
                 ln_value += self.ln_prior_likelihood(p)
 
-                if self.normalize_priors:
-                    ln_value += self.ln_prior_likelihood_normalization()
-                    ln_value += self.ln_prior_components_normalization()
-
         return ln_value
 
 cdef class FitLaplacian(FitGaussian):
