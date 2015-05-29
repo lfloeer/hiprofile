@@ -85,6 +85,11 @@ cdef class FitGaussian(LineModel):
         def __set__(self, value):
             self.v_center_std = np.array(value, dtype=np.double, copy=True)
 
+    property n_dim:
+
+        def __get__(self):
+            return self.n_disks * 6 + self.n_gaussians * 3 + self.n_baseline + 1
+
     cdef int likelihood_params_offset(self):
         return 6 * self.n_disks + 3 * self.n_gaussians + self.n_baseline
 
@@ -350,6 +355,11 @@ cdef class FitMixture(FitGaussian):
         self.std_out_min = -3
         self.std_out_max = 1
         self.mu_out_std = 0.1
+
+    property n_dim:
+
+        def __get__(self):
+            return self.n_disks * 6 + self.n_gaussians * 3 + self.n_baseline + 4
     
     cpdef double ln_likelihood(self, double[::1] p):
         cdef:
