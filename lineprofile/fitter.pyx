@@ -29,8 +29,8 @@ cdef class FitGaussian(LineModel):
         else:
             self.weights = weights
 
-        self.fint_min = -3
-        self.fint_max = 3
+        self.fint_min = 0.0
+        self.fint_max = 4.0
 
         self.v_rot_k = 4.38
         self.v_rot_theta = 55.40
@@ -48,7 +48,7 @@ cdef class FitGaussian(LineModel):
         self.gauss_disp_min = -1
         self.gauss_disp_max = 2
 
-        self.baseline_std = 1.0
+        self.baseline_std = 0.05
 
     property data:
 
@@ -297,7 +297,7 @@ cdef class FitMixture(FitGaussian):
             int i, j, offset
             double diff_dm, tmp
             double fraction, std_in, mu_out, std_out
-            double scaled_std_in, scaled_std_out
+            double scaled_std_in, scaled_var_out
             double ln_value = 0.0
             double ln_in, ln_out
             double ln_frac_in, ln_frac_out
@@ -313,13 +313,13 @@ cdef class FitMixture(FitGaussian):
         std_in = 10.0 ** p[offset + 1]
 
         mu_out = p[offset + 2]
-        std_out = 10.0 ** p[offset + 3] + std_in
+        std_out = 10.0 ** p[offset + 3]
 
         # The individual data point likelihoods are added using the
         # "log-sum-exp trick" to prevent underflow.
         for i in range(self.data.shape[0]):
             scaled_std_in = std_in * self.weights[i]
-            scaled_std_out = std_out * self.weights[i]
+            scaled_var_out = std_out * std_out + scaled_std_in * scaled_std_in
             
             diff_dm = self.data[i] - self.model_array[i]
             
@@ -327,9 +327,9 @@ cdef class FitMixture(FitGaussian):
             tmp *= tmp
             ln_in = ln_frac_in - 0.5 * tmp - log(scaled_std_in)
 
-            tmp = (diff_dm + mu_out) / scaled_std_out
-            tmp *= tmp
-            ln_out = ln_frac_out - 0.5 * tmp - log(scaled_std_out)
+            tmp = (diff_dm + mu_out)
+            tmp = tmp * tmp / scaled_var_out
+            ln_out = ln_frac_out - 0.5 * tmp - 0.5 * log(scaled_var_out)
 
             if ln_out > ln_in:
                 ln_value += ln_out + log(1. + exp(ln_in - ln_out))
