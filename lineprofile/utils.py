@@ -2,7 +2,19 @@ import numpy as np
 import itertools as it
 
 
-def sample_prior(n_sampler, fitter):
+def sample_prior(n_sampler, fitter, thermal_noise=0.023, thermal_noise_std=0.01):
+    """Given a fitter object and the number of samplers, sample the prior
+    distribution of the fit parameters for use as the initial positions for
+    the walkers.
+
+    There are two exceptions:
+    1) The outlier fraction is only sampled on the
+    interval (fraction_min, fraction_min + 1), i.e. only in the lowest decade
+    allowed by the prior distribution.
+    2) The initial values for the inlier standard deviation are drawn from a
+    gaussian distribution determined by the parameters `thermal_noise` and
+    `thermal_noise_std`.
+    """
     def sample_components():
         """Get samples from prior on line profile"""
         for component_idx in range(fitter.n_disks):
@@ -35,8 +47,9 @@ def sample_prior(n_sampler, fitter):
 
     def sample_likelihood():
         """Get samples from prior on posterior parameters"""
-        yield np.random.uniform(fitter.fraction_min, fitter.fraction_max, n_sampler)
-        yield np.random.uniform(fitter.std_in_min, fitter.std_in_max, n_sampler)
+        yield np.random.uniform(fitter.fraction_min, fitter.fraction_min + 1, n_sampler)
+        std_in_values = np.log10(np.random.normal(thermal_noise, thermal_noise_std, n_sampler))
+        yield np.clip(std_in_values, fitter.std_in_min, fitter.std_in_max)
         yield np.random.normal(0., fitter.mu_out_std, n_sampler)
         yield np.random.uniform(fitter.std_out_min, fitter.std_out_max, n_sampler)
 
