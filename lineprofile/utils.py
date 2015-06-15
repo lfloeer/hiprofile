@@ -48,7 +48,9 @@ def sample_prior(n_sampler, fitter, thermal_noise=0.023, thermal_noise_std=0.01)
     def sample_likelihood():
         """Get samples from prior on posterior parameters"""
         yield np.random.uniform(fitter.fraction_min, fitter.fraction_min + 1, n_sampler)
-        std_in_values = np.log10(np.random.normal(thermal_noise, thermal_noise_std, n_sampler))
+        std_in_values = np.clip(np.random.normal(thermal_noise, thermal_noise_std, n_sampler),
+				1e-6,1e6)
+	std_in_values = np.log10(std_in_values)
         yield np.clip(std_in_values, fitter.std_in_min, fitter.std_in_max)
         yield np.random.normal(0., fitter.mu_out_std, n_sampler)
         yield np.random.uniform(fitter.std_out_min, fitter.std_out_max, n_sampler)
