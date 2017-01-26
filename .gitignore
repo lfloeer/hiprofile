@@ -5,3 +5,5 @@ build*
 lineprofile/fitter.html
 lineprofile/model.html
 lineprofile/make_model.o
+lineprofile.egg-info
+dist
