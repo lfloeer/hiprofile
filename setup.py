@@ -1,9 +1,14 @@
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup
+from setuptools.extension import Extension
 from Cython.Distutils import build_ext
 import numpy
+import platform
+import os
 
-EXTRA_COMPILE_ARGS = ['-O3', '-march=native', '-Wa,-q']
+"""
+Requires fftw (brew install fftw)
+"""
+EXTRA_COMPILE_ARGS = ['-O3', '-march=native']
 EXTRA_LINK_ARGS = ['-lfftw3', '-lm']
 INCLUDE_DIRS = [numpy.get_include()]
 
