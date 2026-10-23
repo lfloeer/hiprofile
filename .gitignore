@@ -7,3 +7,12 @@ lineprofile/model.html
 lineprofile/make_model.o
 lineprofile.egg-info
 dist
+*.egg-info
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+site/
+results/
+*.h5.tmp

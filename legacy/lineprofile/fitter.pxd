@@ -1,4 +1,4 @@
-from model cimport LineModel
+from lineprofile.model cimport LineModel
 
 cdef class FitGaussian(LineModel):
 
