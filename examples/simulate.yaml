@@ -1,0 +1,16 @@
+# `hiprofile simulate --config simulate.yaml --n 1000 --out sims`
+n_chan: 512
+dv: 5.0
+v0: 500.0
+response: boxcar
+n_components: [0.3, 0.5, 0.2]   # P(N = 0), P(N = 1), P(N = 2)
+profiles: mixed                  # model | template | mixed
+flux: snr
+snr_range: [3, 100]
+noise_sigma: 0.01
+noise_correlation: white
+baseline: chebyshev
+baseline_order: 1
+baseline_scale: 0.005
+rfi: spikes
+rfi_rate: 0.005

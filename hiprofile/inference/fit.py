@@ -304,7 +304,11 @@ def apply_rfi(ctx: FitContext) -> None:
 
 # ------------------------------------------------------------------------- models
 def _sampler_options(cfg: Config, backend: str) -> dict[str, Any]:
-    opts = dict(cfg.sampler.options.get(backend, {})) if isinstance(cfg.sampler.options.get(backend), dict) else {}
+    opts = (
+        dict(cfg.sampler.options.get(backend, {}))
+        if isinstance(cfg.sampler.options.get(backend), dict)
+        else {}
+    )
     return opts
 
 
@@ -332,7 +336,9 @@ def _run(
 SCAN_OPTIONS = {"n_samples": 1500, "n_adapt": 1}
 
 
-def _quick_all_k(ctx: FitContext, likes: dict[int, MarginalLikelihood], prior: ModelPrior, n: int) -> dict[int, SamplerResult]:
+def _quick_all_k(
+    ctx: FitContext, likes: dict[int, MarginalLikelihood], prior: ModelPrior, n: int
+) -> dict[int, SamplerResult]:
     """Quick fits for every K; K > first start from the modes of the previous K."""
     out: dict[int, SamplerResult] = {}
     init = None
@@ -354,7 +360,9 @@ def _truncation(
     return draws.log_z_correction(w, like.n_amp), draws.negative_fraction(w)
 
 
-def _compact(res: SamplerResult, max_keep: int, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _compact(
+    res: SamplerResult, max_keep: int, rng: np.random.Generator
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Drop negligible-weight samples, cap the number by systematic resampling."""
     w = res.weights
     order = np.argsort(w)
@@ -380,7 +388,9 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
             if like.n_theta:  # noise scale only
                 raise NotImplementedError("noise_scale requires at least one component")
             lz = like.loglike_null()
-            out.evidences.append(ModelEvidence(n=n, k=k, log_z=lz, log_z_err=0.0, log_z_gauss=lz, method="analytic"))
+            out.evidences.append(
+                ModelEvidence(n=n, k=k, log_z=lz, log_z_err=0.0, log_z_gauss=lz, method="analytic")
+            )
         return
 
     prior = ctx.prior(n)
@@ -397,12 +407,21 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
     else:
         quick = {}
         k_star = ks[0]
-    if mode == "quick":
+    gated = False
+    if mode != "quick" and quick and cfg.sampler.gate_margin is not None:
+        prev = [e.log_z for e in out.evidences if e.n < n]
+        best_quick = max(r.log_z for r in quick.values())
+        gated = bool(prev) and best_quick < max(prev) - cfg.sampler.gate_margin
+    if mode == "quick" or gated:
         results = dict(quick)
-        methods = {k: "quick" for k in ks}
+        methods = {k: "quick-gated" if gated else "quick" for k in ks}
         # Full importance-sampling run for the preferred K (posterior samples)
         results[k_star] = _run(
-            ctx, likes[k_star], prior, "quick", salt=100 * n + k_star + 50,
+            ctx,
+            likes[k_star],
+            prior,
+            "quick",
+            salt=100 * n + k_star + 50,
             init_u=np.asarray(quick[k_star].stats["modes_u"]),
         )
     else:
@@ -413,7 +432,7 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
     ess_frac = {k: 1.0 for k in ks}
     log_z_g: dict[int, float] = {k: r.log_z for k, r in results.items()}
     log_z_e: dict[int, float] = {k: r.log_z_err for k, r in results.items()}
-    if mode != "quick":
+    if mode != "quick" and not gated:
         ref = results[k_star]
         th, lw, ll = _compact(ref, 20000, ctx.rng)
         base_ess = dm.kish_ess(np.exp(lw))
@@ -442,13 +461,17 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
                 log_z_g[k] = lz
                 log_z_e[k] = float(np.hypot(ref.log_z_err, 1.0 / math.sqrt(max(dm.kish_ess(w_k), 1.0))))
                 results[k] = SamplerResult(
-                    samples=th, log_weights=lw_k, log_l=ll_k, log_z=lz, log_z_err=log_z_e[k],
+                    samples=th,
+                    log_weights=lw_k,
+                    log_l=ll_k,
+                    log_z=lz,
+                    log_z_err=log_z_e[k],
                     backend=ref.backend + "+reweight",
                 )
 
     # 3) check mode: second backend at K*
     check: tuple[float, float] | None = None
-    if mode == "check":
+    if mode == "check" and not gated:
         r2 = _run(ctx, likes[k_star], prior, cfg.sampler.check_backend, salt=10 * n + k_star + 5)
         check = (r2.log_z, r2.log_z_err)
 
@@ -480,10 +503,16 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
     out.posteriors[n] = make_posterior(ctx, n, k_best, likes[k_best], prior, results[k_best])
 
 
+def _thin(a: np.ndarray, n: int = 1000) -> np.ndarray:
+    if a.ndim != 1 or a.size <= n:
+        return a
+    return a[np.linspace(0, a.size - 1, n).astype(int)]
+
+
 def make_posterior(
     ctx: FitContext, n: int, k: int, like: MarginalLikelihood, prior: ModelPrior, res: SamplerResult
 ) -> Posterior:
-    max_keep = 5 * ctx.config.output.n_posterior
+    max_keep = ctx.config.output.n_posterior
     if res.backend.endswith("+reweight"):
         theta, lw, ll = res.samples, res.log_weights - logsumexp(res.log_weights), res.log_l
         if theta.shape[0] > max_keep:
@@ -524,7 +553,7 @@ def make_posterior(
         beta=np.nan_to_num(beta, nan=0.0),
         log_l=ll,
         derived=derived,
-        trace={key: val for key, val in res.trace.items()},
+        trace={key: _thin(np.asarray(val)) for key, val in res.trace.items()},
     )
 
 
@@ -540,7 +569,9 @@ def model_probabilities(evs: list[ModelEvidence], rate: float, n_max: int) -> di
     return {n: float(math.exp(v - tot)) for n, v in by_n.items()}
 
 
-def posterior_models(ctx: FitContext, post: Posterior, like: MarginalLikelihood, n_draw: int = 200) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def posterior_models(
+    ctx: FitContext, post: Posterior, like: MarginalLikelihood, n_draw: int = 200
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Posterior predictive draws of full models, components and baselines."""
     idx = systematic_resample(post.weights, n_draw, ctx.rng)
     design = like.design(post.theta[idx])  # (m, p, n_chan)
@@ -578,7 +609,7 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
     if cfg.model.n_max >= 1 and n_post in out.posteriors:
         post = out.posteriors[n_post]
         like = ctx.likelihood(n_post, post.k)
-        full, comps, base, idx = posterior_models(ctx, post, like)
+        full, comps, base, _idx = posterior_models(ctx, post, like)
         out.model_band = np.percentile(full, [2.5, 16, 50, 84, 97.5], axis=0)
         out.components_median = np.median(comps, axis=1)
         out.baseline_median = np.median(base, axis=0)
@@ -590,7 +621,7 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
         m["ppp"] = dm.posterior_predictive_p(y, full[:, gi], ctx.noise, ctx.rng)
         m["residual_acf"] = dm.residual_acf(rw).tolist()
         m["residual_acf_max"] = float(np.max(np.abs(m["residual_acf"])))
-        line = out.components_median[: n_post].sum(axis=0)
+        line = out.components_median[:n_post].sum(axis=0)
         width = float(np.median(post.theta[:, 1])) + 2.35 * float(np.median(post.theta[:, 2]))
         m["wiggle_J"], m["wiggle_snr"] = dm.wiggle_fraction(
             (y - out.baseline_median[gi]), line[gi], ctx.noise.sigma, width, ctx.grid.dv
@@ -663,7 +694,7 @@ def fit_spectrum(spectrum: Spectrum, config: Config | None = None, seed: int | N
         for n in range(0, cfg.model.n_max + 1):
             fit_n(ctx, n, out)
         evaluate(ctx, out)
-    except Exception as exc:  # noqa: BLE001 - reported per spectrum
+    except Exception as exc:
         out.status = "failed"
         out.error = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
         out.flags = {"failed": True}
@@ -680,7 +711,7 @@ __all__ = [
     "FitResult",
     "ModelEvidence",
     "Posterior",
+    "expit",
     "fit_spectrum",
     "spectrum_seed",
-    "expit",
 ]

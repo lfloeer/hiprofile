@@ -16,6 +16,7 @@ on the same spectra.
 
 from __future__ import annotations
 
+import itertools
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,8 +66,14 @@ def stage_configs(stage: str, base: Config) -> list[tuple[str, SimConfig, Config
     if stage == "sbc":
         priors = base.priors.model_copy(update={"amplitude_scale": SBC_AMP, "baseline_scale": SBC_BASE})
         sim = SimConfig(
-            n_components=1, profiles="model", flux="prior", priors=priors, noise_sigma=SBC_SIGMA,
-            baseline="chebyshev", baseline_order=1, baseline_scale=SBC_BASE,
+            n_components=1,
+            profiles="model",
+            flux="prior",
+            priors=priors,
+            noise_sigma=SBC_SIGMA,
+            baseline="chebyshev",
+            baseline_order=1,
+            baseline_scale=SBC_BASE,
         )
         fit = base.updated(
             model={"n_max": 1, "k_min": 1, "k_max": 1, "n_rfi": 0},
@@ -77,8 +84,15 @@ def stage_configs(stage: str, base: Config) -> list[tuple[str, SimConfig, Config
         return [("sbc", sim, fit)]
     if stage == "detection":
         sim = SimConfig(
-            n_components=[0.4, 0.4, 0.2], profiles="model", flux="snr", snr_range=(2.0, 40.0),
-            baseline="chebyshev", baseline_order=1, baseline_scale=0.005, rfi="spikes", rfi_rate=0.005,
+            n_components=[0.4, 0.4, 0.2],
+            profiles="model",
+            flux="snr",
+            snr_range=(2.0, 40.0),
+            baseline="chebyshev",
+            baseline_order=1,
+            baseline_scale=0.005,
+            rfi="spikes",
+            rfi_rate=0.005,
         )
         fit = base.updated(model={"n_max": 2})
         out = [("with_rfi_prefit", sim, fit)]
@@ -86,8 +100,17 @@ def stage_configs(stage: str, base: Config) -> list[tuple[str, SimConfig, Config
         return out
     if stage == "misspec":
         tpl = SimConfig(n_components=1, profiles="template", flux="snr", snr_range=(5.0, 80.0))
-        sine = SimConfig(n_components=1, profiles="model", flux="snr", snr_range=(5.0, 80.0), baseline="sine", sine_amplitude=1.0)
-        rfi = SimConfig(n_components=1, profiles="model", flux="snr", snr_range=(5.0, 80.0), rfi="spikes", rfi_rate=0.01)
+        sine = SimConfig(
+            n_components=1,
+            profiles="model",
+            flux="snr",
+            snr_range=(5.0, 80.0),
+            baseline="sine",
+            sine_amplitude=1.0,
+        )
+        rfi = SimConfig(
+            n_components=1, profiles="model", flux="snr", snr_range=(5.0, 80.0), rfi="spikes", rfi_rate=0.01
+        )
         clean = SimConfig(n_components=1, profiles="model", flux="snr", snr_range=(5.0, 80.0))
         return [
             ("clean", clean, base),
@@ -168,7 +191,9 @@ def _arr(rows: list[dict[str, Any]], key: str) -> np.ndarray:
     return np.array([float(r.get(key, np.nan)) if r.get(key) is not None else np.nan for r in rows])
 
 
-def compare_quantities(cat: dict[str, dict[str, Any]], truth: list[dict[str, Any]], comp_only: bool = True) -> dict[str, Any]:
+def compare_quantities(
+    cat: dict[str, dict[str, Any]], truth: list[dict[str, Any]], comp_only: bool = True
+) -> dict[str, Any]:
     rows = [cat.get(t["id"], {}) for t in truth]
     out: dict[str, Any] = {}
     for q in ("W50", "W20", "S", "v_sys"):
@@ -205,11 +230,13 @@ def analyze(stage: str, run_dir: Path, truth: list[dict[str, Any]], cfg: Config)
     return res
 
 
-def sbc_ranks(run_dir: Path, truth: list[dict[str, Any]], n_draw: int = 99, n_bins: int = 10) -> dict[str, Any]:
+def sbc_ranks(
+    run_dir: Path, truth: list[dict[str, Any]], n_draw: int = 99, n_bins: int = 10
+) -> dict[str, Any]:
     rng = np.random.default_rng(0)
     names = ["v_ctr_1", "delta_v_1", "delta_v_rand_1", "alpha_1", "S_1", "f_1", "W50_1", "W20_1"]
     ranks: dict[str, list[int]] = {k: [] for k in names}
-    cover = {k: {"68": [], "95": []} for k in names}
+    cover: dict[str, dict[str, list[bool]]] = {k: {"68": [], "95": []} for k in names}
     for t in truth:
         p = result_path(run_dir, t["id"])
         if not p.exists():
@@ -260,20 +287,36 @@ def detection_metrics(rows: list[dict[str, Any]], truth: list[dict[str, Any]], c
     noise = n_true == 0
     out: dict[str, Any] = {
         "confusion": conf.tolist(),
-        "false_positive_rate": {str(th): float(np.mean(pdet[noise] > th)) if noise.any() else float("nan") for th in (0.5, 0.9, 0.99)},
+        "false_positive_rate": {
+            str(th): float(np.mean(pdet[noise] > th)) if noise.any() else float("nan")
+            for th in (0.5, 0.9, 0.99)
+        },
     }
     bins = np.linspace(0, 1, 11)
     rel = []
-    for lo, hi in zip(bins[:-1], bins[1:], strict=True):
+    for lo, hi in itertools.pairwise(bins):
         sel = (pdet >= lo) & (pdet < hi if hi < 1 else pdet <= hi)
-        rel.append([float(0.5 * (lo + hi)), int(sel.sum()), float(np.mean(n_true[sel] >= 1)) if sel.any() else float("nan")])
+        rel.append(
+            [
+                float(0.5 * (lo + hi)),
+                int(sel.sum()),
+                float(np.mean(n_true[sel] >= 1)) if sel.any() else float("nan"),
+            ]
+        )
     out["reliability"] = rel
     snr = np.array([float(t.get("snr_1", np.nan)) for t in truth])
     edges = np.array([0, 3, 5, 8, 12, 20, 40, np.inf])
     comp = []
-    for lo, hi in zip(edges[:-1], edges[1:], strict=True):
+    for lo, hi in itertools.pairwise(edges):
         sel = (n_true >= 1) & (snr >= lo) & (snr < hi)
-        comp.append([float(lo), float(hi), int(sel.sum()), float(np.mean(pdet[sel] > 0.5)) if sel.any() else float("nan")])
+        comp.append(
+            [
+                float(lo),
+                float(hi),
+                int(sel.sum()),
+                float(np.mean(pdet[sel] > 0.5)) if sel.any() else float("nan"),
+            ]
+        )
     out["completeness_vs_snr"] = comp
     return out
 
@@ -322,9 +365,19 @@ def _plots(stage: str, run_dir: Path, res: dict[str, Any]) -> None:
 
 
 def to_markdown(summary: dict[str, Any]) -> str:
-    lines = [f"# Validation: {summary['stage']}", "", f"n = {summary['n']} per run, seed = {summary['seed']}", ""]
+    lines = [
+        f"# Validation: {summary['stage']}",
+        "",
+        f"n = {summary['n']} per run, seed = {summary['seed']}",
+        "",
+    ]
     for label, r in summary["runs"].items():
-        lines += [f"## {label}", "", f"fitted: {r.get('n_fitted')}, flagged: {r.get('flag_rate', float('nan')):.1%}", ""]
+        lines += [
+            f"## {label}",
+            "",
+            f"fitted: {r.get('n_fitted')}, flagged: {r.get('flag_rate', float('nan')):.1%}",
+            "",
+        ]
         if r.get("flag_rates"):
             lines.append("flags: " + ", ".join(f"{k} {v:.1%}" for k, v in r["flag_rates"].items() if v > 0))
             lines.append("")
@@ -342,12 +395,16 @@ def to_markdown(summary: dict[str, Any]) -> str:
                 lines.append(f"| {lo:g}-{hi:g} | {n} | {c:.2f} |")
             lines.append("")
         if "quantities" in r:
-            lines += ["| quantity | bayes bias | bayes scatter | classic bias | classic scatter | 68 % coverage |", "|---|---|---|---|---|---|"]
+            lines += [
+                "| quantity | bayes bias | bayes scatter | classic bias | classic scatter | 68 % coverage |",
+                "|---|---|---|---|---|---|",
+            ]
             for q, d in r["quantities"].items():
                 b, c = d["bayes"], d["classic"]
+                nan = float("nan")
                 lines.append(
-                    f"| {q} | {b.get('bias', float('nan')):.3g} | {b.get('scatter', float('nan')):.3g} | "
-                    f"{c.get('bias', float('nan')):.3g} | {c.get('scatter', float('nan')):.3g} | {d['coverage68']:.2f} |"
+                    f"| {q} | {b.get('bias', nan):.3g} | {b.get('scatter', nan):.3g} | "
+                    f"{c.get('bias', nan):.3g} | {c.get('scatter', nan):.3g} | {d['coverage68']:.2f} |"
                 )
             lines.append("")
     return "\n".join(lines)

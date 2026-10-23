@@ -32,7 +32,7 @@ _TERM = re.compile(r"^\s*(none|boxcar|hanning|tukey)\s*(?:\(\s*([0-9.eE+-]+)\s*\
 
 
 def parse_response(spec: str) -> list[tuple[str, float | None]]:
-    terms = []
+    terms: list[tuple[str, float | None]] = []
     for raw in spec.split("+"):
         m = _TERM.match(raw.lower())
         if not m:

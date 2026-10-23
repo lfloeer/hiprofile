@@ -16,7 +16,7 @@ def collect_rows(paths: Iterable[Path]) -> list[dict[str, Any]]:
     for p in paths:
         try:
             row = read_catalog_row(p)
-        except Exception as exc:  # noqa: BLE001 - corrupt file is reported, not fatal
+        except Exception as exc:
             row = {"id": p.stem, "status": "unreadable", "error": str(exc), "flag_failed": True}
         row["result_file"] = str(p)
         rows.append(row)

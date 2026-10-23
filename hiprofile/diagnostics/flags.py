@@ -25,7 +25,9 @@ MULTIMODAL_SEPARATION = 4.0
 WIGGLE_SIGNIFICANCE = 3.0
 
 
-def compute_flags(metrics: dict[str, Any], cfg: DiagnosticsConfig, rfi_fraction_max: float) -> dict[str, bool]:
+def compute_flags(
+    metrics: dict[str, Any], cfg: DiagnosticsConfig, rfi_fraction_max: float
+) -> dict[str, bool]:
     def get(key: str, default: float = np.nan) -> float:
         v = metrics.get(key, default)
         return float(v) if v is not None else default

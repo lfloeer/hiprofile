@@ -5,8 +5,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from conftest import requires_jax
 from hiprofile.model import legacy_profile
+
+from conftest import requires_jax
 
 REF = Path(__file__).parent / "reference" / "golden_profiles.npz"
 

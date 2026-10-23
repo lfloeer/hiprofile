@@ -1,8 +1,9 @@
 import numpy as np
 from scipy import special
 
-from conftest import requires_jax
 from hiprofile.model.bessel import bessel_terms_numpy
+
+from conftest import requires_jax
 
 
 def _reference(x):

@@ -4,10 +4,11 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from conftest import requires_jax
 from hiprofile.likelihood.marginal import build_likelihood
 from hiprofile.likelihood.noise import NoiseModel, correlation_from_spec
 from hiprofile.model import SpectralGrid, profile
+
+from conftest import requires_jax
 
 
 def _setup(rng, corr="white", mask=False, n=120):

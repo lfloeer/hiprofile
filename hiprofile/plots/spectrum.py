@@ -35,7 +35,10 @@ def plot_spectrum(res: FitResult, path: str | Path | None = None):
             ax.plot(v, res.baseline_median, color=style.INK_2, lw=1, ls="--", label="baseline")
         for i, comp in enumerate(res.components_median):
             ax.plot(
-                v, comp + res.baseline_median, color=style.SERIES[1 + i % 6], lw=1,
+                v,
+                comp + res.baseline_median,
+                color=style.SERIES[1 + i % 6],
+                lw=1,
                 label=f"component {i + 1}",
             )
         sig = np.where(np.isfinite(res.sigma) & (res.sigma > 0), res.sigma, np.nan)
@@ -110,11 +113,19 @@ def plot_corner(res: FitResult, n: int | None = None, path: str | Path | None = 
                 ax.axis("off")
                 continue
             if i == j:
-                ax.hist(data[i], bins=40, range=(lo, hi), weights=w, color=style.SERIES[0], histtype="stepfilled", alpha=0.6)
+                ax.hist(
+                    data[i],
+                    bins=40,
+                    range=(lo, hi),
+                    weights=w,
+                    color=style.SERIES[0],
+                    histtype="stepfilled",
+                    alpha=0.6,
+                )
                 q = weighted_quantile(data[i], w, [0.16, 0.5, 0.84])
                 for qq in q:
                     ax.axvline(qq, color=style.INK_2, lw=0.7, ls="--")
-                ax.set_title(f"{names[i]}\n{q[1]:.4g} (+{q[2]-q[1]:.2g} / -{q[1]-q[0]:.2g})", fontsize=7)
+                ax.set_title(f"{names[i]}\n{q[1]:.4g} (+{q[2] - q[1]:.2g} / -{q[1] - q[0]:.2g})", fontsize=7)
                 ax.set_yticks([])
                 ax.set_xlim(lo, hi)
             else:
@@ -148,7 +159,14 @@ def plot_evidence(res: FitResult, path: str | Path | None = None):
         vals = [next((e.log_z - ref for e in evs if e.n == n and e.k == k), np.nan) for n in ns]
         errs = [next((e.log_z_err for e in evs if e.n == n and e.k == k), 0.0) for n in ns]
         x = np.arange(len(ns)) + (i - (len(ks) - 1) / 2) * width
-        ax.bar(x, np.maximum(vals, -50), width=width * 0.9, color=style.SERIES[i % 8], label=f"K = {k}", yerr=errs)
+        ax.bar(
+            x,
+            np.maximum(vals, -50),
+            width=width * 0.9,
+            color=style.SERIES[i % 8],
+            label=f"K = {k}",
+            yerr=errs,
+        )
     ax.set_xticks(np.arange(len(ns)), [f"N = {n}\nP = {res.p_n.get(n, np.nan):.3g}" for n in ns])
     ax.set_ylabel("ln Z - max ln Z (clipped at -50)")
     ax.axhline(0, color=style.MUTED, lw=0.8)
@@ -174,9 +192,15 @@ def plot_sampler(res: FitResult, n: int | None = None, path: str | Path | None =
     if "log_z" in tr and "log_x" in tr:
         ax3 = axes[0].twinx()
         ax3.grid(False)
-        ax3.plot(np.linspace(0, order.size, tr["log_z"].size), tr["log_z"], color=style.INK_2, lw=0.8, ls="--")
+        ax3.plot(
+            np.linspace(0, order.size, tr["log_z"].size), tr["log_z"], color=style.INK_2, lw=0.8, ls="--"
+        )
         ax3.set_ylabel("ln Z over iterations")
-    fig.suptitle(f"{res.spectrum_id}: sampler diagnostics (N = {n}, ESS = {res.metrics.get('ess', np.nan):.0f})", x=0.02, ha="left")
+    fig.suptitle(
+        f"{res.spectrum_id}: sampler diagnostics (N = {n}, ESS = {res.metrics.get('ess', np.nan):.0f})",
+        x=0.02,
+        ha="left",
+    )
     fig.tight_layout()
     return _finish(fig, path)
 
@@ -186,7 +210,12 @@ def plot_all(res: FitResult, out_dir: str | Path) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     base = _safe(res.spectrum_id)
     paths = []
-    for name, fn in (("spectrum", plot_spectrum), ("corner", plot_corner), ("evidence", plot_evidence), ("sampler", plot_sampler)):
+    for name, fn in (
+        ("spectrum", plot_spectrum),
+        ("corner", plot_corner),
+        ("evidence", plot_evidence),
+        ("sampler", plot_sampler),
+    ):
         p = out_dir / f"{base}_{name}.png"
         if fn(res, path=p) is not None:
             paths.append(p)

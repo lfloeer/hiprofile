@@ -70,9 +70,7 @@ def residual_acf(resid_white: np.ndarray, lags: tuple[int, ...] = (1, 2, 3)) -> 
     return np.array([np.sum(r[:-lag] * r[lag:]) / denom * np.sqrt(n) for lag in lags])
 
 
-def edge_mass(
-    values: np.ndarray, weights: np.ndarray, low: float, high: float, n_bins: int = 20
-) -> float:
+def edge_mass(values: np.ndarray, weights: np.ndarray, low: float, high: float, n_bins: int = 20) -> float:
     """Largest posterior mass in the outermost bin at a finite prior edge."""
     w = weights / weights.sum()
     width = (high - low) / n_bins if np.isfinite(low) and np.isfinite(high) else None

@@ -24,9 +24,7 @@ def legacy_profile(velocity: np.ndarray, p, supersample: int = 2, backend: str =
     v = np.asarray(velocity, dtype=float)
     n = v.size
     dv = float(v[1] - v[0])
-    grid = SpectralGrid(
-        v0=float(v[0]), dv=dv, n_chan=n, supersample=supersample, n_total=n, response="none"
-    )
+    grid = SpectralGrid(v0=float(v[0]), dv=dv, n_chan=n, supersample=supersample, n_total=n, response="none")
     p = xp.asarray(p)
     theta = xp.stack([p[..., 1], p[..., 2], p[..., 3], p[..., 5]], axis=-1)
     coeffs = profile_fourier(grid, theta, backend)
@@ -34,4 +32,4 @@ def legacy_profile(velocity: np.ndarray, p, supersample: int = 2, backend: str =
     f = p[..., 4][..., None]
     c = s * ((1.0 - f) * coeffs[..., 0, :] + f * coeffs[..., 1, :])
     fine = xp.fft.irfft(c, n=grid.n_fft, axis=-1) / grid.h
-    return fine.reshape(fine.shape[:-1] + (n, supersample)).mean(axis=-1)
+    return fine.reshape((*fine.shape[:-1], n, supersample)).mean(axis=-1)

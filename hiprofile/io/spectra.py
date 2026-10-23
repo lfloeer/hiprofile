@@ -130,7 +130,7 @@ def load_spectrum(path: str | Path, opts: LoadOptions | None = None, sid: str | 
             cols = {n: t[n] for n in t.colnames}
             if all(n.startswith("col") for n in cols):
                 raise ValueError
-        except Exception:  # noqa: BLE001 - fall back to plain columns
+        except Exception:
             arr = np.loadtxt(path, ndmin=2)
             names = ["velocity", "flux", "sigma", "mask"][: arr.shape[1]]
             cols = {n: arr[:, i] for i, n in enumerate(names)}
@@ -222,7 +222,7 @@ def _is_catalog(path: Path) -> bool:
         from astropy.table import Table
 
         t = Table.read(path)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
     names = [n.lower() for n in t.colnames]
     return "path" in names or "cube" in names

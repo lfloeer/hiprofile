@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: >-
+  If you use hiprofile, please cite the software and the line-profile model of
+  Stewart, Blyth & de Blok (2014).
+title: "hiprofile: Bayesian fitting of global HI line profiles"
+type: software
+authors:
+  - family-names: Flöer
+    given-names: Lars
+license: MIT
+version: 0.1.0
+repository-code: "https://github.com/lfloeer/hiprofile"
+preferred-citation:
+  type: article
+  title: "A simple model for global H I profiles of galaxies"
+  authors:
+    - family-names: Stewart
+      given-names: I. M.
+    - family-names: Blyth
+      given-names: S.-L.
+    - family-names: de Blok
+      given-names: W. J. G.
+  journal: "Astronomy & Astrophysics"
+  volume: 567
+  start: A61
+  year: 2014
+  identifiers:
+    - type: other
+      value: "arXiv:1405.1838"

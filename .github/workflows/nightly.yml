@@ -1,0 +1,29 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  slow-tests-and-sbc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -e ".[dev]"
+      - name: Slow tests (nested samplers, full mode)
+        run: pytest -q -m slow
+      - name: Small SBC run
+        run: hiprofile validate --stage sbc --n 60 --jobs 4 --out sbc-nightly --seed ${{ github.run_number }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbc-nightly
+          path: |
+            sbc-nightly/validate_sbc/summary.md
+            sbc-nightly/validate_sbc/summary.json
+            sbc-nightly/validate_sbc/sbc/sbc_ranks.png

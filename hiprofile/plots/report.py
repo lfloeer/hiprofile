@@ -18,8 +18,20 @@ style.apply()
 import matplotlib.pyplot as plt  # noqa: E402
 
 DIST_COLUMNS = (
-    "p_detect", "S_1", "W50_1", "W20_1", "v_sys_1", "delta_v_1", "delta_v_rand_1", "alpha_1", "f_1",
-    "m_chi2_red", "m_ppp", "m_wiggle_J", "m_ess", "runtime",
+    "p_detect",
+    "S_1",
+    "W50_1",
+    "W20_1",
+    "v_sys_1",
+    "delta_v_1",
+    "delta_v_rand_1",
+    "alpha_1",
+    "f_1",
+    "m_chi2_red",
+    "m_ppp",
+    "m_wiggle_J",
+    "m_ess",
+    "runtime",
 )
 
 
@@ -80,6 +92,7 @@ def _classic_comparison(table) -> str | None:
     det = _col(table, "p_detect")
     for ax, (b, c) in zip(axes, have, strict=True):
         x, yv = _col(table, b), _col(table, c)
+        assert x is not None and yv is not None
         ok = np.isfinite(x) & np.isfinite(yv)
         if det is not None:
             ok &= det > 0.5
@@ -133,8 +146,11 @@ def build_report(out_dir: str | Path, table, max_flagged: int = 500) -> Path:
     det = _col(table, "p_detect")
     n_det = int(np.sum(det > 0.5)) if det is not None else 0
     tiles = [
-        ("spectra", n), ("fitted", int(np.sum(status == "ok"))), ("failed", int(np.sum(status != "ok"))),
-        ("P(detect) > 0.5", n_det), ("flagged", int(flagged.sum())),
+        ("spectra", n),
+        ("fitted", int(np.sum(status == "ok"))),
+        ("failed", int(np.sum(status != "ok"))),
+        ("P(detect) > 0.5", n_det),
+        ("flagged", int(flagged.sum())),
     ]
     flags, flag_png = _flag_stats(table)
     parts: list[str] = [
@@ -153,16 +169,24 @@ def build_report(out_dir: str | Path, table, max_flagged: int = 500) -> Path:
     if flag_png:
         parts.append("<h2>Flags</h2>")
         parts.append(f"<img alt='flag frequencies' src='data:image/png;base64,{flag_png}'>")
-        parts.append("<div class='scroll'><table><thead><tr><th>flag</th><th>spectra</th><th>fraction</th></tr></thead><tbody>")
+        parts.append(
+            "<div class='scroll'><table><thead><tr><th>flag</th><th>spectra</th><th>fraction</th></tr></thead><tbody>"
+        )
         for k, v in sorted(flags.items(), key=lambda kv: -kv[1]):
             parts.append(f"<tr><td>{html.escape(k)}</td><td>{v}</td><td>{v / max(n, 1):.1%}</td></tr>")
         parts.append("</tbody></table></div>")
     cmp_png = _classic_comparison(table)
     if cmp_png:
         parts.append("<h2>Comparison with classical W50 / W20</h2>")
-        parts.append(f"<img alt='posterior widths against classical widths' src='data:image/png;base64,{cmp_png}'>")
-    parts.append("<h2>Flagged spectra</h2><input id='q' placeholder='Filter by id or flag…' aria-label='filter flagged spectra'>")
-    parts.append("<div class='scroll'><table id='flagged'><thead><tr><th>id</th><th>P(detect)</th><th>N, K</th><th>flags</th><th>preview</th></tr></thead><tbody>")
+        parts.append(
+            f"<img alt='posterior widths against classical widths' src='data:image/png;base64,{cmp_png}'>"
+        )
+    parts.append(
+        "<h2>Flagged spectra</h2><input id='q' placeholder='Filter by id or flag…' aria-label='filter flagged spectra'>"
+    )
+    parts.append(
+        "<div class='scroll'><table id='flagged'><thead><tr><th>id</th><th>P(detect)</th><th>N, K</th><th>flags</th><th>preview</th></tr></thead><tbody>"
+    )
     flag_cols = [c for c in table.colnames if c.startswith("flag_")]
     idx = np.flatnonzero(flagged)[:max_flagged]
     for i in idx:

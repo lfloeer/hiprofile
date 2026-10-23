@@ -1,0 +1,36 @@
+# Example configuration for `hiprofile fit spectra.txt --config survey.yaml`.
+# Every key is optional; see docs/configuration.md for the full reference.
+model:
+  n_max: 2              # compare N = 0, 1, 2 profile components
+  k_min: 0
+  k_max: 3              # Chebyshev baseline orders 0..3, chosen by evidence
+  n_rfi: 0              # narrow RFI components added to every model (extension stage)
+  poisson_rate: 0.5     # Poisson prior mean on N
+  parametrization: direct   # or: effective (W = dv + 2.35 dv_rand, phi = dv / W)
+  response: boxcar      # e.g. boxcar+hanning, tukey(0.5)
+priors:
+  v_ctr: {kind: uniform}            # band minus v_margin on each side
+  delta_v: {kind: uniform, low: 0, high: 600}
+  delta_v_rand: {kind: loguniform, low: 4, high: 60}
+  amplitude_scale: auto  # fix (e.g. 20.0 Jy km/s) for survey-wide comparable evidences
+  baseline_scale: auto
+noise:
+  sigma: auto            # input sigma column if present, else robust estimate
+  correlation: auto      # hanning if the response contains hanning
+rfi:
+  prefit: true
+  background: positive
+  threshold: 0.5
+  action: mask
+sampler:
+  mode: full             # quick | full | check
+  backend: nautilus      # nautilus | dynesty | ultranest | smc | quick
+  check_backend: dynesty
+  n_live: 400
+  baseline_evidence: reweight
+output:
+  n_posterior: 2000
+  plots: sample          # none | flagged | sample | all
+  plot_fraction: 0.02
+  catalog_format: fits
+seed: 20141

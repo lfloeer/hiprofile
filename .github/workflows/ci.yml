@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    name: tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: uv pip install --system -e ".[dev]"
+      - name: Lint
+        run: |
+          ruff check hiprofile tests
+          ruff format --check hiprofile tests
+      - name: Type check
+        run: mypy hiprofile
+      - name: Tests (golden files, kernel, likelihood, CLI)
+        run: pytest -q
+
+  legacy-reference:
+    name: legacy Cython reference
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFTW and build the legacy code
+        run: |
+          sudo apt-get update && sudo apt-get install -y libfftw3-dev
+          uv pip install --system cython numpy setuptools pytest scipy
+          uv pip install --system -e .
+          cd legacy && python setup.py build_ext --inplace
+      - name: Legacy code reproduces the golden files
+        run: cd legacy && python make_reference.py --check
+      - name: Legacy test
+        run: PYTHONPATH=legacy pytest -q -m legacy tests/test_golden.py

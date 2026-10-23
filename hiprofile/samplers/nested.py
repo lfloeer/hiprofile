@@ -112,7 +112,7 @@ def run_ultranest(
 
     logging.getLogger("ultranest").setLevel(logging.WARNING)
     like = CountingLikelihood(loglike)
-    np.random.seed(seed % (2**32))  # UltraNest uses the global NumPy RNG
+    np.random.seed(seed % (2**32))  # noqa: NPY002 - UltraNest uses the global NumPy RNG
     names = [f"p{i}" for i in range(ndim)]
     run_opts = {"show_status": False, "viz_callback": False, "min_num_live_points": n_live}
     run_opts.update(options)

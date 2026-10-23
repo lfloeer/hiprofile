@@ -31,7 +31,7 @@ def _next_beta(log_l: np.ndarray, beta: float, target_ess: float) -> float:
 
     def ess(b: float) -> float:
         lw = (b - beta) * log_l
-        lw -= lw.max()
+        lw -= np.max(lw)
         w = np.exp(lw)
         return w.sum() ** 2 / np.sum(w**2)
 
@@ -81,7 +81,7 @@ def run_smc(
             new = _next_beta(log_l, beta, ess_fraction * n)
             lw = (new - beta) * log_l
             log_z += float(logsumexp(lw) - np.log(n))
-            w = np.exp(lw - lw.max())
+            w = np.exp(lw - np.max(lw))
             var_terms += float(np.var(w) / (np.mean(w) ** 2 * n))
             idx = systematic_resample(w / w.sum(), n, rng)
             z, log_l, log_pz = z[idx], log_l[idx], log_pz[idx]

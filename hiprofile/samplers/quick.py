@@ -130,7 +130,10 @@ def find_modes(
 def _importance(target, dists, mix, n, rng, ndim):
     counts = rng.multinomial(n, mix)
     zs = np.vstack(
-        [np.atleast_2d(d.rvs(size=max(c, 1))).reshape(-1, ndim)[:c] for d, c in zip(dists, counts, strict=True)]
+        [
+            np.atleast_2d(d.rvs(size=max(c, 1))).reshape(-1, ndim)[:c]
+            for d, c in zip(dists, counts, strict=True)
+        ]
     )
     log_q = logsumexp(
         np.array([np.log(m) + d.logpdf(zs) for m, d in zip(mix, dists, strict=True)]).reshape(len(dists), -1),
@@ -176,10 +179,7 @@ def run_quick(
         mix = np.exp(log_lap - log_z_laplace)
         # Defensive mixture: always keep 10 % on the best mode
         mix = 0.9 * mix + 0.1 * (np.arange(len(comps)) == 0)
-        dists = [
-            stats.multivariate_t(loc=z, shape=cov * inflate**2, df=df, seed=rng)
-            for z, cov, _ in comps
-        ]
+        dists = [stats.multivariate_t(loc=z, shape=cov * inflate**2, df=df, seed=rng) for z, cov, _ in comps]
         n_round = n_samples // 2 if n_adapt else n_samples
         zs, log_p, log_w = _importance(target, dists, mix, n_round, rng, ndim)
         # Adaptive importance sampling: add a moment-matched t component fitted

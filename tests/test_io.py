@@ -19,8 +19,8 @@ def test_round_trip(tmp_path, rng, suffix):
 
 
 def test_frequency_axis(tmp_path):
-    from astropy.table import Table
     import astropy.units as u
+    from astropy.table import Table
 
     f = HI_REST_FREQUENCY_HZ - np.arange(64) * 24e3
     t = Table({"FREQ": f * u.Hz, "FLUX": np.zeros(64)})

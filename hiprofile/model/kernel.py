@@ -116,9 +116,9 @@ class SpectralGrid:
         v = np.asarray(velocity, dtype=float)
         dv = float((v[-1] - v[0]) / (v.size - 1))
         n = int(v.size)
-        n_pad = int(math.ceil(pad * n))
+        n_pad = math.ceil(pad * n)
         if max_width is not None:
-            n_pad = max(n_pad, int(math.ceil(0.5 * max_width / dv)))
+            n_pad = max(n_pad, math.ceil(0.5 * max_width / dv))
         ss = supersample if supersample is not None else default_supersample(dv, sigma_min)
         return cls(
             v0=float(v[0]),
@@ -186,9 +186,7 @@ def profile_fourier(grid: SpectralGrid, theta, backend: str = "numpy"):
     x = 0.5 * xp.abs(width) * omega
     j0, j1, j1x, j2x = bessel_terms(x, backend)
     common = (
-        xp.exp(-1j * omega * (vc - grid.v0))
-        * xp.exp(-0.5 * (sig * omega) ** 2)
-        * xp.asarray(grid.transfer)
+        xp.exp(-1j * omega * (vc - grid.v0)) * xp.exp(-0.5 * (sig * omega) ** 2) * xp.asarray(grid.transfer)
     )
     ring = (j0 - 1j * alpha * j1) * common
     disk = (2.0 * j1x - 2j * alpha * j2x) * common
@@ -249,7 +247,7 @@ def _profile_fourier_numpy(grid: SpectralGrid, theta: np.ndarray) -> np.ndarray:
     out = np.zeros((th.shape[0], 2, nk), dtype=complex)
     for i, (re, im) in enumerate(terms):
         out[rows, i, ks] = re + 1j * im
-    return out.reshape(batch + (2, nk))
+    return out.reshape((*batch, 2, nk))
 
 
 def _fold_to_channels(grid: SpectralGrid, n_rows: int, n_basis: int, rows, ks, terms):
@@ -288,7 +286,7 @@ def _profile_basis_numpy(grid: SpectralGrid, theta: np.ndarray) -> np.ndarray:
     th = theta.reshape(-1, PROFILE_NPARAM)
     rows, ks, terms = _profile_terms_numpy(grid, th)
     out = _fold_to_channels(grid, th.shape[0], 2, rows, ks, terms)
-    return out.reshape(batch + (2, grid.n_chan))
+    return out.reshape((*batch, 2, grid.n_chan))
 
 
 def gaussian_fourier(grid: SpectralGrid, theta, backend: str = "numpy"):
@@ -296,11 +294,7 @@ def gaussian_fourier(grid: SpectralGrid, theta, backend: str = "numpy"):
     xp = get_xp(backend)
     vc, sig = _split_theta(xp, theta, GAUSS_NPARAM)
     omega = xp.asarray(grid.omega)
-    g = (
-        xp.exp(-1j * omega * (vc - grid.v0))
-        * xp.exp(-0.5 * (sig * omega) ** 2)
-        * xp.asarray(grid.transfer)
-    )
+    g = xp.exp(-1j * omega * (vc - grid.v0)) * xp.exp(-0.5 * (sig * omega) ** 2) * xp.asarray(grid.transfer)
     return g[..., None, :]
 
 

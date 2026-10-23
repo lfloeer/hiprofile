@@ -52,10 +52,18 @@ extend-exclude = ["legacy"]
 select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF"]
 ignore = ["E741", "RUF002", "RUF003", "B905"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["hiprofile"]
+known-local-folder = ["conftest"]
+
+[tool.ruff.lint.per-file-ignores]
+"hiprofile/plots/report.py" = ["E501"]  # embedded CSS/HTML
+
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
 warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
 exclude = ["legacy/"]
 
 [tool.pytest.ini_options]

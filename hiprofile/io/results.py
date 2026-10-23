@@ -84,11 +84,16 @@ def write_result(res: FitResult, path: str | Path) -> Path:
             h = pg.create_group(f"N{n}")
             h.attrs["names"] = _json(post.names)
             h.attrs["k"] = post.k
-            for key in ("theta", "u", "weights", "beta", "log_l"):
-                h.create_dataset(key, data=getattr(post, key), compression="gzip", shuffle=True)
+            # theta, weights and log_l in double precision; u, beta and derived
+            # quantities in single precision (they are reproducible from theta)
+            for key in ("theta", "weights", "log_l", "u", "beta"):
+                data = np.asarray(getattr(post, key))
+                if key in ("u", "beta"):
+                    data = data.astype(np.float32)
+                h.create_dataset(key, data=data, compression="gzip", shuffle=True)
             d = h.create_group("derived")
             for key, val in post.derived.items():
-                d.create_dataset(key, data=val, compression="gzip", shuffle=True)
+                d.create_dataset(key, data=np.asarray(val, np.float32), compression="gzip", shuffle=True)
             t = h.create_group("trace")
             for key, val in post.trace.items():
                 t.create_dataset(key, data=np.asarray(val), compression="gzip")
@@ -134,7 +139,9 @@ def read_result(path: str | Path) -> FitResult:
             meta=json.loads(a["meta"]),
         )
         g = f["spectrum"]
-        res.velocity, res.flux, res.sigma, res.rfi_q = (g[k][()] for k in ("velocity", "flux", "sigma", "rfi_q"))
+        res.velocity, res.flux, res.sigma, res.rfi_q = (
+            g[k][()] for k in ("velocity", "flux", "sigma", "rfi_q")
+        )
         res.mask = g["mask"][()]
         g = f["model"]
         res.model_band = g["band"][()]
@@ -146,9 +153,7 @@ def read_result(path: str | Path) -> FitResult:
             for fld in dataclasses.fields(ModelEvidence):
                 v = g[fld.name][()]
                 cols[fld.name] = [x.decode() for x in v] if v.dtype.kind == "S" else v.tolist()
-            res.evidences = [
-                ModelEvidence(**{k: cols[k][i] for k in cols}) for i in range(len(cols["n"]))
-            ]
+            res.evidences = [ModelEvidence(**{k: cols[k][i] for k in cols}) for i in range(len(cols["n"]))]
         for name, h in f["posterior"].items():
             n = int(name[1:])
             res.posteriors[n] = Posterior(
@@ -156,11 +161,11 @@ def read_result(path: str | Path) -> FitResult:
                 k=int(h.attrs["k"]),
                 names=json.loads(h.attrs["names"]),
                 theta=h["theta"][()],
-                u=h["u"][()],
+                u=h["u"][()].astype(float),
                 weights=h["weights"][()],
-                beta=h["beta"][()],
+                beta=h["beta"][()].astype(float),
                 log_l=h["log_l"][()],
-                derived={k: v[()] for k, v in h["derived"].items()},
+                derived={k: v[()].astype(float) for k, v in h["derived"].items()},
                 trace={k: v[()] for k, v in h["trace"].items()},
             )
     return res

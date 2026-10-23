@@ -37,7 +37,7 @@ class SimConfig(BaseModel):
     n_components: int | list[float] = 1
     profiles: Literal["model", "template", "mixed"] = "model"
     template_files: list[str] = Field(default_factory=list)
-    priors: Priors = Field(default_factory=Priors)
+    priors: Priors = Field(default_factory=lambda: Priors())
     # flux: "prior" draws a_ring, a_disk ~ half-normal(amplitude_scale) (SBC);
     # "snr" draws the integrated S/N log-uniformly in snr_range
     flux: Literal["prior", "snr"] = "snr"
@@ -66,7 +66,12 @@ class Truth:
     kind: str = "model"
 
     def row(self) -> dict[str, Any]:
-        out: dict[str, Any] = {"id": self.id, "n_true": self.n, "kind": self.kind, "n_rfi": len(self.rfi_channels)}
+        out: dict[str, Any] = {
+            "id": self.id,
+            "n_true": self.n,
+            "kind": self.kind,
+            "n_rfi": len(self.rfi_channels),
+        }
         for i, c in enumerate(self.components, 1):
             for k, v in c.items():
                 out[f"{k}_{i}"] = v
@@ -130,7 +135,14 @@ def simulate_spectrum(cfg: SimConfig, rng: np.random.Generator, sid: str) -> tup
                 b = profile_basis(grid, theta[j][None])[0]
                 signal += a[0] * b[0] + a[1] * b[1]
                 d = profile_derived(grid, theta[j][None], a[None])
-                comp = {"v_ctr": vc, "delta_v": width, "delta_v_rand": sig, "alpha": alpha, "S": s_tot, "f": f}
+                comp = {
+                    "v_ctr": vc,
+                    "delta_v": width,
+                    "delta_v_rand": sig,
+                    "alpha": alpha,
+                    "S": s_tot,
+                    "f": f,
+                }
                 comp.update({k: float(d[k][0]) for k in ("W50", "W20", "v_sys", "peak")})
             else:
                 if cfg.template_files:
@@ -141,10 +153,18 @@ def simulate_spectrum(cfg: SimConfig, rng: np.random.Generator, sid: str) -> tup
                     prof, info = tilted_ring_profile(rng, v_flat=0.5 * width + 20, sigma=sig)
                 signal += _template_channels(grid, prof, vc, s_tot)
                 w50, w20, mid = prof.widths()
-                comp = {"v_ctr": vc, "S": s_tot, "W50": w50, "W20": w20, "v_sys": vc + mid,
-                        "peak": float(s_tot * prof.density.max())}
+                comp = {
+                    "v_ctr": vc,
+                    "S": s_tot,
+                    "W50": w50,
+                    "W20": w20,
+                    "v_sys": vc + mid,
+                    "peak": float(s_tot * prof.density.max()),
+                }
                 comp.update({f"tpl_{k}": val for k, val in info.items()})
-            comp["snr"] = s_tot / band_noise * np.sqrt(cfg.n_chan * cfg.dv / max(comp.get("W20", cfg.dv), cfg.dv))
+            comp["snr"] = (
+                s_tot / band_noise * np.sqrt(cfg.n_chan * cfg.dv / max(comp.get("W20", cfg.dv), cfg.dv))
+            )
             truth.components.append(comp)
         truth.kind = "+".join(kinds)
     # baseline
@@ -172,17 +192,18 @@ def simulate_spectrum(cfg: SimConfig, rng: np.random.Generator, sid: str) -> tup
     if cfg.rfi == "spikes":
         nr = rng.poisson(cfg.rfi_rate * cfg.n_chan)
         ch = rng.choice(cfg.n_chan, size=nr, replace=False)
-        y[ch] += np.exp(rng.uniform(*np.log(cfg.rfi_amplitude), nr)) * cfg.noise_sigma
+        lo_a, hi_a = np.log(cfg.rfi_amplitude)
+        y[ch] += np.exp(rng.uniform(lo_a, hi_a, nr)) * cfg.noise_sigma
         truth.rfi_channels = sorted(int(c) for c in ch)
     elif cfg.rfi == "broad":
         nr = max(1, rng.poisson(cfg.rfi_rate * cfg.n_chan / 10))
         for _ in range(nr):
-            c0 = rng.integers(0, cfg.n_chan)
-            wid = rng.integers(2, 6)
+            c0 = int(rng.integers(0, cfg.n_chan))
+            wid = int(rng.integers(2, 6))
             amp = np.exp(rng.uniform(*np.log(cfg.rfi_amplitude))) * cfg.noise_sigma
-            sl = slice(max(0, c0 - wid), min(cfg.n_chan, c0 + wid + 1))
-            y[sl] += amp * np.hanning(sl.stop - sl.start + 2)[1:-1]
-            truth.rfi_channels += list(range(sl.start, sl.stop))
+            start, stop = max(0, c0 - wid), min(cfg.n_chan, c0 + wid + 1)
+            y[start:stop] += amp * np.hanning(stop - start + 2)[1:-1]
+            truth.rfi_channels += list(range(start, stop))
     sigma = np.full(cfg.n_chan, cfg.noise_sigma) if cfg.write_sigma else None
     spec = Spectrum(velocity=v, flux=y, sigma=sigma, id=sid, meta={"n_true": n})
     return spec, truth

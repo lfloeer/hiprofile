@@ -74,7 +74,7 @@ def robust_prefit(
     like: MarginalLikelihood | None = None
     theta = np.zeros(prior.ndim)
     it = 0
-    for it in range(1, n_iter + 1):
+    for it in range(1, n_iter + 1):  # noqa: B007 - `it` is reported
         factor = 1.0 / np.sqrt(np.clip(1.0 - q, 1e-4, 1.0))
         like = build_likelihood(
             flux,

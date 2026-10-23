@@ -3,7 +3,7 @@ import pytest
 
 from hiprofile import Spectrum
 from hiprofile.config import Config
-from hiprofile.inference.fit import fit_spectrum, model_probabilities, spectrum_seed, ModelEvidence
+from hiprofile.inference.fit import ModelEvidence, fit_spectrum, model_probabilities, spectrum_seed
 from hiprofile.io.results import read_result, write_result
 
 QUICK = Config().updated(sampler={"mode": "quick"}, model={"k_max": 1, "n_max": 1})
@@ -58,8 +58,10 @@ def test_seed_depends_on_id_only():
 
 
 def test_model_probabilities():
-    evs = [ModelEvidence(n=0, k=0, log_z=0.0, log_z_err=0, log_z_gauss=0, method="a"),
-           ModelEvidence(n=1, k=0, log_z=10.0, log_z_err=0, log_z_gauss=0, method="a")]
+    evs = [
+        ModelEvidence(n=0, k=0, log_z=0.0, log_z_err=0, log_z_gauss=0, method="a"),
+        ModelEvidence(n=1, k=0, log_z=10.0, log_z_err=0, log_z_gauss=0, method="a"),
+    ]
     p = model_probabilities(evs, 0.5, 1)
     assert p[1] > 0.999 and abs(sum(p.values()) - 1) < 1e-12
 
@@ -75,7 +77,7 @@ def test_rfi_spikes_are_masked(line_spectrum):
 
 @pytest.mark.slow
 def test_full_mode(line_spectrum):
-    spec, truth = line_spectrum
+    spec, _truth = line_spectrum
     cfg = Config().updated(model={"k_max": 1, "n_max": 1})
     res = fit_spectrum(spec, cfg)
     assert res.status == "ok", res.error

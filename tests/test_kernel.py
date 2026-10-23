@@ -1,9 +1,10 @@
 import numpy as np
 import pytest
 
-from conftest import requires_jax
 from hiprofile.model import SpectralGrid, gaussian_basis, profile, profile_basis
 from hiprofile.model.kernel import _profile_fourier_numpy, default_supersample, next_fast_len
+
+from conftest import requires_jax
 
 
 def brute_force(v, theta, s, f, dv, sub=400):
@@ -61,10 +62,18 @@ def test_hanning_response_equals_channel_smoothing(grid):
 
 
 def test_dense_and_folded_paths_agree(grid, rng):
-    th = np.c_[rng.uniform(1200, 2800, 50), rng.uniform(0, 500, 50), np.exp(rng.uniform(1.4, 4, 50)), rng.uniform(-1, 1, 50)]
+    th = np.c_[
+        rng.uniform(1200, 2800, 50),
+        rng.uniform(0, 500, 50),
+        np.exp(rng.uniform(1.4, 4, 50)),
+        rng.uniform(-1, 1, 50),
+    ]
     folded = profile_basis(grid, th)
     coeffs = _profile_fourier_numpy(grid, th)
-    dense = np.fft.irfft(coeffs, n=grid.n_fft, axis=-1)[..., : grid.n_chan * grid.supersample : grid.supersample] / grid.h
+    dense = (
+        np.fft.irfft(coeffs, n=grid.n_fft, axis=-1)[..., : grid.n_chan * grid.supersample : grid.supersample]
+        / grid.h
+    )
     np.testing.assert_allclose(folded, dense, atol=1e-12)
 
 
@@ -78,8 +87,15 @@ def test_jax_matches_numpy_and_is_differentiable(grid, rng):
     import jax
     import jax.numpy as jnp
 
-    th = np.c_[rng.uniform(1200, 2800, 20), rng.uniform(0, 500, 20), np.exp(rng.uniform(1.4, 4, 20)), rng.uniform(-1, 1, 20)]
-    np.testing.assert_allclose(np.asarray(profile_basis(grid, th, "jax")), profile_basis(grid, th), atol=1e-12)
+    th = np.c_[
+        rng.uniform(1200, 2800, 20),
+        rng.uniform(0, 500, 20),
+        np.exp(rng.uniform(1.4, 4, 20)),
+        rng.uniform(-1, 1, 20),
+    ]
+    np.testing.assert_allclose(
+        np.asarray(profile_basis(grid, th, "jax")), profile_basis(grid, th), atol=1e-12
+    )
     g = jax.grad(lambda t: jnp.sum(profile_basis(grid, t, "jax") ** 2))(jnp.asarray(th[0]))
     assert np.all(np.isfinite(np.asarray(g)))
 

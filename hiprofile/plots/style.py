@@ -6,7 +6,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 INK = "#0b0b0b"
 INK_2 = "#52514e"
@@ -16,7 +16,7 @@ SURFACE = "#fcfcfb"
 # Categorical slots in fixed order (validated reference palette, light mode)
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
 
-RC = {
+RC: dict[str, object] = {
     "figure.facecolor": SURFACE,
     "axes.facecolor": SURFACE,
     "savefig.facecolor": SURFACE,
@@ -42,4 +42,4 @@ RC = {
 
 
 def apply() -> None:
-    plt.rcParams.update(RC)
+    plt.rcParams.update(RC)  # type: ignore[arg-type]

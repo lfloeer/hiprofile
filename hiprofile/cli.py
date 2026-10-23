@@ -8,6 +8,7 @@ import logging
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 from hiprofile import __version__
 
@@ -31,7 +32,7 @@ def _load_config(args: argparse.Namespace):
     from hiprofile.config import Config
 
     cfg = Config.load(getattr(args, "config", None))
-    upd: dict[str, dict] = {}
+    upd: dict[str, Any] = {}
     if getattr(args, "mode", None):
         upd.setdefault("sampler", {})["mode"] = args.mode
     if getattr(args, "backend", None):
@@ -41,7 +42,7 @@ def _load_config(args: argparse.Namespace):
     if getattr(args, "plots", None):
         upd.setdefault("output", {})["plots"] = args.plots
     if getattr(args, "seed", None) is not None:
-        upd["seed"] = args.seed  # type: ignore[assignment]
+        upd["seed"] = args.seed
     return cfg.updated(**upd) if upd else cfg
 
 
@@ -71,8 +72,15 @@ def cmd_fit(args: argparse.Namespace) -> int:
     cfg = _load_config(args)
     sources = list_sources(args.spectra)
     chunk = parse_chunk(args.chunk)
-    log.info("hiprofile %s: %d spectra, mode %s, backend %s, %d jobs%s", __version__, len(sources),
-             cfg.sampler.mode, cfg.sampler.backend, args.jobs, f", chunk {args.chunk}" if chunk else "")
+    log.info(
+        "hiprofile %s: %d spectra, mode %s, backend %s, %d jobs%s",
+        __version__,
+        len(sources),
+        cfg.sampler.mode,
+        cfg.sampler.backend,
+        args.jobs,
+        f", chunk {args.chunk}" if chunk else "",
+    )
     t0 = time.time()
 
     def progress(o, i, n):
@@ -82,8 +90,16 @@ def cmd_fit(args: argparse.Namespace) -> int:
         else:
             log.info(msg)
 
-    outcomes = run_fits(sources, cfg, out, jobs=args.jobs, chunk=chunk, resume=args.resume,
-                        opts=_load_options(args), progress=progress)
+    outcomes = run_fits(
+        sources,
+        cfg,
+        out,
+        jobs=args.jobs,
+        chunk=chunk,
+        resume=args.resume,
+        opts=_load_options(args),
+        progress=progress,
+    )
     summ = summarize(outcomes)
     summ["wall_time"] = time.time() - t0
     log.info("done: %s", json.dumps(summ))
@@ -126,10 +142,43 @@ def cmd_validate(args: argparse.Namespace) -> int:
     cfg = _load_config(args)
     stages = args.stage if args.stage else ["sbc"]
     for st in stages:
-        summ = run_stage(st, out, args.n, cfg, jobs=args.jobs, seed=args.seed or 1, spectra=args.spectra,
-                         resume=args.resume)
+        summ = run_stage(
+            st,
+            out,
+            args.n,
+            cfg,
+            jobs=args.jobs,
+            seed=args.seed or 1,
+            spectra=args.spectra,
+            resume=args.resume,
+        )
         print((out / f"validate_{st}" / "summary.md").read_text())
         del summ
+    return 0
+
+
+def cmd_screen(args: argparse.Namespace) -> int:
+    from collections import defaultdict
+
+    from hiprofile.inference.batch import screen_batch
+    from hiprofile.io.catalog import rows_to_table
+    from hiprofile.io.spectra import list_sources
+
+    _setup_logging(None, args.verbose)
+    cfg = _load_config(args)
+    spectra = [s.load() for s in list_sources(args.spectra)]
+    groups: dict[tuple[int, float], list] = defaultdict(list)
+    for sp in spectra:
+        n = sp.normalized()
+        groups[(n.n_chan, round(n.channel_width, 9))].append(sp)
+    rows = []
+    for key, members in groups.items():
+        for i in range(0, len(members), args.batch):
+            chunk = members[i : i + args.batch]
+            logging.getLogger("hiprofile").info("screening %d spectra with %d channels", len(chunk), key[0])
+            rows += screen_batch(chunk, cfg, k=args.k, n_particles=args.particles, seed=cfg.seed + i)
+    rows_to_table(rows).write(args.out, overwrite=True)
+    print(f"wrote {len(rows)} rows to {args.out}")
     return 0
 
 
@@ -215,6 +264,16 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--resume", action="store_true")
     v.add_argument("-v", "--verbose", action="store_true")
     v.set_defaults(func=cmd_validate)
+
+    c = sub.add_parser("screen", help="GPU/JAX batch screening: evidences of N = 0 and N = 1 at fixed K")
+    c.add_argument("spectra")
+    c.add_argument("--config")
+    c.add_argument("--out", default="screen.fits")
+    c.add_argument("--k", type=int, default=1, help="baseline order")
+    c.add_argument("--batch", type=int, default=256, help="spectra per XLA batch")
+    c.add_argument("--particles", type=int, default=1000)
+    c.add_argument("-v", "--verbose", action="store_true")
+    c.set_defaults(func=cmd_screen)
 
     r = sub.add_parser("report", help="build catalogue and HTML report from result files")
     r.add_argument("out", help="results directory")

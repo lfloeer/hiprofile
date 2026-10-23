@@ -66,7 +66,13 @@ def tilted_ring_profile(
     kern = np.exp(-0.5 * (kern_v / sigma) ** 2)
     dens = np.convolve(hist, kern / kern.sum(), mode="same")
     dens /= dens.sum() * h
-    info = {"v_flat": v_flat, "inclination": float(np.rad2deg(inc)), "sigma": sigma, "lopsided": lop, "hole": hole}
+    info = {
+        "v_flat": v_flat,
+        "inclination": float(np.rad2deg(inc)),
+        "sigma": sigma,
+        "lopsided": lop,
+        "hole": hole,
+    }
     return TemplateProfile(v, dens), info
 
 

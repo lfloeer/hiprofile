@@ -46,9 +46,7 @@ class Priors(_Base):
     )
     v_margin: float = Field(0.05, ge=0, lt=0.5, description="Band fraction excluded at each edge")
     delta_v: Range = Field(default_factory=lambda: Range(kind="uniform", low=0.0, high=600.0))
-    delta_v_rand: Range = Field(
-        default_factory=lambda: Range(kind="loguniform", low=4.0, high=60.0)
-    )
+    delta_v_rand: Range = Field(default_factory=lambda: Range(kind="loguniform", low=4.0, high=60.0))
     alpha: Range = Field(default_factory=lambda: Range(kind="uniform", low=-1.0, high=1.0))
     amplitude_scale: float | Literal["auto"] = Field(
         "auto",
@@ -126,6 +124,11 @@ class SamplerConfig(_Base):
         "to the other K (rerun when the effective sample size is too small)",
     )
     reweight_min_ess: float = Field(0.2, gt=0, le=1)
+    gate_margin: float | None = Field(
+        5.0,
+        description="Skip nested sampling for N when its quick evidence is this many nats below the "
+        "best model with fewer components (null: always sample)",
+    )
     options: dict[str, Any] = Field(default_factory=dict)
     likelihood_backend: Literal["numpy", "jax"] = "numpy"
 
@@ -159,7 +162,7 @@ class Config(_Base):
     rfi: RFIConfig = Field(default_factory=RFIConfig)
     sampler: SamplerConfig = Field(default_factory=SamplerConfig)
     diagnostics: DiagnosticsConfig = Field(default_factory=DiagnosticsConfig)
-    output: OutputConfig = Field(default_factory=OutputConfig)
+    output: OutputConfig = Field(default_factory=lambda: OutputConfig())
     seed: int = 20141
 
     @classmethod

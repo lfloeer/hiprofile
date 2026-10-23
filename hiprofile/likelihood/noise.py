@@ -125,9 +125,7 @@ class NoiseModel:
                 low = np.zeros((n, n))
                 for d in range(ab.shape[0]):
                     low += np.diag(ab[d, : n - d], -d)
-                self._cache["dense"] = scipy.linalg.solve_triangular(
-                    low, np.eye(n), lower=True
-                )
+                self._cache["dense"] = scipy.linalg.solve_triangular(low, np.eye(n), lower=True)
         return self._cache["dense"]
 
     def whiten(self, x, backend: str = "numpy"):

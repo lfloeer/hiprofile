@@ -78,9 +78,7 @@ class MarginalLikelihood:
         for c in self.components:
             if c not in NPARAM:
                 raise ValueError(f"unknown component kind {c!r}")
-        self.amp_scale = np.broadcast_to(
-            np.asarray(self.amp_scale, dtype=float), (self.n_amp,)
-        ).copy()
+        self.amp_scale = np.broadcast_to(np.asarray(self.amp_scale, dtype=float), (self.n_amp,)).copy()
         nb = self.baseline_order + 1
         self.baseline_mean = np.broadcast_to(np.asarray(self.baseline_mean, float), (nb,)).copy()
         self.baseline_cov = np.asarray(self.baseline_cov, float).reshape(nb, nb)
@@ -168,7 +166,7 @@ class MarginalLikelihood:
         """Full design matrix (batch, n_linear, n_chan) as a NumPy array."""
         b = np.asarray(self.basis(theta))
         t = chebyshev_basis(self.grid.n_chan, self.baseline_order)
-        t = np.broadcast_to(t, (b.shape[0],) + t.shape)
+        t = np.broadcast_to(t, (b.shape[0], *t.shape))
         return np.concatenate([b, t], axis=1)
 
     def model(self, theta, beta) -> np.ndarray:
@@ -210,7 +208,7 @@ class MarginalLikelihood:
                 g_tt = (tw @ tw.T)[None] * scale2[:, None, None] + lam_b_inv[None]
                 b_t = p["b_t"][None] * scale2[:, None]
             else:
-                g_tt = xp.broadcast_to(p["g_tt"], (nb,) + p["g_tt"].shape)
+                g_tt = xp.broadcast_to(p["g_tt"], (nb, *p["g_tt"].shape))
                 b_t = xp.broadcast_to(p["b_t"], (nb, self.n_base))
             top = xp.concatenate([g_bb, g_bt], axis=2)
             bot = xp.concatenate([xp.swapaxes(g_bt, 1, 2), g_tt], axis=2)
@@ -294,18 +292,14 @@ def build_likelihood(
 ) -> MarginalLikelihood:
     nb = baseline_order + 1
     mean = np.zeros(nb) if baseline_mean is None else np.asarray(baseline_mean)[:nb]
-    cov = (
-        np.eye(nb) * baseline_scale**2
-        if baseline_cov is None
-        else np.asarray(baseline_cov)[:nb, :nb]
-    )
+    cov = np.eye(nb) * baseline_scale**2 if baseline_cov is None else np.asarray(baseline_cov)[:nb, :nb]
     return MarginalLikelihood(
         flux=flux,
         grid=grid,
         noise=noise,
         components=tuple(components),
         baseline_order=baseline_order,
-        amp_scale=amp_scale,
+        amp_scale=np.asarray(amp_scale, dtype=float),
         baseline_mean=mean,
         baseline_cov=cov,
         noise_scale=noise_scale,

@@ -75,9 +75,7 @@ def _plot_wanted(cfg: Config, flagged: bool, sid: str) -> bool:
     return False
 
 
-def fit_task(
-    source: SpectrumSource, cfg_text: str, out_dir: str, opts: LoadOptions | None
-) -> TaskOutcome:
+def fit_task(source: SpectrumSource, cfg_text: str, out_dir: str, opts: LoadOptions | None) -> TaskOutcome:
     """Worker: load, fit, write, plot. Never raises."""
     from hiprofile.inference.fit import FitResult, fit_spectrum
 
@@ -87,7 +85,7 @@ def fit_task(
     try:
         spec = source.load(opts)
         res = fit_spectrum(spec, cfg)
-    except Exception as exc:  # noqa: BLE001 - loading errors end up in the catalogue
+    except Exception as exc:
         res = FitResult(spectrum_id=source.id, status="failed", error=f"{type(exc).__name__}: {exc}")
         res.flags = {"failed": True}
         res.meta = {"path": source.path}
@@ -98,7 +96,7 @@ def fit_task(
             from hiprofile.plots.spectrum import plot_all
 
             plot_all(res, Path(out_dir) / "plots")
-        except Exception as exc:  # noqa: BLE001 - plotting is optional
+        except Exception as exc:
             log.warning("%s: plotting failed: %s", source.id, exc)
     return TaskOutcome(source.id, res.status, str(path), res.runtime, res.flagged, res.error.split("\n")[0])
 
@@ -149,7 +147,7 @@ def run_fits(
                 s = futs[fut]
                 try:
                     o = fut.result()
-                except Exception as exc:  # noqa: BLE001 - e.g. a worker killed by the OOM killer
+                except Exception as exc:
                     o = TaskOutcome(s.id, "failed", "", 0.0, True, f"worker crashed: {exc}")
                     log.error("%s: %s", s.id, o.error)
                 outcomes.append(o)

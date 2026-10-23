@@ -79,8 +79,7 @@ class Spectrum:
             raise ValueError(f"{self.id}: duplicate velocities")
         if np.max(np.abs(dv - np.median(dv))) > rtol * np.median(dv):
             raise ValueError(
-                f"{self.id}: velocity grid is not uniform to rtol={rtol}; "
-                "resample the spectrum first"
+                f"{self.id}: velocity grid is not uniform to rtol={rtol}; resample the spectrum first"
             )
         flux = self.flux[order]
         mask = np.zeros(v.size, bool) if self.mask is None else self.mask[order]
