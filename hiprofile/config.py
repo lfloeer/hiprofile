@@ -152,12 +152,13 @@ class RFIConfig(_Base):
         "spike of one or two channels cannot be absorbed as a line",
     )
     close_holes: bool = Field(True, description="Also mask a single channel between two masked ones")
-    max_width_channels: int | None = Field(
-        3,
-        ge=1,
-        description="Longest run of outlier channels (gaps of up to two channels included) treated as RFI; "
-        "a longer run is signal the one-component pre-stage cannot explain, typically a second line, "
-        "and stays in the fit; null: no limit",
+    max_width: float | None = Field(
+        20.0,
+        gt=0,
+        description="Longest run of outlier channels treated as RFI, in km/s (gaps of up to two channels "
+        "included; at least one channel): a longer run is signal the one-component pre-stage cannot "
+        "explain, typically a second line, and stays in the fit. In velocity so that 1 km/s and 15 km/s "
+        "channels behave alike; null: no limit",
     )
 
 

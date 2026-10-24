@@ -132,7 +132,7 @@ Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
 An earlier version missed bright pairs: the one-component RFI pre-stage
 masked the second line as a run of outliers, and neither the quick stage nor
 the SMC found the narrow two-line mode. The pre-stage now keeps runs longer
-than three channels, and both samplers are warm-started from residual
+than 20 km/s, and both samplers are warm-started from residual
 features (see [Inference](inference.md#model-comparison)).
 
 ## Stage 3: misspecification
@@ -288,3 +288,30 @@ noise models.
   It is the right choice when the smoothing is unknown (not documented, or
   changed by regridding), and the wrong one when a known kernel can be
   written into `model.response`.
+
+## Channel widths
+
+The validation runs above use 5 km/s channels. Surveys range from 1 km/s
+to 15 km/s, so the pipeline was checked at both ends with simulated dwarf
+(W50 ≈ 25 km/s) and spiral (W50 ≈ 260 km/s) profiles at S/N 10 with RFI
+spikes and a baseline, default configuration:
+
+| channels | dwarf | spiral | time per fit |
+|---|---|---|---|
+| 1 km/s, 1000 channels | W50 25 (22–29) for 28 | mean W50 error −3 km/s over 4 seeds | 13–19 s |
+| 5 km/s, 512 channels | 26 (23–30) for 26 | +4 km/s | 8–10 s |
+| 15 km/s, 170 channels | 26 (22–30) for 25, flagged `unresolved` | 268 (258–277) for 260 | 5–11 s |
+
+Everything physical is in km/s (model, priors, derived widths), and the
+channel response integrates the profile over channels of any width. Two
+heuristics were originally in channels and tuned at 5 km/s: the longest
+RFI run the pre-stage may mask, and the `unresolved` flag. At 15 km/s
+channels a 25 km/s dwarf spans two channels, exactly like an RFI burst, and
+the pre-stage masked it (3 of 3 test dwarfs lost). The run limit is now
+`rfi.max_width` = 20 km/s (at least one channel), so at 15 km/s only
+single-channel spikes count as RFI and the dwarfs are recovered; a line
+narrower than one channel cannot be told from a spike at that resolution,
+which the `unresolved` flag (W50 below two channels) marks. The cost of a
+fit scales with the number of channels times the supersampling the
+narrowest allowed Δv_rand needs (7 at 15 km/s, 1 at 1 km/s), so 1 km/s
+spectra with a thousand channels cost about twice the 5 km/s default.

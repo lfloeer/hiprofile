@@ -5,7 +5,7 @@ from hiprofile import Spectrum
 from hiprofile.config import Config
 from hiprofile.inference.fit import ModelEvidence, fit_spectrum, model_probabilities, spectrum_seed
 from hiprofile.io.results import read_result, write_result
-from hiprofile.model import profile
+from hiprofile.model import SpectralGrid, profile
 
 QUICK = Config().updated(sampler={"mode": "quick"}, model={"k_min": 0, "k_max": 1, "n_max": 1})
 
@@ -225,3 +225,17 @@ def test_gaussian_rfi_component(grid, rng):
     s = res.posteriors[1].summary()
     assert abs(s["rfi_v_1"] - grid.velocity[300]) < 10
     assert abs(s["v_ctr_1"] - 2000.0) < 5
+
+
+def test_dwarf_survives_the_pre_stage_at_coarse_channels(rng):
+    """At 15 km/s channels a 25 km/s line spans two channels: it must not be masked as an RFI burst."""
+    v = 500.0 + 15.0 * np.arange(170)
+    grid = SpectralGrid.from_velocities(v)
+    y = profile(grid, [1600.0, 20.0, 8.0, 0.0, 2.5, 0.3]) + 0.01 * rng.normal(size=v.size)
+    y[[20, 120]] += 0.15  # single-channel spikes
+    spec = Spectrum(v, y, sigma=np.full(v.size, 0.01), id="coarse")
+    res = fit_spectrum(spec, QUICK)
+    assert res.status == "ok", res.error
+    assert set(np.flatnonzero(res.mask)) == {20, 120}
+    assert res.best_n == 1 and abs(res.posteriors[1].summary()["v_ctr_1"] - 1600.0) < 15
+    assert res.flags["unresolved"]

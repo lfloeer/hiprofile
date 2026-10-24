@@ -37,7 +37,7 @@ The validated configuration, the code version and the seed are written into ever
 | `rfi.flag_fraction` | `float` | `0.05` |  |
 | `rfi.min_sigma_channels` | `float` | `2.0` | Smallest Delta v_rand (in channels) of the line model in the pre-stage, so that a spike of one or two channels cannot be absorbed as a line |
 | `rfi.close_holes` | `bool` | `True` | Also mask a single channel between two masked ones |
-| `rfi.max_width_channels` | `int \| None` | `3` | Longest run of outlier channels (gaps of up to two channels included) treated as RFI; a longer run is signal the one-component pre-stage cannot explain, typically a second line, and stays in the fit; null: no limit |
+| `rfi.max_width` | `float \| None` | `20.0` | Longest run of outlier channels treated as RFI, in km/s (gaps of up to two channels included; at least one channel): a longer run is signal the one-component pre-stage cannot explain, typically a second line, and stays in the fit. In velocity so that 1 km/s and 15 km/s channels behave alike; null: no limit |
 | `sampler.mode` | `Literal['quick', 'full', 'check']` | `full` |  |
 | `sampler.backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']` | `smc` | smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower |
 | `sampler.check_backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc']` | `nautilus` |  |

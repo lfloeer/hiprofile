@@ -124,10 +124,13 @@ compared by evidence with a flat prior.
 Two guards keep the pre-stage from eating signal. Its line model is not
 allowed to be narrower than `rfi.min_sigma_channels` (2) channels, so a
 bright spike cannot be absorbed as a "line" and hide its own centre from the
-mask. And a run of more than `rfi.max_width_channels` (3) outlier channels
-(gaps of up to two channels included) is not RFI but signal the
-one-component pre-stage cannot explain, typically a second line, and stays
-in the fit; broader RFI needs a larger value or `model.n_rfi`.
+mask. And a run of outlier channels longer than `rfi.max_width` (20 km/s,
+gaps of up to two channels included, at least one channel) is not RFI but
+signal the one-component pre-stage cannot explain, typically a second line
+or a narrow dwarf, and stays in the fit; broader RFI needs a larger value or
+`model.n_rfi`. The limit is in velocity so that 1 km/s and 15 km/s channels
+behave alike: at 15 km/s only single-channel spikes are RFI, and a line
+narrower than one channel cannot be told from one.
 `hiprofile validate --stage detection` measures the completeness with and
 without the pre-stage.
 

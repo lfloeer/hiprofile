@@ -166,7 +166,8 @@ def apply_rfi(ctx: FitContext) -> None:
     cfg = ctx.config.rfi
     res = run_prefit(ctx, cfg.n_iter)
     ctx.rfi = res
-    bad = outlier_mask(res.q, cfg.threshold, cfg.close_holes, cfg.max_width_channels)
+    max_run = None if cfg.max_width is None else max(1, int(cfg.max_width / ctx.grid.dv))
+    bad = outlier_mask(res.q, cfg.threshold, cfg.close_holes, max_run)
     if not bad.any():
         return
     if cfg.action == "mask":
