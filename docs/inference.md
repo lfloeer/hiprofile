@@ -84,7 +84,14 @@ For N ≥ 1 the pipeline
    (`sampler.baseline_evidence: reweight`); a K whose reweighted effective sample
    size falls below `reweight_min_ess` and whose evidence is competitive is
    re-run (`rerun` samples every K);
-3. applies the positivity correction to every evidence.
+3. applies the positivity correction to every evidence;
+4. builds the posterior for this N as the mixture of the per-K posteriors
+   weighted with P(K | N, y), so that the baseline uncertainty propagates into
+   all parameters (`k_samples` records the order of each sample);
+5. skips nested sampling for an N whose quick evidence lies more than
+   `sampler.gate_margin` (5) nats below a model with fewer components and keeps
+   the quick evidence (`method = quick-gated`); such a model has a relative
+   probability below e⁻⁵.
 
 Model probabilities use a Poisson prior on N (mean `poisson_rate`) and a flat
 prior on K; the detection probability is $P(N\ge 1\mid y)$. Several components

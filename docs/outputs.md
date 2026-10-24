@@ -29,7 +29,9 @@ error message; the run continues.
 /evidence                 n, k, log_z, log_z_err, log_z_gauss, method, backend,
                           ess_fraction, negative_fraction, runtime, n_like,
                           log_z_check, log_z_check_err
-/posterior/N<n>           theta, u, weights, beta, log_l; attrs names, k
+/posterior/N<n>           theta, u, weights, beta, log_l, k_samples; attrs names, k
+                          (posterior marginalised over K; beta zero-padded to the
+                          largest K; attr k = most probable K)
 /posterior/N<n>/derived   S_i, f_i, W50_i, W20_i, v_sys_i, peak_i (per component)
 /posterior/N<n>/trace     sampler diagnostics
 ```
