@@ -6,8 +6,8 @@ from hiprofile.inference.priors import build_prior, ordered_uniform
 
 def test_round_trip_and_ordering(rng):
     v = np.arange(512) * 5.0
-    for par in ("direct", "effective"):
-        p = build_prior(("profile", "profile", "gauss"), Priors(), v, par)
+    for _ in range(1):
+        p = build_prior(("profile", "profile", "gauss"), Priors(), v)
         assert p.names == [
             "v_ctr_1", "delta_v_1", "delta_v_rand_1", "alpha_1", "f_1",
             "v_ctr_2", "delta_v_2", "delta_v_rand_2", "alpha_2", "f_2",

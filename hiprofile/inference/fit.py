@@ -213,7 +213,6 @@ class FitContext:
             self.components(n),
             self.config.priors,
             self.spectrum.velocity,
-            self.config.model.parametrization,
         )
 
     def likelihood(self, n: int, noise: NoiseModel | None = None) -> MarginalLikelihood:
@@ -441,6 +440,14 @@ def residual_peaks(
     return out
 
 
+def prefit_seed(ctx: FitContext, prior: ModelPrior) -> np.ndarray | None:
+    """Unit-cube start for N = 1 from the robust pre-fit, which optimised the same model."""
+    if ctx.rfi is None or prior.ndim != ctx.rfi.theta.size:
+        return None
+    u = prior.inverse(ctx.rfi.theta[None])
+    return np.clip(u, 1e-4, 1 - 1e-4) if np.all(np.isfinite(u)) else None
+
+
 def seed_components(ctx: FitContext, n: int, out: FitResult, n_seeds: int) -> np.ndarray | None:
     """Unit-cube starts for N = n: the N-1 posterior medians plus one new profile on each of the
     strongest residual features (a second, fainter line that random starts rarely hit)."""
@@ -516,8 +523,10 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
     prior = ctx.prior(n)
     mode = cfg.sampler.mode
     t0 = time.perf_counter()
-    seeds = seed_components(ctx, n, out, cfg.sampler.n_seeds) if n >= 2 else None
-    quick = _run(ctx, like, prior, "quick", salt=100 * n, **({} if seeds is None else {"init_u": seeds}))
+    seeds = seed_components(ctx, n, out, cfg.sampler.n_seeds) if n >= 2 else prefit_seed(ctx, prior)
+    # with data-driven starts the random multistart only guards against missed modes
+    quick_opts: dict[str, Any] = {} if seeds is None else {"init_u": seeds, "n_starts": 2, "n_init": 128}
+    quick = _run(ctx, like, prior, "quick", salt=100 * n, **quick_opts)
     gated = False
     if mode != "quick" and cfg.sampler.gate_margin is not None:
         prev = [e.log_z for e in out.evidences if e.n < n]

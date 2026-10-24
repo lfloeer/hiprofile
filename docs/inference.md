@@ -92,9 +92,13 @@ into side lobes with deep spectral notches. The price: ρ₂ of a broad kernel
 is determined to about 0.03 only, which changes the noise of a flux
 integrated over a line by about 2 %. The fitted
 correlation is stored as the metrics `noise_rho` and `noise_rho1`.
-`estimate` costs one extra pre-fit iteration when the RFI pre-stage is off;
+`estimate` costs one extra pre-fit iteration when the RFI pre-stage is off.
 [Validation](validation.md#correlated-noise) compares the options on noise
-smoothed by a kernel the fit does not know.
+smoothed by a kernel the fit does not know: a close guess written into
+`model.response` is as good as the true correlation, `estimate` is slightly
+overconfident (coverages 2–5 points low), ignoring the correlation is
+useless (85 % false positives). Use `estimate` only when the smoothing is
+unknown.
 
 ## Baseline
 
@@ -209,11 +213,21 @@ Measured on a 512-channel spectrum (S/N 15, first-order baseline), eight seeds p
 | quick | −0.03 / 0.02 / 0.3 s | −0.1 / 0.1 / 0.7 s (low ESS) |
 
 dynesty and UltraNest lie 0.05–0.15 above nautilus for N = 2, so part of the SMC
-offset is nautilus' own. The SMC error from the incremental-weight variance
-underestimates the run-to-run scatter by about a factor 2 and is multiplied by
-2. Offsets of a few tenths in ln Z change model probabilities by tens of
-per cent at most; use `--backend nautilus` or `--mode check` where precise
-evidences matter.
+offset is nautilus' own.
+
+The SMC runs as two independent runs of 500 particles whose samples are
+pooled and whose evidences are averaged; the spread between the runs gives
+the evidence error (the incremental-weight variance of one run misses the
+correlation that the MCMC moves leave between particles). Measured on a
+single-line spectrum at S/N 8 with K = 0…3 marginalised, six seeds: the
+K-marginal ln Z_N of N = 1 scatters by 0.15 (reported 0.10), that of N = 2,
+whose second component has a broad flat posterior, by 1.0 (reported 0.3;
+nautilus lies within 0.3 of the SMC values). The per-(N, K) evidences of an
+improbable K carry an extra Monte-Carlo noise of about 1 nat from
+$\mathbb E_\mathrm{post}[P(K\mid\theta,y)]$; model probabilities use the sum
+over K and are unaffected. Offsets of a few tenths in ln Z change model
+probabilities by tens of per cent at most; use `--backend nautilus` or
+`--mode check` where precise evidences matter.
 
 ### Compiled kernel and likelihood
 

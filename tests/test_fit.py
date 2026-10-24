@@ -183,3 +183,45 @@ def test_estimated_noise_correlation_in_the_fit(grid, rng):
         assert abs(res.metrics["noise_rho1"] - 0.672) < 0.1
         assert abs(res.metrics["sigma_rms"] - 0.02) < 0.003
         assert res.best_n == 1
+
+
+def test_rfi_inflate_and_symmetric_background(line_spectrum):
+    """The less common pre-stage options run and keep the detection."""
+    spec, truth = line_spectrum
+    y = spec.flux.copy()
+    y[[30, 31, 350]] += 0.4
+    bad = Spectrum(spec.velocity, y, sigma=spec.sigma, id="rfi2")
+    for action, background in (("inflate", "positive"), ("mask", "symmetric")):
+        res = fit_spectrum(bad, QUICK.updated(rfi={"action": action, "background": background}))
+        assert res.status == "ok", res.error
+        assert res.best_n == 1
+        assert abs(res.posteriors[1].summary()["v_ctr_1"] - truth[0]) < 5
+        if action == "inflate":
+            assert not res.mask.any()
+            assert res.sigma[31] > 3 * res.sigma[100]  # inflated, not masked
+        else:
+            assert set(np.flatnonzero(res.mask)) >= {30, 31, 350}
+
+
+def test_signal_free_ranges_set_the_noise(line_spectrum):
+    spec, _ = line_spectrum
+    noisy = Spectrum(spec.velocity, spec.flux, id="nosigma")  # no sigma column: estimated
+    free = fit_spectrum(noisy, QUICK.updated(noise={"signal_free": [[1000.0, 1700.0]]}))
+    assert free.status == "ok", free.error
+    assert abs(free.metrics["sigma_rms"] - 0.02) < 0.004
+
+
+def test_gaussian_rfi_component(grid, rng):
+    """model.n_rfi adds a narrow Gaussian that absorbs a spike instead of masking it."""
+    y = profile(grid, [2000.0, 180.0, 12.0, 0.15, 20.0, 0.25]) + 0.02 * rng.normal(size=grid.n_chan)
+    y[300] += 0.5
+    spec = Spectrum(grid.velocity, y, sigma=np.full(grid.n_chan, 0.02), id="gaussrfi")
+    # full mode: the quick stage's importance sampling degenerates on the extra
+    # narrow component (ESS collapses, medians off by ~10 km/s), the SMC does not
+    cfg = Config().updated(model={"k_min": 0, "k_max": 1, "n_max": 1, "n_rfi": 1}, rfi={"prefit": False})
+    res = fit_spectrum(spec, cfg.updated(output={"plots": "none"}))
+    assert res.status == "ok", res.error
+    assert res.best_n == 1
+    s = res.posteriors[1].summary()
+    assert abs(s["rfi_v_1"] - grid.velocity[300]) < 10
+    assert abs(s["v_ctr_1"] - 2000.0) < 5

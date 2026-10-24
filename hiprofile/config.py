@@ -111,7 +111,6 @@ class ModelConfig(_Base):
     k_max: int = Field(3, ge=-1, le=12, description="Largest Chebyshev baseline order")
     n_rfi: int = Field(0, ge=0, le=3, description="Narrow RFI components added to every model")
     poisson_rate: float = Field(0.5, gt=0, description="Poisson prior mean of N")
-    parametrization: Literal["direct", "effective"] = "direct"
     response: str = "boxcar"
     supersample: int | None = Field(None, ge=1)
 

@@ -12,7 +12,6 @@ The validated configuration, the code version and the seed are written into ever
 | `model.k_max` | `int` | `3` | Largest Chebyshev baseline order |
 | `model.n_rfi` | `int` | `0` | Narrow RFI components added to every model |
 | `model.poisson_rate` | `float` | `0.5` | Poisson prior mean of N |
-| `model.parametrization` | `Literal['direct', 'effective']` | `direct` |  |
 | `model.response` | `str` | `boxcar` |  |
 | `model.supersample` | `int \| None` | `null` |  |
 | `priors.v_ctr` | `Range` | `{'kind': 'uniform'}` | Line centre [km/s]. Uniform bounds default to the band minus `v_margin`. |
@@ -84,6 +83,7 @@ Prior ranges (`priors.v_ctr`, `priors.delta_v`, ...) take `kind` (`uniform`, `lo
 | `snr_range` | `tuple[float, float]` | `(3.0, 100.0)` |  |
 | `noise_sigma` | `float` | `0.01` |  |
 | `noise_correlation` | `Literal['white', 'hanning']` | `white` |  |
+| `noise_kernel` | `list[float] \| None` | `null` |  |
 | `baseline` | `Literal['none', 'chebyshev', 'sine']` | `none` |  |
 | `baseline_order` | `int` | `1` |  |
 | `baseline_order_min` | `int \| None` | `null` |  |

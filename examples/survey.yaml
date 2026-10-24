@@ -6,7 +6,6 @@ model:
   k_max: 3              # Chebyshev baseline orders 0..3, chosen by evidence
   n_rfi: 0              # narrow RFI components added to every model (extension stage)
   poisson_rate: 0.5     # Poisson prior mean on N
-  parametrization: direct   # or: effective (W = dv + 2.35 dv_rand, phi = dv / W)
   response: boxcar      # e.g. boxcar+hanning, tukey(0.5)
 priors:
   v_ctr: {kind: uniform}            # band minus v_margin on each side

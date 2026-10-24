@@ -257,3 +257,34 @@ magnitude. Since then a `hanning` response uses `hanning+white` noise, with
 the white fraction estimated per spectrum from fourth and first differences
 (0.5–4 % in these spectra, half of them at the 0.5 % floor); see
 [Configuration](configuration.md).
+
+## Correlated noise
+
+`python benchmarks/correlated_noise.py --out DIR --n 300 --n-noise 150`
+
+The SBC simulations (parameters from the priors, baseline order 0–3,
+σ = 0.01 Jy given to the fit) with the noise smoothed by a Gaussian kernel
+of 0.8 channels that the fit does not know (ρ₁ = 0.67, ρ₂ = 0.21,
+ρ₃ = 0.03, as after regridding), plus 150 line-free spectra, fitted with four
+noise models.
+
+![Coverage and false positives for four noise models](img/correlated_noise.png)
+
+| `noise.correlation` | ρ₁ used | false positives P > 0.5 / 0.9 | 68 % coverage | 95 % coverage | worst rank p |
+|---|---|---|---|---|---|
+| `white` (correlation ignored) | 0 | 85 % / 54 % | 0.39–0.60 | 0.69–0.89 | 10⁻⁵³ |
+| `hanning+white` (plausible guess) | 0.65 | 2.0 % / 0 % | 0.65–0.71 | 0.94–0.97 | 0.15 |
+| `estimate` | 0.66 (0.63–0.70 per spectrum) | 4.7 % / 1.3 % | 0.62–0.66 | 0.89–0.93 | 0.0009 |
+| true correlation | 0.67 | 1.3 % / 0 % | 0.67–0.71 | 0.94–0.96 | 0.13 |
+
+* Ignoring the correlation is not an option: 85 % of the line-free spectra
+  become detections, and every interval is far too narrow.
+* A plausible guess that is close (Hanning for a Gaussian of 0.8 channels)
+  is as good as the truth. `auto`, which takes the correlation from the
+  smoothing in `model.response`, therefore stays the default.
+* `estimate` recovers ρ₁ to ±0.035 per spectrum and ρ₂ to about 0.02 low,
+  which leaves the posteriors slightly overconfident: coverages 2–5 points
+  below nominal and 4.7 % false positives at P > 0.5 (1.3 % at P > 0.9).
+  It is the right choice when the smoothing is unknown (not documented, or
+  changed by regridding), and the wrong one when a known kernel can be
+  written into `model.response`.

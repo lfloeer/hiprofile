@@ -14,13 +14,6 @@ plus an optional trailing log10 noise scale.
 
 Sampling parametrisations of the profile widths:
 
-``direct``
-    delta_v ~ uniform/log-uniform, log delta_v_rand ~ uniform.
-``effective``
-    W = delta_v + 2.35 delta_v_rand ~ uniform and phi = delta_v / W ~ uniform,
-    with delta_v_rand = sqrt(((1 - phi) W / 2.35)^2 + sigma_min^2). This puts the
-    degeneracy ridge between delta_v and delta_v_rand roughly along a cube axis.
-
 With several profile components, the centres are ordered,
 v_ctr_1 < v_ctr_2 < ..., by mapping the cube to the order statistics of the
 uniform prior; the prior on the ordered set is N! / V^N, which equals the
@@ -36,7 +29,6 @@ from scipy import special
 
 from hiprofile.config import Priors, Range
 
-FWHM = 2.0 * np.sqrt(2.0 * np.log(2.0))
 NPROFILE = 5  # v_ctr, delta_v, delta_v_rand, alpha, f
 
 
@@ -155,13 +147,10 @@ class ModelPrior:
     f: Bounds1D
     rfi_v: Bounds1D
     rfi_sigma: Bounds1D
-    parametrization: str = "direct"
     noise_scale: Bounds1D | None = None
     names: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        if self.parametrization not in ("direct", "effective"):
-            raise ValueError(self.parametrization)
         n_prof = self.components.count("profile")
         if n_prof > 1 and self.v_ctr.kind != "uniform":
             raise ValueError("several profile components need a uniform v_ctr prior")
@@ -199,27 +188,6 @@ class ModelPrior:
         return cols
 
     # ---------------------------------------------------------------- widths
-    def _widths(self, u1: np.ndarray, u2: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        if self.parametrization == "direct":
-            return self.delta_v.transform(u1), self.delta_v_rand.transform(u2)
-        smin = self.delta_v_rand.low
-        w_lo = self.delta_v.low + FWHM * smin
-        w_hi = self.delta_v.high + FWHM * self.delta_v_rand.high
-        w = w_lo + (w_hi - w_lo) * u1
-        dv = u2 * w
-        sig = np.sqrt(((1.0 - u2) * w / FWHM) ** 2 + smin**2)
-        return dv, sig
-
-    def _widths_inverse(self, dv: np.ndarray, sig: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        if self.parametrization == "direct":
-            return self.delta_v.inverse(dv), self.delta_v_rand.inverse(sig)
-        smin = self.delta_v_rand.low
-        rest = np.sqrt(np.maximum(sig**2 - smin**2, 0.0)) * FWHM
-        w = dv + rest
-        w_lo = self.delta_v.low + FWHM * smin
-        w_hi = self.delta_v.high + FWHM * self.delta_v_rand.high
-        return (w - w_lo) / (w_hi - w_lo), np.where(w > 0, dv / np.maximum(w, 1e-300), 0.5)
-
     # ------------------------------------------------------------- transform
     def transform(self, u: np.ndarray) -> np.ndarray:
         u = np.atleast_2d(np.asarray(u, dtype=float))
@@ -231,7 +199,8 @@ class ModelPrior:
                 uc = ordered_uniform(uc)
             theta[:, pc] = self.v_ctr.transform(uc)
             for c in pc:
-                theta[:, c + 1], theta[:, c + 2] = self._widths(u[:, c + 1], u[:, c + 2])
+                theta[:, c + 1] = self.delta_v.transform(u[:, c + 1])
+                theta[:, c + 2] = self.delta_v_rand.transform(u[:, c + 2])
                 theta[:, c + 3] = self.alpha.transform(u[:, c + 3])
                 theta[:, c + 4] = self.f.transform(u[:, c + 4])
         gc = self._gauss_cols()
@@ -256,7 +225,8 @@ class ModelPrior:
                 uc = ordered_uniform_inverse(uc)
             u[:, pc] = uc
             for c in pc:
-                u[:, c + 1], u[:, c + 2] = self._widths_inverse(theta[:, c + 1], theta[:, c + 2])
+                u[:, c + 1] = self.delta_v.inverse(theta[:, c + 1])
+                u[:, c + 2] = self.delta_v_rand.inverse(theta[:, c + 2])
                 u[:, c + 3] = self.alpha.inverse(theta[:, c + 3])
                 u[:, c + 4] = self.f.inverse(theta[:, c + 4])
         gc = self._gauss_cols()
@@ -295,7 +265,6 @@ def build_prior(
     components: tuple[str, ...],
     priors: Priors,
     velocity: np.ndarray,
-    parametrization: str = "direct",
 ) -> ModelPrior:
     v_lo, v_hi = float(velocity[0]), float(velocity[-1])
     span = v_hi - v_lo
@@ -314,6 +283,5 @@ def build_prior(
         f=_bounds(priors.f, 0.0, 1.0),
         rfi_v=Bounds1D("uniform", v_lo, v_hi),
         rfi_sigma=Bounds1D("loguniform", lo_c * dv, hi_c * dv),
-        parametrization=parametrization,
         noise_scale=noise,
     )

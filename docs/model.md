@@ -79,14 +79,8 @@ $\rho = (1, 2/3, 1/6)$ for Hanning, plus an estimated white part.
 
 ## Sampling parametrisation
 
-* `direct` (default): $\Delta v$ uniform, $\log\Delta v_\mathrm{rand}$ uniform,
-  $\alpha$ uniform in $[-1, 1]$.
-* `effective`: $W = \Delta v + 2.35\,\Delta v_\mathrm{rand}$ uniform and
-  $\varphi = \Delta v / W$ uniform, with
-  $\Delta v_\mathrm{rand} = \sqrt{((1-\varphi) W / 2.35)^2 + \sigma_\mathrm{min}^2}$; this
-  aligns the degeneracy ridge between $\Delta v$ and $\Delta v_\mathrm{rand}$ with
-  a cube axis. The two parametrisations imply different priors.
-
+The samplers work on the unit cube; each parameter is the inverse CDF of
+its prior ([Priors](priors.md)) applied to one cube coordinate.
 Several profile components are ordered, $v_{\mathrm{ctr},1} < v_{\mathrm{ctr},2} < \dots$,
 by mapping the unit cube to uniform order statistics, which removes label
 switching without changing the evidence.

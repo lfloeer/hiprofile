@@ -21,8 +21,6 @@ from hiprofile.samplers.base import (
     systematic_resample,
 )
 
-ERR_CALIBRATION = 2.0
-
 
 def _log_prior_z(z: np.ndarray) -> np.ndarray:
     return -np.sum(np.logaddexp(0.0, z) + np.logaddexp(0.0, -z), axis=1)
@@ -66,13 +64,61 @@ def run_smc(
     seed: int,
     n_live: int = 400,
     n_particles: int | None = None,
+    n_runs: int = 2,
+    **options: Any,
+) -> SamplerResult:
+    """Tempered SMC from the prior to the posterior, as ``n_runs`` independent runs.
+
+    The particles are split over the runs (default two runs of 500), whose
+    samples are pooled and whose evidences are averaged. The spread between
+    the runs gives the evidence error: the incremental-weight variance of a
+    single run misses the correlation the MCMC moves leave between particles
+    and understated the run-to-run scatter by a factor 6-8 on profile fits
+    with the baseline order marginalised.
+    """
+    n = n_particles or max(1000, 2 * n_live)
+    runs = [
+        _smc_once(loglike, prior_transform, ndim, seed=seed + 7 * i, n=max(n // n_runs, 50), **options)
+        for i in range(max(n_runs, 1))
+    ]
+    lz = np.array([r.log_z for r in runs])
+    log_z = float(logsumexp(lz) - np.log(lz.size))
+    err_runs = float(np.std(lz, ddof=1) / np.sqrt(lz.size)) if lz.size > 1 else 0.0
+    err_floor = float(np.sqrt(np.mean([r.stats["var_terms"] for r in runs]) / lz.size))
+    return SamplerResult(
+        samples=np.vstack([r.samples for r in runs]),
+        log_weights=np.zeros(sum(r.samples.shape[0] for r in runs)),
+        log_l=np.concatenate([r.log_l for r in runs]),
+        log_z=log_z,
+        log_z_err=max(err_runs, err_floor),
+        backend="smc",
+        runtime=sum(r.runtime for r in runs),
+        n_like=sum(r.n_like for r in runs),
+        stats={
+            "n_runs": lz.size,
+            "log_z_runs": lz.tolist(),
+            "n_steps": int(np.mean([r.stats["n_steps"] for r in runs])),
+            "n_particles": n,
+            "mean_acceptance": float(np.mean([r.stats["mean_acceptance"] for r in runs])),
+        },
+        trace=runs[0].trace,
+    )
+
+
+def _smc_once(
+    loglike: LogLike,
+    prior_transform: Transform,
+    ndim: int,
+    *,
+    seed: int,
+    n: int,
     ess_fraction: float = 0.5,
     n_moves: int = 10,
     max_steps: int = 500,
     init_proposal: tuple[tuple[list[Any], np.ndarray], float] | None = None,
     **options: Any,
 ) -> SamplerResult:
-    """Tempered SMC from the prior to the posterior.
+    """One tempered SMC run with ``n`` particles.
 
     ``init_proposal = ((dists, mix), fraction)`` starts that fraction of the
     particles from a mixture of z-space distributions (the quick backend's
@@ -82,7 +128,6 @@ def run_smc(
     """
     rng = np.random.default_rng(seed)
     like = CountingLikelihood(loglike)
-    n = n_particles or max(1000, 2 * n_live)
 
     def eval_ll(z: np.ndarray) -> np.ndarray:
         u = np.clip(expit(z), 1e-15, 1 - 1e-15)
@@ -157,13 +202,15 @@ def run_smc(
         log_weights=np.zeros(n),
         log_l=log_l,
         log_z=log_z,
-        # The incremental-weight variance underestimates the run-to-run scatter
-        # (MCMC moves leave the particles correlated); a factor 2 matches
-        # repeated runs on 4- and 8-dimensional profile fits (docs/inference.md).
-        log_z_err=float(ERR_CALIBRATION * np.sqrt(var_terms)),
+        log_z_err=float(np.sqrt(var_terms)),
         backend="smc",
         runtime=t.elapsed,
         n_like=like.n_calls,
-        stats={"n_steps": len(betas) - 1, "n_particles": n, "mean_acceptance": float(np.mean(acc_hist))},
+        stats={
+            "n_steps": len(betas) - 1,
+            "n_particles": n,
+            "mean_acceptance": float(np.mean(acc_hist)),
+            "var_terms": var_terms,
+        },
         trace={"beta": np.array(betas), "acceptance": np.array(acc_hist)},
     )

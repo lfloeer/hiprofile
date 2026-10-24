@@ -114,12 +114,11 @@ def robust_prefit(
             k_min=k_min,
         )
         target = _Target(CountingLikelihood(like.loglike), prior.transform)
-        modes = find_modes(target, prior.ndim, rng, n_init=128 if z_best is not None else 512, n_starts=2)
-        if z_best is not None:
-            cand = find_modes_from(target, z_best)
-            if cand[1] > modes[0][1]:
-                modes.insert(0, cand)
-        z_best = modes[0][0]
+        if z_best is None:
+            z_best = find_modes(target, prior.ndim, rng, n_init=512, n_starts=2)[0][0]
+        else:
+            # the outlier weights change little between iterations: refine the previous optimum
+            z_best = find_modes_from(target, z_best)[0]
         theta = prior.transform(expit(z_best)[None])[0]
         mean, _ = like.conditional(theta[None])
         model = like.model(theta[None], mean)[0]
@@ -135,7 +134,7 @@ def robust_prefit(
             s_out = float(
                 np.sqrt(max(np.sum(q_new * r**2) / q_new.sum() - np.mean(s**2), (3 * np.median(s)) ** 2))
             )
-        converged = np.max(np.abs(q_new - q)) < 1e-3
+        converged = np.max(np.abs(q_new - q)) < 1e-2
         q = q_new
         if converged:
             break
