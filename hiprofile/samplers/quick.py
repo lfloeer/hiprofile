@@ -66,12 +66,17 @@ def hessian(target: _Target, z: np.ndarray, h: float = 1e-3) -> np.ndarray:
 # The prior in z = logit(u) is logistic with variance pi^2 / 3; no posterior
 # direction can be wider, so precision eigenvalues are clipped at its inverse.
 PRECISION_FLOOR = 3.0 / np.pi**2
+# Very bright lines pin some directions to 1e-5 of the prior width; above a
+# condition number of ~4e9 scipy treats the covariance as singular, so the
+# largest precisions are capped (a wider proposal in those directions).
+MAX_CONDITION = 1e8
 
 
 def _precision(hmat: np.ndarray, floor: float = PRECISION_FLOOR) -> tuple[np.ndarray, np.ndarray]:
     """(precision, covariance) of -H made positive definite by clipping eigenvalues."""
     w, v = np.linalg.eigh(-0.5 * (hmat + hmat.T))
     w = np.maximum(w, floor)
+    w = np.minimum(w, MAX_CONDITION * w.min())
     prec = (v * w) @ v.T
     cov = (v / w) @ v.T
     return 0.5 * (prec + prec.T), 0.5 * (cov + cov.T)

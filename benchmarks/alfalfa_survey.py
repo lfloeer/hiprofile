@@ -6,7 +6,8 @@
 ``fit`` draws ``--n`` random sources with HIcode 1 or 2 (``--n 0``: all of
 them; code 9, the high-velocity clouds, is left out), downloads their
 spectra from NED (Hanning smoothed, baseline subtracted, 5.2 km/s
-channels), cuts +-1000 km/s around the catalogue velocity and fits them with
+channels), cuts +-1000 km/s around the catalogue velocity (but nothing
+below 350 km/s, where Galactic HI is) and fits them with
 ``model.response: boxcar+hanning``, N <= 2 and no per-spectrum plots.
 Downloads and fits resume where they stopped.
 
@@ -37,6 +38,9 @@ output:
   plots: none
 """
 NED_DIR = NED + "/spc1/2011/2011AJ....142..170H"
+# Galactic HI and the high-velocity clouds reach a few hundred km/s and are
+# Jy-bright; channels below this radio velocity are cut from the window.
+V_MIN = 350.0
 
 
 def ned_name(agc: int) -> str:
@@ -56,14 +60,18 @@ def download(agc: int, raw: Path) -> bool:
     if code == "200" and raw.stat().st_size > 1000:
         return True
     raw.unlink(missing_ok=True)
-    try:  # names that do not follow the pattern: ask the spectrum search
-        m = re.search(r'"(/spc1/2011/2011AJ\.\.\.\.142\.\.170H/[^"]+:S:HI:hgm2011\.txt)"',
-                      _get(NED_QUERY.format(agc=agc)))  # fmt: skip
-        if m:
-            _get(NED + m.group(1), raw)
-            return raw.exists() and raw.stat().st_size > 1000
-    except subprocess.CalledProcessError:
-        pass
+    # names that do not follow the pattern (e.g. UGC_008015): ask the spectrum search
+    queries = [NED_QUERY.format(agc=agc)]
+    if agc < 13000:
+        queries.append(NED_QUERY.replace("AGC+", "UGC+").format(agc=agc))
+    for query in queries:
+        try:
+            m = re.search(r'"(/spc1/2011/2011AJ\.\.\.\.142\.\.170H/[^"]+:S:HI:hgm2011\.txt)"', _get(query))
+            if m:
+                _get(NED + m.group(1), raw)
+                return raw.exists() and raw.stat().st_size > 1000
+        except subprocess.CalledProcessError:
+            pass
     return False
 
 
@@ -94,7 +102,7 @@ def fit(args: argparse.Namespace) -> None:
             continue
         dest = out / "spectra" / f"AGC{r['AGCNr']}.txt"
         if not dest.exists():
-            convert(out / "raw" / f"AGC{r['AGCNr']}.txt", dest, float(r["Vhelio"]))
+            convert(out / "raw" / f"AGC{r['AGCNr']}.txt", dest, float(r["Vhelio"]), v_min=V_MIN)
         lines.append(f"spectra/AGC{r['AGCNr']}.txt AGC{r['AGCNr']}")
     (out / "spectra.txt").write_text("\n".join(lines) + "\n")
     (out / "sample.json").write_text(json.dumps({"n": args.n, "seed": args.seed, "missing": missing,
