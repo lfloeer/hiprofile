@@ -149,10 +149,11 @@ def read_result(path: str | Path) -> FitResult:
         res.baseline_median = g["baseline_median"][()]
         g = f["evidence"]
         if "n" in g:
-            cols = {}
+            cols: dict[str, list[Any]] = {}
             for fld in dataclasses.fields(ModelEvidence):
                 if fld.name not in g:  # written by an older version
-                    cols[fld.name] = [fld.default] * len(g["n"])
+                    default: Any = fld.default
+                    cols[fld.name] = [default] * len(g["n"])
                     continue
                 v = g[fld.name][()]
                 cols[fld.name] = [x.decode() for x in v] if v.dtype.kind == "S" else v.tolist()
