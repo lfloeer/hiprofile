@@ -89,13 +89,109 @@ def priors() -> Path:
     return _save(fig, "priors_things.png")
 
 
+GALLERY = [
+    # (title, components [(v_ctr, dv, dv_rand, alpha, S, f)], noise, rfi channels, baseline coefficients)
+    ("Spiral galaxy, S/N ≈ 60", [(2400.0, 320.0, 10.0, 0.12, 30.0, 0.1)], 0.01, [], [0.0, 0.0]),
+    ("Dwarf galaxy, S/N ≈ 12", [(1800.0, 30.0, 9.0, 0.0, 2.2, 0.5)], 0.01, [], [0.0, 0.0]),
+    ("Interacting pair, N = 2", [(2250.0, 180.0, 12.0, -0.2, 8.0, 0.2), (2480.0, 120.0, 10.0, 0.3, 5.0, 0.3)],
+     0.01, [], [0.0, 0.0]),
+    ("Faint line, RFI and baseline, S/N ≈ 8", [(2000.0, 220.0, 14.0, 0.0, 4.0, 0.2)], 0.01,
+     [120, 121, 300, 301, 302, 420], [0.004, 0.006]),
+]  # fmt: skip
+
+
+def _simulate_gallery(rng):
+    from hiprofile import Spectrum
+    from hiprofile.model import SpectralGrid, chebyshev_basis, profile
+
+    v = 1000.0 + 5.0 * np.arange(512)
+    grid = SpectralGrid.from_velocities(v, supersample=8)
+    out = []
+    for title, comps, sigma, rfi, base in GALLERY:
+        y = sum(profile(grid, c) for c in comps) + sigma * rng.standard_normal(v.size)
+        y = y + np.asarray(base) @ chebyshev_basis(v.size, len(base) - 1)
+        y[rfi] += sigma * rng.uniform(8, 30, len(rfi))
+        out.append((title, Spectrum(v, y, sigma=np.full(v.size, sigma), id=title), comps))
+    return out
+
+
+def _panel(ax, axr, res, title, comps):
+    v, y = res.velocity, res.flux
+    good = ~res.mask
+    b = res.model_band
+    ax.step(v, np.where(good, y, np.nan), where="mid", color=style.INK, lw=0.6)
+    if res.mask.any():
+        ax.plot(v[res.mask], y[res.mask], "x", color=style.SERIES[7], ms=4, mew=1, label="masked (RFI)")
+    ax.fill_between(v, b[0], b[4], color=style.SERIES[0], alpha=0.18, lw=0, label="95 % band")
+    ax.fill_between(v, b[1], b[3], color=style.SERIES[0], alpha=0.35, lw=0, label="68 % band")
+    ax.plot(v, b[2], color=style.SERIES[0], lw=1.6, label="posterior median")
+    if len(res.components_median) > 1:
+        for i, comp in enumerate(res.components_median):
+            ax.plot(
+                v,
+                comp + res.baseline_median,
+                color=style.SERIES[1 + i],
+                lw=1.1,
+                ls="--",
+                label=f"component {i + 1}",
+            )
+    if np.any(np.abs(res.baseline_median) > 0):
+        ax.plot(v, res.baseline_median, color=style.INK_2, lw=0.9, ls=":", label="baseline")
+    post = res.posteriors[max(res.best_n, 1)].summary()
+    w50 = f"W50 = {post['W50_1']:.0f} ± {0.5 * (post['W50_1_p84'] - post['W50_1_p16']):.0f} km/s"
+    ax.set_title(f"{title}\nP(detect) = {res.p_detect:.3f}, N = {res.best_n}, {w50}", loc="left", fontsize=9)
+    lo = min(c[0] - c[1] for c in comps) - 250
+    hi = max(c[0] + c[1] for c in comps) + 250
+    for a in (ax, axr):
+        a.set_xlim(lo, hi)
+    r = (y - b[2]) / res.sigma
+    axr.step(v, np.where(good, r, np.nan), where="mid", color=style.INK, lw=0.6)
+    axr.axhline(0, color=style.MUTED, lw=0.8)
+    axr.set_ylim(-4.5, 4.5)
+    axr.set_ylabel("resid. / σ", fontsize=8)
+    ax.set_ylabel("flux density [Jy]", fontsize=8)
+    ax.tick_params(labelbottom=False)
+
+
+def gallery() -> Path:
+    from hiprofile.config import Config
+    from hiprofile.inference.fit import fit_spectrum
+
+    rng = np.random.default_rng(7)
+    cases = _simulate_gallery(rng)
+    fig = plt.figure(figsize=(12, 7.2))
+    outer = fig.add_gridspec(2, 2, hspace=0.42, wspace=0.18)
+    handles: dict[str, object] = {}
+    for k, (title, spec, comps) in enumerate(cases):
+        res = fit_spectrum(spec, Config())
+        assert res.status == "ok", res.error
+        inner = outer[k // 2, k % 2].subgridspec(2, 1, height_ratios=[3, 1], hspace=0.05)
+        ax, axr = fig.add_subplot(inner[0]), fig.add_subplot(inner[1])
+        _panel(ax, axr, res, title, comps)
+        if k >= 2:
+            axr.set_xlabel("velocity [km/s]")
+        for h, lab in zip(*ax.get_legend_handles_labels(), strict=True):
+            handles.setdefault(lab, h)
+        print(title, "->", res.best_n, f"{res.runtime:.1f}s")
+    fig.legend(
+        list(handles.values()),
+        list(handles.keys()),
+        loc="lower center",
+        ncol=len(handles),
+        bbox_to_anchor=(0.5, -0.02),
+        frameon=False,
+    )
+    fig.suptitle(
+        "hiprofile fits of simulated spectra (full mode, default priors)", x=0.01, ha="left", fontsize=12
+    )
+    return _save(fig, "gallery.png")
+
+
 if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else "priors"
     if what == "priors":
         priors()
     elif what == "gallery":
-        from make_figures_gallery import gallery  # type: ignore[import-not-found]
-
         gallery()
     else:
         raise SystemExit(__doc__)

@@ -26,6 +26,7 @@ from hiprofile._backend import get_xp
 from hiprofile.config import Config
 from hiprofile.inference.fit import prepare
 from hiprofile.inference.priors import ModelPrior, build_prior
+from hiprofile.likelihood.orthant import LOG2, log_bvn_orthant
 from hiprofile.model.kernel import SpectralGrid, chebyshev_basis, profile_basis
 from hiprofile.spectrum import Spectrum
 
@@ -89,7 +90,8 @@ class BatchedLikelihood:
             logdet_a = 2.0 * xp.sum(xp.log(xp.diagonal(chol, axis1=1, axis2=2)), axis=1)
             sol = xp.linalg.solve(a, bvec[..., None])[..., 0]
             ll = -0.5 * (rr - xp.sum(bvec * sol, axis=1) + const + logdet_a)
-            return xp.where(xp.isfinite(ll), ll, -1e300)
+            amp_cov = xp.linalg.inv(a)[:, :2, :2]
+            return xp.where(xp.isfinite(ll), ll, -1e300), sol[:, :2], amp_cov
 
         self._fn = jax.jit(jax.vmap(one))
         self._consts = consts
@@ -107,8 +109,9 @@ class BatchedLikelihood:
         )
 
     def __call__(self, theta: np.ndarray) -> np.ndarray:
+        """ln p(y | theta) incl. the amplitude positivity, (S, P)."""
         c = self._consts
-        out = self._fn(
+        ll, mean, cov = self._fn(
             get_xp("jax").asarray(theta),
             c["tw"],
             c["rw"],
@@ -120,7 +123,11 @@ class BatchedLikelihood:
             c["amp_prec"],
             c["shift"],
         )
-        return np.array(out)
+        ll = np.array(ll)
+        mean = np.asarray(mean).reshape(-1, 2)
+        cov = np.asarray(cov).reshape(-1, 2, 2)
+        orth = log_bvn_orthant(mean, cov).reshape(ll.shape) + 2.0 * LOG2
+        return np.where(ll > -1e299, ll + orth, ll)
 
 
 def _log_prior_z(z: np.ndarray) -> np.ndarray:
@@ -203,8 +210,8 @@ def screen_batch(
 ) -> list[dict[str, Any]]:
     """Evidences for N = 0 and N = 1 at baseline order ``k`` for equal-length spectra.
 
-    The N = 1 evidence is the Gaussian-marginal one (no positivity
-    truncation); the detection probability uses ``cfg.model.poisson_rate``.
+    Both evidences include the half-normal amplitude priors; the detection
+    probability uses ``cfg.model.poisson_rate``.
     """
     cfg = cfg or Config()
     ctxs = [prepare(sp, cfg, seed + i) for i, sp in enumerate(spectra)]

@@ -45,14 +45,14 @@ def test_against_dense_formula(rng, corr, mask, k):
     g, y, nm = _setup(rng, corr, mask)
     like = build_likelihood(y, g, nm, ["profile"], k, 8.0, 0.1, baseline_mean=np.full(k + 1, 0.01))
     th = np.array([1300.0, 120.0, 10.0, 0.2])
-    np.testing.assert_allclose(like.loglike(th[None])[0], _dense(like, th), rtol=0, atol=1e-7)
+    np.testing.assert_allclose(like.loglike_gauss(th[None])[0], _dense(like, th), rtol=0, atol=1e-7)
 
 
 def test_two_components_and_rfi(rng):
     g, y, nm = _setup(rng)
     like = build_likelihood(y, g, nm, ["profile", "profile", "gauss"], 1, 8.0, 0.1)
     th = np.array([1250.0, 60.0, 8.0, 0.0, 1350.0, 80.0, 12.0, 0.4, 1400.0, 3.0])
-    np.testing.assert_allclose(like.loglike(th[None])[0], _dense(like, th), atol=1e-7)
+    np.testing.assert_allclose(like.loglike_gauss(th[None])[0], _dense(like, th), atol=1e-7)
 
 
 def test_against_numerical_integration_over_beta(rng):
@@ -76,7 +76,7 @@ def test_against_numerical_integration_over_beta(rng):
         vals.append(ll - q)
         wts.append(np.log(w[i] * w[j] * w[k]) - 1.5 * np.log(2 * np.pi))
     est = np.logaddexp.reduce(np.array(vals) + np.array(wts))
-    np.testing.assert_allclose(est, like.loglike(th[None])[0], atol=1e-6)
+    np.testing.assert_allclose(est, like.loglike_gauss(th[None])[0], atol=1e-6)
 
 
 def test_conditional_matches_dense(rng):
@@ -113,3 +113,25 @@ def test_jax_backend_matches_numpy(rng):
     a = build_likelihood(y, g, nm, ["profile"], 1, 8.0, 0.1).loglike(th)
     b = np.asarray(build_likelihood(y, g, nm, ["profile"], 1, 8.0, 0.1, backend="jax").loglike(th))
     np.testing.assert_allclose(a, b, atol=1e-8)
+
+
+def test_positivity_against_integral_over_half_normal_prior(rng):
+    """ln p(y | theta) with half-normal amplitude priors equals a direct 2-D integral."""
+    g, y, nm = _setup(rng, n=80)
+    y = y - 0.6 * profile(g, [1300.0, 120.0, 10.0, 0.2, 5.0, 0.3])  # weak line, amplitudes near 0
+    like = build_likelihood(y, g, nm, ["profile"], -1, 3.0, 0.1)
+    th = np.array([1150.0, 60.0, 12.0, -0.3])
+    design = like.design(th[None])[0][:, like.good_index]
+    yy = y[like.good_index]
+    ar = np.linspace(0, 15, 1201)
+    ad = np.linspace(0, 15, 1201)
+    aa, dd = np.meshgrid(ar, ad, indexing="ij")
+    model = aa[..., None] * design[0] + dd[..., None] * design[1]
+    ll = stats.norm(model, 0.05).logpdf(yy).sum(axis=-1)
+    lp = stats.halfnorm(scale=3.0).logpdf(aa) + stats.halfnorm(scale=3.0).logpdf(dd)
+    f = ll + lp
+    da = ar[1] - ar[0]
+    est = np.log(np.trapezoid(np.trapezoid(np.exp(f - f.max()), dx=da, axis=1), dx=da)) + f.max()
+    np.testing.assert_allclose(like.loglike(th[None])[0], est, atol=2e-3)
+    # the Gaussian version differs (it allows negative amplitudes)
+    assert abs(like.loglike_gauss(th[None])[0] - est) > 0.1

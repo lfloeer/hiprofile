@@ -364,7 +364,7 @@ def _truncation(
     idx = systematic_resample(weights, min(n, max(weights.size, 1)), rng)
     draws = draw_amplitudes(like, theta[idx], rng)
     w = np.full(idx.size, 1.0 / idx.size)
-    return draws.log_z_correction(w, like.n_amp), draws.negative_fraction(w)
+    return draws.log_z_correction(w), draws.negative_fraction(w)
 
 
 def _compact(
@@ -563,7 +563,7 @@ def make_posterior(
         draws = draw_amplitudes(like, theta, ctx.rng)
         beta = draws.beta
         ok = np.all(np.isfinite(beta), axis=1)
-        w = np.exp(lw) * draws.accept * ok
+        w = np.exp(lw) * draws.factor * ok
         w = w / w.sum() if w.sum() > 0 else np.exp(lw) / np.exp(lw).sum()
         padded = np.zeros((theta.shape[0], width))
         padded[:, : beta.shape[1]] = np.nan_to_num(beta, nan=0.0)

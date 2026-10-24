@@ -61,8 +61,10 @@ class Bounds1D:
     # ----------------------------------------------------- base distribution
     def _z(self, x: np.ndarray) -> np.ndarray:
         if self.kind == "lognormal":
-            with np.errstate(divide="ignore"):
-                return (np.log10(x) - self.mean) / self.std
+            x = np.asarray(x, dtype=float)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                lg = np.where(x > 0, np.log10(np.where(x > 0, x, 1.0)), -np.inf)
+            return (lg - self.mean) / self.std
         return (x - self.mean) / self.std
 
     def _base_cdf(self, x: np.ndarray) -> np.ndarray:

@@ -32,6 +32,7 @@ import numpy as np
 from hiprofile._backend import get_xp
 from hiprofile.likelihood import fast as _fast_ll
 from hiprofile.likelihood.noise import NoiseModel
+from hiprofile.likelihood.orthant import LOG2, log_orthant
 from hiprofile.model.kernel import (
     GAUSS_NPARAM,
     PROFILE_NPARAM,
@@ -61,6 +62,8 @@ class MarginalLikelihood:
     amp_scale : prior std of each component amplitude (per amplitude column)
     baseline_mean, baseline_cov : Gaussian prior of the Chebyshev coefficients
     noise_scale : if True, theta carries a trailing log10 noise scale factor
+    positivity : include P(amplitudes >= 0 | theta, y) / P_prior in the likelihood
+        (exact per component, see :mod:`hiprofile.likelihood.orthant`)
     """
 
     flux: np.ndarray
@@ -73,6 +76,7 @@ class MarginalLikelihood:
     baseline_cov: np.ndarray
     noise_scale: bool = False
     backend: str = "numpy"
+    positivity: bool = True
     _pre: dict[str, Any] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
@@ -243,29 +247,13 @@ class MarginalLikelihood:
             )
         return p["fast"]
 
-    def _loglike_compiled(self, theta) -> np.ndarray:
+    def _moments_compiled(self, theta) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         basis = np.ascontiguousarray(self.basis(theta))
         return _fast_ll.woodbury(basis, *self._fast_args())
 
-    def loglike(self, theta):
-        """ln p(y | theta), vectorised over the leading axis of ``theta``."""
-        if self._compiled:
-            th = np.atleast_2d(np.asarray(theta, dtype=float))
-            if th.shape[0] <= COMPILED_CHUNK:
-                return self._loglike_compiled(th)
-            # chunks keep the temporary basis arrays in cache
-            return np.concatenate(
-                [
-                    self._loglike_compiled(th[i : i + COMPILED_CHUNK])
-                    for i in range(0, th.shape[0], COMPILED_CHUNK)
-                ]
-            )
+    def _moments_generic(self, theta) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         xp = get_xp(self.backend)
         p = self._pre
-        if self.n_linear == 0:
-            n = p["n"]
-            val = -0.5 * (p["rr"] + p["logdet_c"] + n * LOG_2PI)
-            return np.full(np.atleast_2d(theta).shape[0], val)
         terms = self._jit_terms if self.backend == "jax" else self._terms
         a, bvec, rr, logdet_c = terms(xp.asarray(theta, dtype=float))
         chol = xp.linalg.cholesky(a)
@@ -273,8 +261,50 @@ class MarginalLikelihood:
         sol = xp.linalg.solve(a, bvec[..., None])[..., 0]
         chi2 = rr - xp.sum(bvec * sol, axis=1)
         ll = -0.5 * (chi2 + logdet_c + p["logdet_lam"] + logdet_a + p["n"] * LOG_2PI)
-        ll = xp.where(xp.isfinite(ll), ll, -1e300)
-        return np.asarray(ll) if self.backend == "numpy" else ll
+        ll = np.asarray(xp.where(xp.isfinite(ll), ll, -1e300))
+        q = self.n_amp
+        a_np = np.asarray(a)
+        if q:
+            cov = np.linalg.inv(a_np)[:, :q, :q]
+            mean = np.asarray(sol)[:, :q]
+        else:
+            cov = np.zeros((a_np.shape[0], 0, 0))
+            mean = np.zeros((a_np.shape[0], 0))
+        return ll, mean, cov
+
+    def moments(self, theta) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Gaussian-marginal ln L, E[a | theta, y] and Cov[a | theta, y] of the amplitudes."""
+        th = np.atleast_2d(np.asarray(theta, dtype=float))
+        if self.n_linear == 0:
+            n = self._pre["n"]
+            val = -0.5 * (self._pre["rr"] + self._pre["logdet_c"] + n * LOG_2PI)
+            return np.full(th.shape[0], val), np.zeros((th.shape[0], 0)), np.zeros((th.shape[0], 0, 0))
+        fn = self._moments_compiled if self._compiled else self._moments_generic
+        if th.shape[0] <= COMPILED_CHUNK:
+            return fn(th)
+        # chunks keep the temporary basis arrays in cache
+        parts = [fn(th[i : i + COMPILED_CHUNK]) for i in range(0, th.shape[0], COMPILED_CHUNK)]
+        return tuple(np.concatenate([pt[k] for pt in parts]) for k in range(3))  # type: ignore[return-value]
+
+    def log_orthant(self, mean: np.ndarray, cov: np.ndarray) -> np.ndarray:
+        """Per-component ln P(a >= 0 | theta, y) (without the prior normalisation)."""
+        return log_orthant(self.components, mean, cov)
+
+    def loglike_gauss(self, theta) -> np.ndarray:
+        """ln p(y | theta) with untruncated Gaussian amplitude priors."""
+        return self.moments(theta)[0]
+
+    def loglike(self, theta):
+        """ln p(y | theta), vectorised over the leading axis of ``theta``.
+
+        With ``positivity`` the half-normal amplitude priors enter through the
+        per-component orthant probability (exact for a single component).
+        """
+        ll, mean, cov = self.moments(theta)
+        if self.positivity and self.n_amp:
+            ok = ll > -1e299
+            ll = np.where(ok, ll + self.log_orthant(mean, cov) + self.n_amp * LOG2, ll)
+        return ll
 
     def loglike_null(self) -> float:
         """ln p(y) of the baseline-only model (no components, no theta)."""
@@ -342,6 +372,7 @@ def build_likelihood(
     baseline_cov: np.ndarray | None = None,
     noise_scale: bool = False,
     backend: str = "numpy",
+    positivity: bool = True,
 ) -> MarginalLikelihood:
     nb = baseline_order + 1
     mean = np.zeros(nb) if baseline_mean is None else np.asarray(baseline_mean)[:nb]
@@ -357,4 +388,5 @@ def build_likelihood(
         baseline_cov=cov,
         noise_scale=noise_scale,
         backend=backend,
+        positivity=positivity,
     )

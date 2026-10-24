@@ -1,14 +1,19 @@
-"""Linear parameters: draws from beta | theta, y and the positivity truncation.
+"""Linear parameters: draws from beta | theta, y and the positivity of the amplitudes.
 
-The sampler works with the Gaussian-marginalised likelihood, i.e. a zero-mean
-Gaussian prior on the component amplitudes. The physical model uses that prior
-truncated to amplitudes >= 0 (a half-normal for each amplitude). The truncated
-model is obtained by importance reweighting:
+The physical model uses half-normal priors on the component amplitudes (zero-mean
+Gaussians truncated to a >= 0). Marginalising them gives
 
-    Z_trunc = Z_gauss * E_post[ P(amp >= 0 | theta, y) ] / P_prior(amp >= 0)
+    p(y | theta) = p_gauss(y | theta) * P(a >= 0 | theta, y) / 2^-n_amp.
 
-with P_prior = 2^-n_amp. P(amp >= 0 | theta, y) is estimated per posterior
-sample by Monte Carlo; one accepted draw per sample gives the amplitudes.
+The sampling target (:meth:`MarginalLikelihood.loglike`) contains the
+orthant probability per component, P_approx(theta), which is exact for one
+component. For several components the remaining factor
+P(a >= 0 | theta, y) / P_approx(theta) is estimated here by Monte Carlo and
+applied as importance weight; the evidence changes by the log of its
+posterior mean. One accepted draw per sample gives the amplitudes.
+
+Without ``positivity`` the sampler targets p_gauss and the full orthant
+probability is applied here instead.
 """
 
 from __future__ import annotations
@@ -18,20 +23,24 @@ from dataclasses import dataclass
 import numpy as np
 
 from hiprofile.likelihood.marginal import MarginalLikelihood
+from hiprofile.likelihood.orthant import orthant_is_exact
 
 
 @dataclass
 class AmplitudeDraws:
     beta: np.ndarray  # (n, p) one draw per theta sample (NaN if none accepted)
-    accept: np.ndarray  # (n,) estimated P(amp >= 0 | theta, y)
+    accept: np.ndarray  # (n,) Monte Carlo estimate of P(amp >= 0 | theta, y)
     beta_mean: np.ndarray  # (n, p) conditional mean
+    factor: np.ndarray  # (n,) importance factor from the sampling target to the truncated model
+    log_offset: float  # constant ln-evidence offset (prior normalisation when not in the target)
 
-    def log_z_correction(self, weights: np.ndarray, n_amp: int) -> float:
-        """ln Z_trunc - ln Z_gauss for normalised posterior weights."""
-        mean_acc = float(np.sum(weights * self.accept))
-        return float(np.log(max(mean_acc, 1e-300)) + n_amp * np.log(2.0))
+    def log_z_correction(self, weights: np.ndarray) -> float:
+        """ln Z_trunc - ln Z_target for normalised posterior weights of the target."""
+        mean_factor = float(np.sum(weights * self.factor))
+        return float(np.log(max(mean_factor, 1e-300)) + self.log_offset)
 
     def negative_fraction(self, weights: np.ndarray) -> float:
+        """Posterior fraction of Gaussian amplitude draws that are negative."""
         return float(1.0 - np.sum(weights * self.accept))
 
 
@@ -47,6 +56,7 @@ def draw_amplitudes(
     q = like.n_amp
     beta = np.full((n, p), np.nan)
     accept = np.ones(n)
+    approx = np.ones(n)
     means = np.zeros((n, p))
     for start in range(0, n, chunk):
         sl = slice(start, min(start + chunk, n))
@@ -62,8 +72,20 @@ def draw_amplitudes(
             continue
         ok = np.all(draws[:, :, :q] >= 0, axis=2)
         accept[sl] = ok.mean(axis=1)
+        if like.positivity:
+            approx[sl] = np.exp(like.log_orthant(mean[:, :q], cov[:, :q, :q]))
         first = np.argmax(ok, axis=1)
         chosen = draws[np.arange(draws.shape[0]), first]
         chosen[~ok.any(axis=1)] = np.nan
         beta[sl] = chosen
-    return AmplitudeDraws(beta=beta, accept=accept, beta_mean=means)
+    if q == 0:
+        factor, offset = np.ones(n), 0.0
+    elif like.positivity:
+        if orthant_is_exact(like.components):
+            factor = np.ones(n)
+        else:
+            factor = np.where(approx > 1e-300, accept / np.maximum(approx, 1e-300), 0.0)
+        offset = 0.0
+    else:
+        factor, offset = accept, q * float(np.log(2.0))
+    return AmplitudeDraws(beta=beta, accept=accept, beta_mean=means, factor=factor, log_offset=offset)

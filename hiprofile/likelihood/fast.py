@@ -78,19 +78,24 @@ if HAVE_NUMBA:
 
     @numba.njit(cache=True)
     def woodbury(basis, idx, chol, tw, rw, g_tt, b_t, amp_prec, rr, const):
-        """ln L for basis (B, q, n_chan) evaluated on the good channels idx.
+        """ln L and the conditional mean / covariance of the amplitudes.
 
-        chol (bw + 1, n_good) is the lower banded Cholesky factor of C in the
-        storage chol[d, j] = L[j + d, j]; tw (nb, n_good), rw (n_good) are
-        whitened; g_tt = tw tw^T + Lambda_b^-1, b_t = tw rw;
-        const = ln|C| + ln|Lambda| + n ln 2 pi.
+        basis (B, q, n_chan) is evaluated on the good channels idx. chol
+        (bw + 1, n_good) is the lower banded Cholesky factor of C in the storage
+        chol[d, j] = L[j + d, j]; tw (nb, n_good), rw (n_good) are whitened;
+        g_tt = tw tw^T + Lambda_b^-1, b_t = tw rw; const = ln|C| + ln|Lambda| + n ln 2 pi.
+        Returns ln L (B,), E[a | theta, y] (B, q) and Cov[a | theta, y] (B, q, q)
+        for the q amplitude columns (baseline marginalised).
         """
         nbatch, q, _ = basis.shape
         p = q + tw.shape[0]
         out = np.empty(nbatch)
+        amp_mean = np.zeros((nbatch, q))
+        amp_cov = np.zeros((nbatch, q, q))
         bw = np.empty((q, idx.shape[0]))
         a = np.empty((p, p))
         bvec = np.empty(p)
+        work = np.empty(p)
         for r in range(nbatch):
             _assemble(basis, r, idx, chol, tw, rw, g_tt, b_t, amp_prec, bw, a, bvec)
             # Cholesky A = L L^T in place (lower triangle), ln|A|, b^T A^-1 b
@@ -123,4 +128,26 @@ if HAVE_NUMBA:
                 bvec[i] = s / a[i, i]
                 quad += bvec[i] * bvec[i]
             out[r] = -0.5 * (rr - quad + const + logdet)
-        return out
+            # mean = L^-T z
+            for i in range(p - 1, -1, -1):
+                s = bvec[i]
+                for k in range(i + 1, p):
+                    s -= a[k, i] * bvec[k]
+                bvec[i] = s / a[i, i]
+            for i in range(q):
+                amp_mean[r, i] = bvec[i]
+            # covariance block: columns of A^-1 for the amplitude indices
+            for c in range(q):
+                for i in range(p):
+                    s = 1.0 if i == c else 0.0
+                    for k in range(i):
+                        s -= a[i, k] * work[k]
+                    work[i] = s / a[i, i]
+                for i in range(p - 1, -1, -1):
+                    s = work[i]
+                    for k in range(i + 1, p):
+                        s -= a[k, i] * work[k]
+                    work[i] = s / a[i, i]
+                for i in range(q):
+                    amp_cov[r, i, c] = work[i]
+        return out, amp_mean, amp_cov
