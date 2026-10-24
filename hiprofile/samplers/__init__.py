@@ -26,7 +26,7 @@ def run(
         from hiprofile.samplers.nested import run_dynesty as fn
     elif backend == "ultranest":
         from hiprofile.samplers.nested import run_ultranest as fn
-    elif backend in ("smc", "jax-smc"):
+    elif backend == "smc":
         from hiprofile.samplers.smc import run_smc as fn
     elif backend == "quick":
         from hiprofile.samplers.quick import run_quick as fn

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from hiprofile.inference.fit import FitResult, weighted_quantile
+from hiprofile.inference.results import FitResult, weighted_quantile
 from hiprofile.plots import style
 
 style.apply()

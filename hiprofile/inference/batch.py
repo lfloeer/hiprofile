@@ -24,8 +24,8 @@ from scipy.special import expit, logsumexp
 
 from hiprofile._backend import get_xp
 from hiprofile.config import Config
-from hiprofile.inference.fit import prepare
 from hiprofile.inference.priors import ModelPrior, build_prior
+from hiprofile.inference.setup import prepare
 from hiprofile.likelihood.orthant import LOG2, log_orthant
 from hiprofile.model.kernel import SpectralGrid, chebyshev_basis, profile_basis
 from hiprofile.spectrum import Spectrum

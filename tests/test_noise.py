@@ -87,7 +87,7 @@ def test_estimated_correlation_is_positive_definite(rng):
 
 def test_auto_correlation_follows_the_response_kernel():
     from hiprofile.config import Config
-    from hiprofile.inference.fit import _correlation
+    from hiprofile.inference.setup import _correlation
 
     rho, white = _correlation(Config().updated(model={"response": "boxcar+kernel(0.6, 0.2)"}))
     np.testing.assert_allclose(rho[:3], [1.0, 0.24 / 0.44, 0.04 / 0.44])

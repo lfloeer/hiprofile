@@ -10,7 +10,7 @@ from conftest import requires_jax
 @requires_jax
 def test_batched_likelihood_and_screen_match_single_spectrum():
     from hiprofile.inference.batch import BatchedLikelihood, screen_batch
-    from hiprofile.inference.fit import prepare
+    from hiprofile.inference.setup import prepare
 
     rng = np.random.default_rng(0)
     cfg = Config().updated(rfi={"prefit": False})

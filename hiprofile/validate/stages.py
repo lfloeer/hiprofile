@@ -26,7 +26,7 @@ import numpy as np
 from scipy import stats
 
 from hiprofile.config import Config
-from hiprofile.inference.fit import weighted_quantile
+from hiprofile.inference.results import weighted_quantile
 from hiprofile.io.catalog import collect_rows, rows_to_table
 from hiprofile.io.results import read_result, result_path
 from hiprofile.io.spectra import SpectrumSource, list_sources, write_spectrum

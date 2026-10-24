@@ -23,7 +23,7 @@ from typing import Any
 
 import numpy as np
 
-from hiprofile.inference.fit import FitResult, ModelEvidence, Posterior
+from hiprofile.inference.results import FitResult, ModelEvidence, Posterior
 
 
 class _Encoder(json.JSONEncoder):
