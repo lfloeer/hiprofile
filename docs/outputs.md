@@ -26,12 +26,13 @@ error message; the run continues.
 /spectrum                 velocity, flux, sigma, mask (incl. RFI), rfi_q
 /model                    band (2.5/16/50/84/97.5 % posterior predictive),
                           components_median, baseline_median
-/evidence                 n, k, log_z, log_z_err, log_z_gauss, method, backend,
+/evidence                 n, k, log_z, log_z_err, log_z_gauss, method (analytic | marginal |
+                          quick | quick-gated), backend,
                           ess_fraction, negative_fraction, runtime, n_like,
                           log_z_check, log_z_check_err
-/posterior/N<n>           theta, u, weights, beta, log_l, k_samples; attrs names, k
-                          (posterior marginalised over K; beta zero-padded to the
-                          largest K; attr k = most probable K)
+/posterior/N<n>           theta, u, weights, beta, log_l, k_samples; attrs names, k,
+                          k_values, k_probability (posterior marginalised over K;
+                          beta zero-padded to K_max; k = most probable order)
 /posterior/N<n>/derived   S_i, f_i, W50_i, W20_i, v_sys_i, peak_i (per component)
 /posterior/N<n>/trace     sampler diagnostics
 ```
@@ -39,8 +40,9 @@ error message; the run continues.
 Read it with `hiprofile.io.read_result(path)`.
 
 `theta` columns per profile component: `v_ctr`, `delta_v`, `delta_v_rand`,
-`alpha`; `beta` holds `a_ring`, `a_disk` per component, then the Chebyshev
-coefficients. W50/W20 are measured on the intrinsic profile (with random
+`alpha`, `f`; `beta` holds the integrated flux `S` of each component, then
+the Chebyshev coefficients up to `k_max` (zero beyond the order drawn for the
+sample). W50/W20 are measured on the intrinsic profile (with random
 motions, without spectrometer response) as the distance between the outermost
 crossings of 50 %/20 % of the peak; `v_sys` is the midpoint of the W50
 crossings.
@@ -52,7 +54,7 @@ crossings.
 | `id`, `status` | spectrum id, `ok` or `failed` |
 | `p_detect`, `p_n<N>` | P(N ≥ 1 \| y), P(N \| y) |
 | `best_n`, `best_k` | most probable N, best K for it |
-| `logz_n<N>_k<K>` | evidences |
+| `logz_n<N>_k<K>` | evidences; `p_k<K>` the posterior probability of each baseline order |
 | `<par>`, `<par>_p16`, `<par>_p84` | posterior median and 68 % interval (for N = max(best_n, 1)) |
 | `classic_W50`, `classic_W20`, `classic_S`, `classic_v_sys` | classical measurement on the data |
 | `m_<metric>` | quality metrics (below) |
@@ -71,6 +73,7 @@ crossings.
 | `ess` (Kish) | `low_ess` | < `min_ess` (500) |
 | `logz_check_sigma` (check mode) | `logz_mismatch` | > `logz_sigma` (3) |
 | `negative_fraction` | `negative_amplitudes` | > `negative_fraction` (0.5) |
+| `constraint_<par>` (1 − posterior/prior 16–84 % width) | `prior_dominated` | `constraint_delta_v` < `min_constraint` (0.3): the width is not measured |
 | `rfi_fraction` | `rfi` | > `rfi.flag_fraction` (0.05) |
 | `sampler_budget` | `sampler_budget` | a sampler stopped at its time / call limit (nautilus: 600 s or 10⁶ calls; options in `sampler.options`) |
 | – | `failed` | the fit raised an error |

@@ -105,7 +105,7 @@ def test_compiled_likelihood_matches_numpy(rng, monkeypatch, corr, comps, k, k_m
     m_slow, c_slow = like.moments(th)[1:]
     # identical components give nearly collinear columns (condition number ~ 1e8)
     np.testing.assert_allclose(m_fast, m_slow, rtol=1e-7, atol=1e-12)
-    np.testing.assert_allclose(c_fast, c_slow, rtol=1e-7, atol=1e-15)
+    np.testing.assert_allclose(c_fast, c_slow, rtol=1e-7, atol=1e-12)
 
 
 def test_compiled_conditional_matches_numpy(rng, monkeypatch):

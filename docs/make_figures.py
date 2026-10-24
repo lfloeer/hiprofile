@@ -234,8 +234,10 @@ def sbc_figure(stage_dir: Path) -> Path:
         "W50_1": "W50",
         "W20_1": "W20",
     }
-    fig = plt.figure(figsize=(13, 5.2))
-    gs = fig.add_gridspec(2, 6, width_ratios=[1, 1, 1, 1, 0.15, 1.6], hspace=0.55, wspace=0.35)
+    has_k = "k_reliability" in summ
+    fig = plt.figure(figsize=(15, 5.2) if has_k else (13, 5.2))
+    widths = [1, 1, 1, 1, 0.15, 1.6, 0.15, 1.2] if has_k else [1, 1, 1, 1, 0.15, 1.6]
+    gs = fig.add_gridspec(2, len(widths), width_ratios=widths, hspace=0.55, wspace=0.35)
     for k, name in enumerate(names):
         ax = fig.add_subplot(gs[k // 4, k % 4])
         h = np.array(summ["ranks"][name])
@@ -267,6 +269,19 @@ def sbc_figure(stage_dir: Path) -> Path:
     ax.set_xlabel("coverage")
     ax.legend(loc="lower right")
     ax.set_title("interval coverage (band: ±2σ for N sims)", loc="left", fontsize=9)
+    if has_k:
+        axk = fig.add_subplot(gs[:, 7])
+        rel = np.array(summ["k_reliability"], float)
+        ok = rel[:, 1] > 0
+        axk.plot([0, 1], [0, 1], color=style.MUTED, lw=0.8)
+        axk.plot(rel[ok, 0], rel[ok, 2], "o-", color=style.SERIES[1], ms=5)
+        axk.set_xlabel("P(K = k | y)")
+        axk.set_ylabel("fraction with true order k")
+        axk.set_title(
+            f"baseline order: accuracy {summ['k_accuracy']:.0%}, mean P(K_true) {summ['k_mean_p_true']:.2f}",
+            loc="left",
+            fontsize=9,
+        )
     fig.suptitle(
         f"Simulation-based calibration, {n_sim} simulations from the default priors "
         "(rank histograms, grey: 99 % band of uniform ranks)",

@@ -20,8 +20,8 @@ The validated configuration, the code version and the seed are written into ever
 | `priors.delta_v` | `Range` | `{'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}` | Line width [km/s]: log-normal around 160 km/s, 0.4 dex (THINGS: 0.1-566 km/s, median 153) |
 | `priors.delta_v_rand` | `Range` | `{'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}` | Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s) |
 | `priors.alpha` | `Range` | `{'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}` | Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14) |
-| `priors.amplitude_scale` | `Union[float, Literal['auto']]` | `auto` | Std of the half-normal prior on a_ring [flux * km/s] (a_disk: times disk_scale_ratio). Fix it for a survey so that evidences are comparable between spectra. |
-| `priors.disk_scale_ratio` | `float` | `0.3333333333333333` | Prior scale of a_disk relative to a_ring; 1/3 gives a prior median f of 0.25 (THINGS: median 0.15, mean 0.23) |
+| `priors.f` | `Range` | `{'kind': 'uniform', 'low': 0.0, 'high': 1.0}` | Solid-body fraction: uniform on [0, 1] (Stewart et al. used a nearly flat exponential; THINGS median 0.15, mean 0.23) |
+| `priors.amplitude_scale` | `Union[float, Literal['auto']]` | `auto` | Std of the half-normal prior on the integrated flux S of each component [flux * km/s]. Fix it for a survey so that evidences are comparable between spectra. |
 | `priors.baseline_scale` | `Union[float, Literal['auto']]` | `auto` | Std of the Chebyshev coefficients; auto = 10 x noise rms |
 | `priors.baseline_mean` | `list[float] \| None` | `null` |  |
 | `priors.baseline_cov` | `list[list[float]] \| None` | `null` |  |
@@ -40,8 +40,6 @@ The validated configuration, the code version and the seed are written into ever
 | `sampler.backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']` | `smc` | smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower |
 | `sampler.check_backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc']` | `nautilus` |  |
 | `sampler.n_live` | `int` | `400` |  |
-| `sampler.baseline_evidence` | `Literal['reweight', 'rerun']` | `reweight` | reweight: sample once per N at the preferred K and importance-reweight to the other K (rerun when the effective sample size is too small) |
-| `sampler.reweight_min_ess` | `float` | `200.0` | Minimum Kish ESS of the samples reweighted to another K |
 | `sampler.gate_margin` | `float \| None` | `5.0` | Skip nested sampling for N when its quick evidence is this many nats below the best model with fewer components (null: always sample) |
 | `sampler.options` | `dict[str, Any]` | `{}` |  |
 | `sampler.likelihood_backend` | `Literal['numpy', 'jax']` | `numpy` |  |
@@ -51,6 +49,7 @@ The validated configuration, the code version and the seed are written into ever
 | `diagnostics.edge_mass` | `float` | `0.2` |  |
 | `diagnostics.min_ess` | `float` | `500.0` |  |
 | `diagnostics.logz_sigma` | `float` | `3.0` |  |
+| `diagnostics.min_constraint` | `float` | `0.3` | Flag `prior_dominated` when the posterior 16-84 % width of delta_v is wider than (1 - min_constraint) times the prior width, i.e. the line width is not measured |
 | `diagnostics.negative_fraction` | `float` | `0.5` | Flag when this fraction of amplitude draws is negative. Narrow profiles make ring and disk nearly degenerate, so 10 % (roadmap value) flags most of them. |
 | `diagnostics.multimodal_weight` | `float` | `0.1` |  |
 | `output.n_posterior` | `int` | `2000` | Posterior samples stored per model |
@@ -74,15 +73,14 @@ Prior ranges (`priors.v_ctr`, `priors.delta_v`, ...) take `kind` (`uniform`, `lo
 | `n_components` | `int \| list[float]` | `1` |  |
 | `profiles` | `Literal['model', 'template', 'mixed']` | `model` |  |
 | `template_files` | `list[str]` | `[]` |  |
-| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'delta_v': {'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'amplitude_scale': 'auto', 'disk_scale_ratio': 0.3333333333333333, 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
+| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'delta_v': {'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'uniform', 'low': 0.0, 'high': 1.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
 | `flux` | `Literal['prior', 'snr']` | `snr` |  |
 | `snr_range` | `tuple[float, float]` | `(3.0, 100.0)` |  |
-| `f_distribution` | `Literal['prior', 'uniform']` | `prior` |  |
-| `f_range` | `tuple[float, float]` | `(0.0, 1.0)` |  |
 | `noise_sigma` | `float` | `0.01` |  |
 | `noise_correlation` | `Literal['white', 'hanning']` | `white` |  |
 | `baseline` | `Literal['none', 'chebyshev', 'sine']` | `none` |  |
 | `baseline_order` | `int` | `1` |  |
+| `baseline_order_min` | `int \| None` | `null` |  |
 | `baseline_scale` | `float` | `0.01` |  |
 | `sine_amplitude` | `float` | `0.5` |  |
 | `sine_period` | `tuple[float, float]` | `(100.0, 600.0)` |  |

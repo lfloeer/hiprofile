@@ -27,17 +27,19 @@ Chebyshev baseline order K, P(detect), quality metrics and flags;
 * **Model kernel** (`hiprofile.model`): ring and disk basis functions evaluated in
   Fourier space (Bessel functions, Gaussian, exact channel integration and
   Hanning/Tukey responses); compiled with numba by default, NumPy fallback, and
-  JAX (`jit`, `vmap`, gradients). Only four parameters are nonlinear: v_ctr,
-  Δv, Δv_rand, α. A full fit of a 512-channel spectrum (N ≤ 2, K ≤ 3) takes
-  3–10 s on one core.
-* **Likelihood** (`hiprofile.likelihood`): ring/disk amplitudes and the Chebyshev
-  baseline are marginalised analytically (Woodbury); white or Hanning-correlated
-  noise; masks; a robust outlier-mixture pre-stage for RFI.
+  JAX (`jit`, `vmap`, gradients). Five parameters per component are
+  nonlinear: v_ctr, Δv, Δv_rand, α, f. A full fit of a 512-channel spectrum
+  (N ≤ 2, K ≤ 3) takes 3–10 s on one core.
+* **Likelihood** (`hiprofile.likelihood`): the flux, the Chebyshev baseline *and
+  the baseline order K* are marginalised analytically (Woodbury, one Cholesky
+  for all K); half-normal flux prior with exact positivity; white or
+  Hanning-correlated noise; masks; a robust outlier-mixture pre-stage for RFI.
 * **Samplers** (`hiprofile.samplers`): tempered SMC (default, fastest), nautilus
   (most precise evidences), dynesty, UltraNest and a quick MAP + Laplace +
   importance-sampling mode behind one interface; `--mode quick | full | check`.
-* **Model comparison** (`hiprofile.inference`): evidences for all N and K with a
-  Poisson prior on N; amplitude positivity by exact reweighting.
+* **Model comparison** (`hiprofile.inference`): one sampler run per N gives
+  the evidences for all N and K (Poisson prior on N, flat prior on K) and a
+  posterior marginalised over K.
 * **Validation** (`hiprofile simulate`, `hiprofile validate`): simulation-based
   calibration, detection/confusion statistics, misspecified profiles,
   baselines and RFI, injection into real spectra; always compared with the

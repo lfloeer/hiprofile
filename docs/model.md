@@ -21,14 +21,16 @@ integrated flux $S$ and the solid-body fraction $f \in [0, 1]$.
 
 The kernel does not return a finished curve but two unit-flux basis functions,
 ring $R(v;\theta)$ and disk $D(v;\theta)$, already including asymmetry, Gaussian
-and channel response. With $\theta = (v_\mathrm{ctr}, \Delta v, \Delta v_\mathrm{rand}, \alpha)$
-the model is linear in the amplitudes and the baseline:
+and channel response. With $\theta = (v_\mathrm{ctr}, \Delta v, \Delta v_\mathrm{rand}, \alpha, f)$
+the model is linear in the flux and the baseline:
 
 $$
-m(v) = a_\mathrm{ring} R(v;\theta) + a_\mathrm{disk} D(v;\theta) + \sum_{k=0}^{K} c_k T_k(v)
+m(v) = S\,\big[(1-f) R(v;\theta) + f D(v;\theta)\big] + \sum_{k=0}^{K} c_k T_k(v).
 $$
 
-and $S = a_\mathrm{ring} + a_\mathrm{disk}$, $f = a_\mathrm{disk} / S$.
+$S$ and the $c_k$ are marginalised analytically, and so is the baseline order
+$K$ (see [Inference](inference.md)); the sampler sees the five nonlinear
+parameters per component.
 
 ## Fourier-space evaluation
 

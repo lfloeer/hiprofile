@@ -21,22 +21,40 @@ $$
 and $\beta\mid\theta, y \sim \mathcal N(\mu + A^{-1}b, A^{-1})$. The tests compare
 this with the dense formula and with a numerical integral over $\beta$.
 
+## Linear and nonlinear parameters
+
+Each profile component has five nonlinear parameters, $\theta = (v_\mathrm{ctr},
+\Delta v, \Delta v_\mathrm{rand}, \alpha, f)$, and one linear amplitude, the
+integrated flux $S$. The kernel still returns the ring and disk basis
+functions separately; the likelihood combines them into the unit-flux column
+$(1-f)R + fD$. An earlier version kept $a_\mathrm{ring} = S(1-f)$ and
+$a_\mathrm{disk} = Sf$ as two linear amplitudes. That is cheaper by one
+sampling dimension but has two drawbacks: for narrow profiles ring and disk
+are nearly identical and the two amplitudes become degenerate with large
+anti-correlated values, and the implied prior on $f$ (the ratio of two
+half-normal amplitudes) depends on $S$, flat for faint and peaked for bright
+sources. With $f$ sampled, its prior is explicit and the same for every
+source, and the degeneracy becomes a flat direction in $f$ that the prior
+handles.
+
 ## Amplitude positivity
 
-The amplitudes have zero-mean Gaussian priors that are truncated to
-$a \ge 0$ (half-normal, scale `priors.amplitude_scale`). The sampler works with the
-untruncated marginal likelihood; afterwards every posterior sample draws
-amplitudes from $\beta\mid\theta, y$, negative draws are rejected and the
-weights multiplied by the acceptance probability. The evidence of the
-truncated model is
+The amplitude $S$ of each component has a half-normal prior (scale
+`priors.amplitude_scale`), i.e. a zero-mean Gaussian truncated to $S \ge 0$.
+The truncation enters the likelihood exactly through the orthant probability
+of the conditional Gaussian,
 
 $$
-Z_\mathrm{trunc} = Z_\mathrm{gauss}\; \mathbb E_\mathrm{post}\!\left[P(a\ge 0 \mid \theta, y)\right] \big/ 2^{-n_\mathrm{amp}}.
+p(y \mid \theta, K) = p_\mathrm{gauss}(y \mid \theta, K)\; P(S \ge 0 \mid \theta, y, K)\, 2^{q},
 $$
 
-A large rejected fraction (`negative_fraction`) is flagged. For narrow profiles
-ring and disk are nearly degenerate and the fraction is naturally high; the
-evidence correction stays exact.
+with the normal CDF for one component and the bivariate normal CDF (Owen's T
+function) for two. For three or more components the product of the marginal
+probabilities is used in the sampling target and the remaining correction is
+estimated by Monte Carlo and applied as importance weight
+(`hiprofile.inference.amplitudes`). The fraction of Gaussian draws with a
+negative amplitude is reported as `negative_fraction`; with the half-normal
+prior in the target it is informational.
 
 ## Noise
 
@@ -74,28 +92,38 @@ without it.
 
 ## Model comparison
 
-For each spectrum the models N = 0 … `n_max` and K = `k_min` … `k_max` are
-evaluated. N = 0 has no nonlinear parameters and its evidence is analytic.
-For N ≥ 1 the pipeline
+For each spectrum the models N = 0 … `n_max` are evaluated; the baseline
+order K = `k_min` … `k_max` is marginalised *inside* the likelihood,
 
-1. runs quick fits (MAP + Laplace + importance sampling) for all K, warm-started
-   from the previous K, and picks K*;
-2. runs the sampler at K* and importance-reweights its samples to the other K
-   (`sampler.baseline_evidence: reweight`); a K whose reweighted effective sample
-   size falls below `reweight_min_ess` and whose evidence is competitive is
-   re-run (`rerun` samples every K);
-3. applies the positivity correction to every evidence;
-4. builds the posterior for this N as the mixture of the per-K posteriors
-   weighted with P(K | N, y), so that the baseline uncertainty propagates into
-   all parameters (`k_samples` records the order of each sample);
-5. skips nested sampling for an N whose quick evidence lies more than
-   `sampler.gate_margin` (5) nats below a model with fewer components and keeps
-   the quick evidence (`method = quick-gated`); such a model has a relative
-   probability below e⁻⁵.
+$$
+p(y \mid \theta) = \sum_K P(K)\, p(y \mid \theta, K), \qquad P(K) \text{ flat}.
+$$
 
-Model probabilities use a Poisson prior on N (mean `poisson_rate`) and a flat
-prior on K; the detection probability is $P(N\ge 1\mid y)$. Several components
-are compared through evidences, not trans-dimensional sampling.
+Because the Chebyshev columns are nested, $A_K$ is the leading principal block
+of $A_{K_\max}$: one Cholesky factorisation gives $\ln|A_K|$ and
+$b_K^\top A_K^{-1} b_K$ for every K as partial sums, so marginalising over K
+costs about as much as a single order. Consequences:
+
+* one sampler run per N (no K scan, no reweighting, no re-runs);
+* the posterior is exactly marginalised over K; every sample carries
+  $P(K \mid \theta, y)$, and the order stored with a sample (`k_samples`) is
+  drawn from it;
+* the per-(N, K) evidences follow from the run without extra sampling,
+  $Z_{N,K} = Z_N\, \mathbb E_\mathrm{post}[P(K\mid\theta,y)] / P(K)$;
+* an informative baseline prior from neighbour spectra (mean or covariance)
+  fixes K = `k_max`, because the leading-block trick needs independent
+  zero-mean coefficient priors.
+
+N = 0 has no nonlinear parameters and its evidence is analytic for every K.
+For N ≥ 1 a quick fit (MAP + Laplace + importance sampling) runs first; if
+its evidence lies more than `sampler.gate_margin` (5) nats below a model with
+fewer components, the sampler is skipped and the quick evidence kept
+(`method = quick-gated`). Otherwise the sampler runs once on the K-marginal
+likelihood (`method = marginal`).
+
+Model probabilities use a Poisson prior on N (mean `poisson_rate`) and the
+flat prior on K; the detection probability is $P(N\ge 1\mid y)$. Several
+components are compared through evidences, not trans-dimensional sampling.
 
 ## Samplers
 
