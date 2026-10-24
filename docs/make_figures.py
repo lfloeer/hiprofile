@@ -4,6 +4,7 @@
     python docs/make_figures.py gallery           # fits of simulated spectra
     python docs/make_figures.py validation DIR    # SBC / detection / classical comparison from a
                                                   # `hiprofile validate --out DIR` run
+    python docs/make_figures.py w20 DIR           # low-S/N W20 bias decomposition (benchmarks/w20_bias.py)
     python docs/make_figures.py bias DIR [RESPONSE]  # conditional bias from benchmarks/bias_study.py
 
 All figures go to docs/img/.
@@ -502,6 +503,111 @@ def bias_figure(root: Path, response: str = "", name: str | None = None) -> Path
     return _save(fig, name or f"bias_study{suffix}.png")
 
 
+def w20_bias_figure(root: Path, name: str = "w20_bias.png") -> Path:
+    """Median W20 error against the true Delta v at low S/N (benchmarks/w20_bias.py)."""
+    import json
+
+    from hiprofile.config import Priors
+    from hiprofile.inference.derived import profile_derived
+    from hiprofile.inference.priors import build_prior
+    from hiprofile.model import SpectralGrid
+
+    def table(variant: str):
+        return json.loads((root / variant / "cells.json").read_text())
+
+    # W20 of profiles drawn from the default priors: where a prior-dominated fit ends up
+    v = -1200.0 + 2.0 * np.arange(1200)
+    t = build_prior(("profile",), Priors(), v).transform(np.random.default_rng(1).uniform(size=(20000, 5)))
+    th = t[:, :4].copy()
+    th[:, 0] = 0.0
+    amps = np.stack([1 - t[:, 4], t[:, 4]], axis=1)
+    w20_prior = float(np.median(profile_derived(SpectralGrid.from_velocities(v), th, amps)["W20"]))
+    spectra = json.loads((root / "default" / "spectra.json").read_text())
+    true_w20 = {dv: np.median([s["W20_true"] for s in spectra if s["delta_v"] == dv]) for dv in
+                sorted({s["delta_v"] for s in spectra})}  # fmt: skip
+    curves = [
+        ("default", "all", style.SERIES[0], "-", "default priors, all spectra"),
+        ("default", "det", style.SERIES[0], "--", "default priors, detected only"),
+        ("k0", "all", style.SERIES[2], ":", "constant baseline only (K = 0), all"),
+        ("linear", "all", style.SERIES[1], "-", "Δv prior uniform on 0–800 km/s, all"),
+    ]
+    snrs = sorted({c["snr"] for c in table("default")})
+    fig, axes = plt.subplots(1, len(snrs), figsize=(4.3 * len(snrs), 4.0), sharey=True)
+    for ax, snr in zip(axes, snrs, strict=True):
+        dvs = np.array(sorted(true_w20))
+        ax.plot(dvs, [w20_prior - true_w20[d] for d in dvs], color=style.INK_2, lw=1, ls="-.",
+                label=f"prior median W20 ({w20_prior:.0f} km/s) − truth")  # fmt: skip
+        for variant, sub, color, ls, label in curves:
+            cells = sorted((c for c in table(variant) if c["snr"] == snr), key=lambda c: c["delta_v"])
+            x = np.array([c["delta_v"] for c in cells])
+            y = np.array([c[f"W20_{sub}"] for c in cells])
+            e = np.array([c[f"W20_{sub}_err"] for c in cells])
+            ax.plot(x, y, ls, color=color, lw=2, marker="o", ms=4, label=label)
+            ax.fill_between(x, y - e, y + e, color=color, alpha=0.12, lw=0)
+        comp = [c["completeness"] for c in sorted((c for c in table("default") if c["snr"] == snr),
+                                                  key=lambda c: c["delta_v"])]  # fmt: skip
+        ax.axhline(0, color=style.INK_2, lw=0.8)
+        ax.set_xscale("log")
+        ax.set_xticks(dvs, [f"{d:.0f}" for d in dvs])
+        ax.minorticks_off()
+        ax.set_xlabel("true Δv [km/s]")
+        ax.set_title(f"S/N {snr:.0f}: detected {min(comp):.0%}–{max(comp):.0%}", loc="left", fontsize=9)
+    axes[0].set_ylabel("median W20 − truth [km/s]")
+    axes[0].set_ylim(-250, 250)
+    axes[-1].legend(fontsize=7.5, loc="upper right")
+    fig.suptitle(
+        "Low-S/N W20 bias: shrinkage toward the prior, not selection or baseline (100 spectra per cell)",
+        x=0.01, ha="left", fontsize=11, y=1.02,
+    )  # fmt: skip
+    return _save(fig, name)
+
+
+def w20_classic_figure(root: Path, name: str = "w20_bias_classic.png") -> Path:
+    """Low-S/N W20 error of the posterior median and the classical methods (benchmarks/w20_bias.py)."""
+    import json
+
+    rows = [(root / "default", "unsmoothed channels")]
+    if (root / "boxcar_hanning" / "default" / "cells.json").exists():
+        rows.append((root / "boxcar_hanning" / "default", "Hanning-smoothed channels"))
+    curves = [
+        ("", style.SERIES[0], "-", "posterior median"),
+        ("naive_truewin_", style.SERIES[1], "-", "naive, window around the truth"),
+        ("naive_fitwin_", style.SERIES[1], "--", "naive, window around the posterior"),
+        ("springob_truewin_", style.SERIES[2], "-", "Springob, window around the truth"),
+        ("springob_fitwin_", style.SERIES[2], "--", "Springob, window around the posterior"),
+    ]
+    tables = [(json.loads((d / "cells.json").read_text()), label) for d, label in rows]
+    snrs = sorted({c["snr"] for c in tables[0][0]})
+    fig, grid = plt.subplots(len(tables), len(snrs), figsize=(4.3 * len(snrs), 3.7 * len(tables)),
+                             sharex=True, sharey=True, squeeze=False)  # fmt: skip
+    for row, (table, label) in zip(grid, tables, strict=True):
+        for ax, snr in zip(row, snrs, strict=True):
+            cells = sorted((c for c in table if c["snr"] == snr), key=lambda c: c["delta_v"])
+            x = np.array([c["delta_v"] for c in cells])
+            for pre, color, ls, lab in curves:
+                y = np.array([c[f"{pre}W20_all"] for c in cells])
+                e = np.array([c[f"{pre}W20_all_err"] for c in cells])
+                ax.plot(x, y, ls, color=color, lw=2, marker="o", ms=4, label=lab)
+                ax.fill_between(x, y - e, y + e, color=color, alpha=0.12, lw=0)
+            ax.axhline(0, color=style.INK_2, lw=0.8)
+            ax.set_xscale("log")
+            ax.set_xticks(x, [f"{d:.0f}" for d in x])
+            ax.minorticks_off()
+            comp = [c["completeness"] for c in cells]
+            ax.set_title(f"{label}, S/N {snr:.0f} (detected {min(comp):.0%}–{max(comp):.0%})",
+                         loc="left", fontsize=8.5)  # fmt: skip
+        row[0].set_ylabel("median W20 − truth [km/s]")
+    for ax in grid[-1]:
+        ax.set_xlabel("true Δv [km/s]")
+    grid[0, 0].set_ylim(-250, 250)
+    grid[0, -1].legend(fontsize=7.5, loc="lower left")
+    fig.suptitle(
+        "Low-S/N W20 bias over all spectra: posterior median against the classical methods (100 per cell)",
+        x=0.01, ha="left", fontsize=11, y=1.01,
+    )  # fmt: skip
+    return _save(fig, name)
+
+
 def validation(root: Path) -> None:
     root = Path(root)
     if (root / "validate_sbc" / "summary.json").exists():
@@ -521,6 +627,9 @@ if __name__ == "__main__":
         gallery()
     elif what == "validation" and len(sys.argv) > 2:
         validation(Path(sys.argv[2]))
+    elif what == "w20" and len(sys.argv) > 2:
+        w20_bias_figure(Path(sys.argv[2]))
+        w20_classic_figure(Path(sys.argv[2]))
     elif what == "bias" and len(sys.argv) > 2:
         bias_figure(Path(sys.argv[2]), *sys.argv[3:4])
     else:

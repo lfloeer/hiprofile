@@ -72,11 +72,12 @@ From `benchmarks/validate_all.sh` ([docs/validation.md](docs/validation.md)):
 interval coverages) and the baseline order is recovered in 93 % of the
 cases. The posterior medians of W50, W20 and v_sys are unbiased and scatter
 half as much as either classical measurement on the same unsmoothed
-spectra. On Hanning-smoothed spectra above S/N 8 the Springob et al. (2005)
-W50 is as good as the posterior median; the fit still gives the better W20
-(the naive one is up to 60–100 km/s too wide for broad lines), keeps
-working for wide lines at S/N 5 and on unsmoothed channels, where the edge
-fits break down, and adds calibrated uncertainties, detection
+spectra. On Hanning-smoothed spectra above S/N 15, and at S/N 8 for lines
+up to Δv = 100 km/s, the Springob et al. (2005) W50 is as good as the
+posterior median; the fit still gives the better W20 (the naive one is up
+to 60–100 km/s too wide for broad lines), keeps working for wide lines at
+S/N 5–8 and on unsmoothed channels, where the edge fits break down, and
+adds calibrated uncertainties, detection
 probabilities and blended components. With the RFI pre-stage no line-free
 spectrum with RFI spikes is detected; deliberately wrong models
 (standing-wave baselines, unmasked RFI) are flagged in 98–100 % of the
