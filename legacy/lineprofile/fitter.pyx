@@ -11,10 +11,10 @@ cimport numpy as np
 
 cimport cython
 
-from numpy.math cimport INFINITY as inf
+from libc.math cimport INFINITY as inf
 from libc.math cimport log, exp, M_PI
 
-cimport ln_likes
+from lineprofile cimport ln_likes
 
 cdef class FitGaussian(LineModel):
     "Fit a LineModel to data assuming a Gaussian likelihood"

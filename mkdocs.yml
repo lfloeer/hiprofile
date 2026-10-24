@@ -1,0 +1,24 @@
+site_name: hiprofile
+site_description: Bayesian fitting of global HI line profiles
+repo_url: https://github.com/lfloeer/hiprofile
+theme:
+  name: material
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+nav:
+  - Overview: index.md
+  - Tutorial: tutorial.md
+  - Model: model.md
+  - Priors: priors.md
+  - Inference: inference.md
+  - Outputs and flags: outputs.md
+  - Configuration: configuration.md
+  - Validation: validation.md
+  - Legacy code (Phase 0): legacy.md

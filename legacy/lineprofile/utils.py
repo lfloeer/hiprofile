@@ -70,16 +70,16 @@ def resample_position(position, n_walkers, n_dim, fitter, ball_size=1e-2):
     scale_factors *= ball_size
 
     new_positions = np.array([position + scale_factors * np.random.randn(n_dim)
-                              for _ in xrange(n_walkers)])
+                              for _ in range(n_walkers)])
     valid = np.array([np.isfinite(fitter.ln_prior(p))
                       for p in new_positions])
 
-    for _ in xrange(20):
+    for _ in range(20):
         n_invalid = np.sum(~valid)
         if n_invalid == 0:
             break
         new_positions[~valid] = np.array([position + ball_size * np.random.randn(n_dim)
-                                          for _ in xrange(n_invalid)])
+                                          for _ in range(n_invalid)])
         valid[~valid] = np.array([np.isfinite(fitter.ln_prior(p))
                                   for p in new_positions[~valid]])
 
