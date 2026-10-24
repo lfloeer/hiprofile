@@ -45,6 +45,10 @@ class SimConfig(BaseModel):
     snr_range: tuple[float, float] = (3.0, 100.0)
     noise_sigma: float = 0.01
     noise_correlation: Literal["white", "hanning"] = "white"
+    # taps of a channel-domain kernel that smooths the noise only (e.g. regridding the
+    # fit does not know about); the per-channel std stays noise_sigma. Overrides
+    # noise_correlation.
+    noise_kernel: list[float] | None = None
     baseline: Literal["none", "chebyshev", "sine"] = "none"
     baseline_order: int = 1
     # with baseline_order_min set, the order is drawn uniformly from [min, order]
@@ -184,7 +188,12 @@ def simulate_spectrum(cfg: SimConfig, rng: np.random.Generator, sid: str) -> tup
         truth.baseline = {"kind": "sine", "period": period, "amplitude": amp, "phase": phase}
     # noise
     eps = rng.standard_normal(cfg.n_chan + 2)
-    if cfg.noise_correlation == "hanning":
+    if cfg.noise_kernel is not None:
+        k = np.asarray(cfg.noise_kernel, float)
+        extra = rng.standard_normal(max(k.size - 3, 0))
+        raw = np.convolve(np.r_[eps, extra], k, mode="valid")[: cfg.n_chan]
+        noise = raw / np.sqrt(np.sum(k**2)) * cfg.noise_sigma
+    elif cfg.noise_correlation == "hanning":
         # Hanning-smoothed noise with per-channel std noise_sigma
         raw = np.convolve(eps, [0.25, 0.5, 0.25], mode="valid")
         noise = raw / np.sqrt(0.375) * cfg.noise_sigma

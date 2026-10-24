@@ -71,9 +71,11 @@ $\Delta v_\mathrm{rand}$.
 | `boxcar` | $\mathrm{sinc}(\omega\Delta v_\mathrm{chan}/2)$ | mean over the channel (default) |
 | `hanning` | $\tfrac12 + \tfrac12\cos(\omega\Delta v_\mathrm{chan})$ | 3-tap Hanning smoothing, exact |
 | `tukey(r)` | Tukey taper up to $\pi/\Delta v_\mathrm{chan}$ | lag window of a correlator |
+| `kernel(w₀, w₁, …, w_q)` | $\sum_{|j| \le q} w_{|j|}\cos(j\,\omega\Delta v_\mathrm{chan})$ | any symmetric channel smoothing (normalised to sum 1), exact; `hanning` = `kernel(0.5, 0.25)` |
 
-Example: `boxcar+hanning`. With `noise.correlation: auto` a `hanning` term also
-switches the noise model to the Hanning correlation $\rho = (1, 2/3, 1/6)$.
+Example: `boxcar+hanning`. With `noise.correlation: auto` the channel
+smoothing (`hanning`, `kernel`) also sets the noise correlation, e.g.
+$\rho = (1, 2/3, 1/6)$ for Hanning, plus an estimated white part.
 
 ## Sampling parametrisation
 

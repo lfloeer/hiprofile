@@ -60,11 +60,32 @@ prior in the target it is informational.
 
 Per-channel $\sigma$ comes from the input or a robust estimate (MAD of first
 differences, corrected for the channel correlation; optionally restricted to
-`noise.signal_free` ranges). Correlations: `white`, `hanning`
-($\rho = 1, 2/3, 1/6$), `hanning-decimated` ($\rho = 1, 1/6$) or explicit. Masked
-channels are dropped; the banded covariance is factorised once (banded
-Cholesky for NumPy, dense inverse factor for JAX). `priors.noise_scale`
-optionally fits a global scale factor.
+`noise.signal_free` ranges). The covariance between channels i and j is
+$C_{ij} = \sigma_i\sigma_j\,\rho(|i-j|)$; masked channels are dropped, and
+the banded covariance is factorised once (banded Cholesky for NumPy, dense
+inverse factor for JAX). `priors.noise_scale` optionally fits a global
+scale factor.
+
+Real spectra are smoothed in the channel domain (spectrometer window,
+Hanning, regridding to a velocity grid, averaging of Doppler-shifted
+scans), which correlates neighbouring channels. `noise.correlation`:
+
+| value | correlation |
+|---|---|
+| `auto` (default) | the smoothing in `model.response` (`hanning`, `kernel(...)`) plus an estimated white part; white without smoothing |
+| `estimate` | measured on the residuals of the robust pre-fit: the noise is modelled as white noise smoothed by an unknown short symmetric kernel $h$ (7 taps), fitted so that $h \star h$ matches the sample correlation of the residuals over pairs of unmasked channels |
+| `white`, `hanning`, `hanning-decimated`, `[ρ₁, ρ₂, …]` | fixed; a `+white` suffix adds an estimated white part |
+
+Two details keep the noise model safe on real data. Its power spectrum is
+kept above 0.5 % (`+white`) or 1 % (`estimate`) of the mean (a white floor); an exact Hanning model has zero
+power at the Nyquist frequency, real spectra do not, and whitening with it
+amplified that component by orders of magnitude (χ²_red up to 10⁴ on
+ALFALFA spectra). And the estimate is positive definite by construction,
+so masks and gaps cannot break the Cholesky factorisation. The fitted
+correlation is stored as the metrics `noise_rho` and `noise_rho1`.
+`estimate` costs one extra pre-fit iteration when the RFI pre-stage is off;
+[Validation](validation.md#correlated-noise) compares the options on noise
+smoothed by a kernel the fit does not know.
 
 ## Baseline
 
