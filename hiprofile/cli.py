@@ -71,6 +71,11 @@ def cmd_fit(args: argparse.Namespace) -> int:
     log = logging.getLogger("hiprofile")
     cfg = _load_config(args)
     sources = list_sources(args.spectra)
+    if len(sources) > 1 and cfg.priors.amplitude_scale == "auto":
+        log.warning(
+            "priors.amplitude_scale is 'auto' (10 x the noise of the band-integrated flux per spectrum); "
+            "fix it for comparable evidences and detection probabilities across the survey"
+        )
     chunk = parse_chunk(args.chunk)
     log.info(
         "hiprofile %s: %d spectra, mode %s, backend %s, %d jobs%s",

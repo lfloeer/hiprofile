@@ -15,8 +15,8 @@ lower S/N.
 | α | normal(0, 0.25) truncated to [−1, 1] | median 0.00, robust σ 0.14; 3 of 34 with \|α\| > 0.6 (NGC 3077, NGC 1569, Ho I) | Stewart B.2: normal(0, 0.2) |
 | f | Beta(1, 3), density 3(1 − f)², median 0.21, P(f > 0.7) = 2.7 % | median 0.15, mean 0.23, 1 of 34 above 0.7 (0.93); a uniform prior is rejected (KS p < 0.001), Beta(1, 3) is not (p = 0.13) | Stewart B.2: exponentially decreasing with characteristic constant 0.3 (printed as 0.3 e^(−0.3 f), which would be nearly flat; the text describes a decreasing prior) |
 | v_ctr | uniform over the band minus 5 % margins; normal(v_cat, 20–50 km/s) for targeted spectra | – | Stewart B.2: normal, σ = 20 km/s |
-| S | half-normal (`amplitude_scale`, fix per survey) | – | Stewart: flat (improper, unusable for evidences) |
-| K | flat over `k_min` … `k_max`, coefficients N(0, `baseline_scale`²) | – | Stewart: order by maximum evidence |
+| S | half-normal; scale `amplitude_scale`: `auto` = 10 × the noise of the band-integrated flux (noise only, not the signal), fix per survey | – | Stewart: flat (improper, unusable for evidences) |
+| K | flat over `k_min` … `k_max`, coefficients N(0, `baseline_scale`²), `auto` = 10 × rms | the misspecification stage checks the K choice with a prior 50 × too wide | Stewart: order by maximum evidence |
 
 All priors are simple one-parameter-family shapes (log-normal, truncated
 normal, beta, uniform, half-normal); Δv uses 0.4 dex instead of the 0.3 dex of

@@ -68,27 +68,16 @@ def estimate_white_fraction(
     zero power at the Nyquist frequency, the data (re-gridding, quantisation,
     the spectrometer's own window) do not, and whitening with the exact
     kernel blows that component up by orders of magnitude. The ratio of the
-    variances of fourth and first differences (robust MAD estimates) is
-    linear-fractional in eps and solved for it; fourth differences pick out
-    the Nyquist band, where the two components differ most, and suppress
-    smooth signal. eps is kept >= WHITE_FLOOR so that the covariance stays
-    well conditioned.
+    robust variances of fourth and first differences is linear-fractional in
+    eps and solved for it; fourth differences pick out the Nyquist band,
+    where the two components differ most, and suppress smooth signal. eps is
+    kept >= WHITE_FLOOR so that the covariance stays well conditioned.
     """
-    use = good.copy()
-    if signal_free is not None:
-        use &= signal_free
-    y = np.where(use, flux, np.nan)
-    f1 = np.array([-1.0, 1.0])
-    f4 = np.array([1.0, -4.0, 6.0, -4.0, 1.0])
-    d1 = np.convolve(y, f1, mode="valid")
-    d4 = np.convolve(y, f4, mode="valid")
-    d1, d4 = d1[np.isfinite(d1)], d4[np.isfinite(d4)]
-    if d4.size < 16:
+    use = good if signal_free is None else good & signal_free
+    v1, v4 = _difference_variances(flux, use, (1, 4))
+    if not (np.isfinite(v1) and np.isfinite(v4)) or v1 <= 0:
         return WHITE_FLOOR
-    v1 = (MAD_TO_STD * np.median(np.abs(d1 - np.median(d1)))) ** 2
-    v4 = (MAD_TO_STD * np.median(np.abs(d4 - np.median(d4)))) ** 2
-    if v1 <= 0:
-        return WHITE_FLOOR
+    f1, f4 = np.array([-1.0, 1.0]), np.array([1.0, -4.0, 6.0, -4.0, 1.0])
     white = np.array([1.0])
     a1, b1 = _filtered_variance(f1, rho), _filtered_variance(f1, white)
     a4, b4 = _filtered_variance(f4, rho), _filtered_variance(f4, white)
@@ -104,24 +93,6 @@ def correlation_spectrum(rho: np.ndarray, n_freq: int = 512) -> np.ndarray:
     w = np.linspace(0.0, np.pi, n_freq)
     k = np.arange(1, rho.size)
     return 1.0 + 2.0 * np.cos(np.outer(w, k)) @ rho[1:]
-
-
-def make_positive(rho: np.ndarray, floor: float = 0.02) -> np.ndarray:
-    """Mix in the least white noise that keeps the power spectrum >= ``floor``.
-
-    A Toeplitz covariance is positive definite (for every length and every
-    subset of channels, i.e. also with masks) if its power spectrum is
-    positive; ``floor`` also bounds the condition number, which keeps the
-    whitening from amplifying frequencies the correlation model says are
-    empty (the failure of exact Hanning on real data).
-    """
-    rho = np.asarray(rho, float).copy()
-    rho[0] = 1.0
-    s_min = float(correlation_spectrum(rho).min())
-    if s_min >= floor:
-        return rho
-    eps = (floor - s_min) / (1.0 - s_min)
-    return with_white(rho, eps)
 
 
 def _difference_variances(resid: np.ndarray, good: np.ndarray, orders: tuple[int, ...]) -> np.ndarray:

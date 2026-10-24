@@ -115,16 +115,43 @@ def stage_configs(stage: str, base: Config) -> list[tuple[str, SimConfig, Config
             n_components=1, profiles="model", flux="snr", snr_range=(5.0, 80.0), rfi="spikes", rfi_rate=0.01
         )
         clean = SimConfig(n_components=1, profiles="model", flux="snr", snr_range=(5.0, 80.0))
+        # Chebyshev baselines of order 0-3 with coefficients 50 times smaller than the
+        # fit's automatic prior scale (10 x rms): does the K choice survive a wrong scale?
+        narrow = SimConfig(
+            n_components=1,
+            profiles="model",
+            flux="snr",
+            snr_range=(5.0, 80.0),
+            baseline="chebyshev",
+            baseline_order=3,
+            baseline_order_min=0,
+            baseline_scale=0.002,
+        )
         return [
             ("clean", clean, base),
             ("template", tpl, base),
             ("sine_baseline", sine, base),
             ("rfi_unmasked", rfi, base.updated(rfi={"prefit": False})),
+            ("baseline_prior_50x_wide", narrow, base.updated(model={"k_min": 0, "k_max": 3})),
         ]
     if stage == "injection":
         sim = SimConfig(n_components=[0.5, 0.5], profiles="model", flux="snr", snr_range=(2.0, 40.0))
         return [("injection", sim, base)]
     raise ValueError(f"unknown stage {stage!r}; choose from {STAGES}")
+
+
+def _commit() -> str | None:
+    """Git commit of the installed source tree, for the provenance of a validation run."""
+    import subprocess
+
+    try:
+        root = Path(__file__).resolve().parents[2]
+        out = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--short", "HEAD"], capture_output=True, text=True
+        )
+        return out.stdout.strip() or None if out.returncode == 0 else None
+    except OSError:
+        return None
 
 
 def run_stage(
@@ -146,7 +173,7 @@ def run_stage(
     """
     out_dir = Path(out_dir) / f"validate_{stage}"
     out_dir.mkdir(parents=True, exist_ok=True)
-    summary: dict[str, Any] = {"stage": stage, "n": n, "seed": seed, "runs": {}}
+    summary: dict[str, Any] = {"stage": stage, "n": n, "seed": seed, "commit": _commit(), "runs": {}}
     for i, (label, sim, fit) in enumerate(stage_configs(stage, base)):
         run_dir = out_dir / label
         sim_seed = seed if stage == "detection" else seed + 1000 * i  # detection: same sims, two fits
@@ -236,7 +263,7 @@ def analyze(stage: str, run_dir: Path, truth: list[dict[str, Any]], cfg: Config)
     res["flag_rates"] = {k[5:]: float(np.mean([bool(r.get(k, False)) for r in rows])) for k in flag_cols}
     if stage == "sbc":
         res.update(sbc_ranks(run_dir, truth))
-        res.update(k_calibration(rows, truth))
+    res.update(k_calibration(rows, truth))  # empty unless the simulations have a baseline order
     if stage in ("detection", "injection"):
         res.update(detection_metrics(rows, truth, cfg))
     if stage in ("misspec", "detection", "injection", "sbc"):

@@ -75,14 +75,12 @@ def test_estimated_correlation_recovers_smoothing_kernels(rng):
 
 
 def test_estimated_correlation_is_positive_definite(rng):
-    from hiprofile.likelihood.noise import correlation_spectrum, estimate_correlation, make_positive
+    from hiprofile.likelihood.noise import correlation_spectrum, estimate_correlation
 
     for _ in range(20):
         y = _smoothed_noise(rng, 120, [0.25, 0.5, 0.25])
         rho = estimate_correlation(y, rng.uniform(size=120) > 0.2)
         assert correlation_spectrum(rho).min() >= 0.005 - 1e-9
-    rho = make_positive(np.array([1.0, 0.9]))  # not positive definite on its own
-    assert correlation_spectrum(rho).min() >= 0.02 - 1e-9
 
 
 def test_auto_correlation_follows_the_response_kernel():
