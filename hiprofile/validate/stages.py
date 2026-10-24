@@ -10,8 +10,9 @@
 4. ``injection``  model profiles injected into real signal-free spectra:
                   completeness and reliability vs flux and width
 
-Every stage compares bias and scatter with the classical W50/W20 measurement
-on the same spectra.
+Every stage compares bias and scatter with two classical measurements on the
+same spectra: the naive threshold crossing and the edge fits of Springob et
+al. (2005).
 """
 
 from __future__ import annotations
@@ -243,10 +244,12 @@ def compare_quantities(
         sel &= np.array([r.get("best_n", 0) >= 1 for r in rows])
         bay = _arr(rows, f"{q}_1")
         cls = _arr(rows, f"classic_{q}")
+        spr = _arr(rows, f"classic_{q}_springob")
         lo, hi = _arr(rows, f"{q}_1_p16"), _arr(rows, f"{q}_1_p84")
         out[q] = {
             "bayes": _stats(bay[sel], tv[sel]),
             "classic": _stats(cls[sel], tv[sel]),
+            **({"springob": _stats(spr[sel], tv[sel])} if q != "S" else {}),
             "coverage68": _coverage(lo[sel], hi[sel], tv[sel]),
         }
     return out
@@ -489,15 +492,17 @@ def to_markdown(summary: dict[str, Any]) -> str:
             lines.append("")
         if "quantities" in r:
             lines += [
-                "| quantity | bayes bias | bayes scatter | classic bias | classic scatter | 68 % coverage |",
-                "|---|---|---|---|---|---|",
+                "| quantity | bayes bias | bayes scatter | naive bias | naive scatter "
+                "| Springob bias | Springob scatter | 68 % coverage |",
+                "|---|---|---|---|---|---|---|---|",
             ]
+            nan = float("nan")
             for q, d in r["quantities"].items():
-                b, c = d["bayes"], d["classic"]
-                nan = float("nan")
+                b, c, sp = d["bayes"], d["classic"], d.get("springob", {})
                 lines.append(
                     f"| {q} | {b.get('bias', nan):.3g} | {b.get('scatter', nan):.3g} | "
-                    f"{c.get('bias', nan):.3g} | {c.get('scatter', nan):.3g} | {d['coverage68']:.2f} |"
+                    f"{c.get('bias', nan):.3g} | {c.get('scatter', nan):.3g} | "
+                    f"{sp.get('bias', nan):.3g} | {sp.get('scatter', nan):.3g} | {d['coverage68']:.2f} |"
                 )
             lines.append("")
     return "\n".join(lines)

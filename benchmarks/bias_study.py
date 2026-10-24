@@ -1,11 +1,13 @@
 """Bias of the posterior median as a function of the true line width and S/N.
 
     python benchmarks/bias_study.py --out DIR [--n 20] [--jobs 4] [--priors default|flat]
+                                    [--response boxcar+hanning]
 
 Simulates N = 1 spectra on a grid of true W50 (via Delta v) and integrated
 S/N, with the other parameters at typical values, fits them with the given
 prior set and tabulates the median error of W50, W20, S and v_sys per cell,
-for the posterior median and for the classical measurement. Unlike the SBC,
+for the posterior median and for the two classical measurements (naive
+threshold crossing and Springob et al. 2005 edge fits). Unlike the SBC,
 the simulated population is *not* drawn from the prior, so shrinkage toward
 the prior shows up as bias.
 """
@@ -42,10 +44,13 @@ PRIOR_SETS = {
 }
 
 
-def simulate(out: Path, n: int, seed: int) -> tuple[list[SpectrumSource], list[dict]]:
+def simulate(
+    out: Path, n: int, seed: int, response: str = "boxcar"
+) -> tuple[list[SpectrumSource], list[dict]]:
     rng = np.random.default_rng(seed)
     v = 1000.0 + 5.0 * np.arange(512)
-    grid = SpectralGrid.from_velocities(v, supersample=8)
+    grid = SpectralGrid.from_velocities(v, supersample=8, response=response)
+    hanning = "hanning" in response.lower()
     sdir = out / "sims"
     sdir.mkdir(parents=True, exist_ok=True)
     sources, truth = [], []
@@ -55,7 +60,12 @@ def simulate(out: Path, n: int, seed: int) -> tuple[list[SpectrumSource], list[d
                 vc = rng.uniform(1800, 2400)
                 w_eff = dv + 2.35 * SIGMA_RAND
                 s = snr * NOISE * 5.0 * np.sqrt(w_eff / 5.0)
-                y = profile(grid, [vc, dv, SIGMA_RAND, ALPHA, s, F]) + NOISE * rng.standard_normal(v.size)
+                if hanning:  # Hanning-smoothed white noise, unit variance
+                    eps = rng.standard_normal(v.size + 2)
+                    noise = np.convolve(eps, [0.25, 0.5, 0.25], "valid") / np.sqrt(0.375)
+                else:
+                    noise = rng.standard_normal(v.size)
+                y = profile(grid, [vc, dv, SIGMA_RAND, ALPHA, s, F]) + NOISE * noise
                 sid = f"dv{int(dv):03d}_snr{snr:04.1f}_{i:03d}"
                 spec = Spectrum(v, y, sigma=np.full(v.size, NOISE), id=sid)
                 p = sdir / f"{sid}.h5"
@@ -78,11 +88,14 @@ def main() -> None:
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--priors", default="default", choices=list(PRIOR_SETS))
     ap.add_argument("--seed", type=int, default=5)
+    ap.add_argument("--response", default="boxcar", help="channel response of simulation and fit")
     args = ap.parse_args()
-    out = Path(args.out) / f"bias_{args.priors}"
-    sources, truth = simulate(out, args.n, args.seed)
-    cfg = Config().updated(model={"n_max": 1}, rfi={"prefit": False}, noise={"sigma": "input"},
-                           output={"plots": "none"}, priors=PRIOR_SETS[args.priors])  # fmt: skip
+    suffix = "" if args.response == "boxcar" else "_" + args.response.replace("+", "_")
+    out = Path(args.out) / f"bias_{args.priors}{suffix}"
+    sources, truth = simulate(out, args.n, args.seed, args.response)
+    cfg = Config().updated(model={"n_max": 1, "response": args.response}, rfi={"prefit": False},
+                           noise={"sigma": "input"}, output={"plots": "none"},
+                           priors=PRIOR_SETS[args.priors])  # fmt: skip
     run_fits(sources, cfg, out, jobs=args.jobs, resume=True)
     rows = {r["id"]: r for r in collect_rows([result_path(out, t["id"]) for t in truth])}
     table = []
@@ -94,7 +107,10 @@ def main() -> None:
             cell["completeness"] = float(det.mean())
             for q in ("W50", "W20", "S", "v_sys"):
                 tv = np.array([t[q] for t in sel])
-                for label, key in (("bayes", f"{q}_1"), ("classic", f"classic_{q}")):
+                estimators = [("bayes", f"{q}_1"), ("classic", f"classic_{q}")]
+                if q != "S":
+                    estimators.append(("springob", f"classic_{q}_springob"))
+                for label, key in estimators:
                     est = np.array([float(rows[t["id"]].get(key, np.nan) or np.nan) for t in sel])
                     ok = det & np.isfinite(est)
                     cell[f"{label}_{q}_bias"] = (
@@ -120,14 +136,14 @@ def main() -> None:
             )
             table.append(cell)
     (out / "bias_table.json").write_text(json.dumps(table, indent=1))
-    head = ("dv", "snr", "compl", "W50 bias (bayes/classic)", "W20 bias", "cov68 W50", "constr", "prior-dom")
-    print(" ".join(f"{h:>{w}}" for h, w in zip(head, (5, 5, 6, 26, 18, 10, 7, 9), strict=True)))
+    head = ("dv", "snr", "compl", "W50 bias bayes/naive/Springob", "W20 bias", "cov68 W50", "prior-dom")
+    print(" ".join(f"{h:>{w}}" for h, w in zip(head, (5, 5, 6, 30, 24, 10, 9), strict=True)))
     for c in table:
+        w50 = " / ".join(f"{c[f'{e}_W50_bias']:+8.1f}" for e in ("bayes", "classic", "springob"))
+        w20 = " / ".join(f"{c[f'{e}_W20_bias']:+6.1f}" for e in ("bayes", "classic", "springob"))
         print(
-            f"{c['delta_v']:5.0f} {c['snr']:5.1f} {c['completeness']:6.2f} "
-            f"{c['bayes_W50_bias']:+10.1f} / {c['classic_W50_bias']:+10.1f} "
-            f"{c['bayes_W20_bias']:+7.1f} / {c['classic_W20_bias']:+7.1f} "
-            f"{c['W50_coverage68']:10.2f} {c['constraint_delta_v']:7.2f} {c['prior_dominated']:9.2f}"
+            f"{c['delta_v']:5.0f} {c['snr']:5.1f} {c['completeness']:6.2f} {w50:>30} {w20:>24} "
+            f"{c['W50_coverage68']:10.2f} {c['prior_dominated']:9.2f}"
         )
 
 

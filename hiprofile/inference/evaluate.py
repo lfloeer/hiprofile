@@ -11,7 +11,7 @@ from scipy.special import logsumexp
 
 from hiprofile.diagnostics import metrics as dm
 from hiprofile.diagnostics.flags import compute_flags
-from hiprofile.inference.derived import classic_widths
+from hiprofile.inference.derived import classic_measurements
 from hiprofile.inference.priors import ModelPrior
 from hiprofile.inference.results import (
     CONSTRAINT_PARAMS,
@@ -147,14 +147,14 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
                 math.hypot(ev.log_z_err, ev.log_z_check_err), 1e-3
             )
         if "v_sys_1" in s50 and "W20_1" in s50:
-            # Classical measurement in a window around the line, as a by-eye
-            # window would be chosen: +-(W20/2 + 25 % + 2 channels)
-            half = 0.5 * s50["W20_1"] * 1.25 + 2 * ctx.grid.dv
-            out.classic = classic_widths(
+            out.classic = classic_measurements(
                 ctx.spectrum.velocity,
                 ctx.spectrum.flux - out.baseline_median,
-                window=(s50["v_sys_1"] - half, s50["v_sys_1"] + half),
+                float(np.median(ctx.noise.sigma)),
+                s50["v_sys_1"],
+                s50["W20_1"],
                 good=ctx.good,
+                hanning="hanning" in cfg.model.response.lower(),
             )
     out.metrics = m
     out.flags = compute_flags(m, cfg.diagnostics, cfg.rfi.flag_fraction)

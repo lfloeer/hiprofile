@@ -56,7 +56,8 @@ crossings.
 | `best_n`, `best_k` | most probable N, best K for it |
 | `logz_n<N>_k<K>` | evidences; `p_k<K>` the posterior probability of each baseline order |
 | `<par>`, `<par>_p16`, `<par>_p84` | posterior median and 68 % interval (for N = max(best_n, 1)) |
-| `classic_W50`, `classic_W20`, `classic_S`, `classic_v_sys` | classical measurement on the data |
+| `classic_W50`, `classic_W20`, `classic_S`, `classic_v_sys` | naive classical measurement on the baseline-subtracted data: outermost channels above 50 % / 20 % of the peak channel, interpolated |
+| `classic_W50_springob`, `classic_W20_springob`, `classic_v_sys_springob` | Springob et al. (2005) W_F50: straight-line fits to each flank between 85 % and 15 % of (horn − rms), read at 50 % (and, as an extension, 20 %); Hanning correction Δs = 2 dv λ(S/N) applied when `model.response` contains `hanning`; `classic_W50_raw_springob` before the correction, `classic_snr_springob` = (horn − rms) / rms |
 | `m_<metric>` | quality metrics (below) |
 | `flag_<name>`, `flagged` | flags |
 | `meta_<key>` | metadata from the input (e.g. catalogue columns) |
