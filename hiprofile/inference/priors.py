@@ -39,14 +39,13 @@ from hiprofile.config import Priors, Range
 FWHM = 2.0 * np.sqrt(2.0 * np.log(2.0))
 
 
-@dataclass
+@dataclass(frozen=True)
 class Bounds1D:
     """1D prior as a transform of u in [0, 1].
 
-    Kinds: ``uniform``, ``loguniform`` on [low, high]; ``normal`` (mean, std)
-    and ``lognormal`` (mean, std of log10 x), truncated to [low, high] (infinite
-    bounds allowed). With ``mix_weight`` > 0 a uniform component on
-    [low, mix_high] is mixed in; the transform then uses a tabulated inverse CDF.
+    ``uniform`` and ``loguniform`` on [low, high]; ``normal`` (mean, std) and
+    ``lognormal`` (mean, std of log10 x), truncated to [low, high] (infinite
+    bounds allowed).
     """
 
     kind: str
@@ -54,20 +53,32 @@ class Bounds1D:
     high: float
     mean: float = 0.0
     std: float = 1.0
-    mix_weight: float = 0.0
-    mix_high: float = 0.0
-    _table: tuple[np.ndarray, np.ndarray] | None = field(default=None, repr=False, compare=False)
 
-    # ----------------------------------------------------- base distribution
     def _z(self, x: np.ndarray) -> np.ndarray:
+        x = np.asarray(x, dtype=float)
         if self.kind == "lognormal":
-            x = np.asarray(x, dtype=float)
             with np.errstate(divide="ignore", invalid="ignore"):
                 lg = np.where(x > 0, np.log10(np.where(x > 0, x, 1.0)), -np.inf)
             return (lg - self.mean) / self.std
         return (x - self.mean) / self.std
 
-    def _base_cdf(self, x: np.ndarray) -> np.ndarray:
+    def _trunc(self) -> tuple[float, float]:
+        lo = float(special.ndtr(self._z(np.asarray(self.low)))) if np.isfinite(self.low) else 0.0
+        hi = float(special.ndtr(self._z(np.asarray(self.high)))) if np.isfinite(self.high) else 1.0
+        return lo, hi
+
+    def transform(self, u: np.ndarray) -> np.ndarray:
+        u = np.asarray(u, dtype=float)
+        if self.kind == "uniform":
+            return self.low + (self.high - self.low) * u
+        if self.kind == "loguniform":
+            return np.exp(np.log(self.low) + (np.log(self.high) - np.log(self.low)) * u)
+        c_lo, c_hi = self._trunc()
+        z = special.ndtri(np.clip(c_lo + (c_hi - c_lo) * u, 1e-300, 1 - 1e-16))
+        x = 10.0 ** (self.mean + self.std * z) if self.kind == "lognormal" else self.mean + self.std * z
+        return np.clip(x, self.low, self.high)
+
+    def inverse(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=float)
         if self.kind == "uniform":
             return np.clip((x - self.low) / (self.high - self.low), 0.0, 1.0)
@@ -76,81 +87,27 @@ class Bounds1D:
         c_lo, c_hi = self._trunc()
         return np.clip((special.ndtr(self._z(x)) - c_lo) / (c_hi - c_lo), 0.0, 1.0)
 
-    def _trunc(self) -> tuple[float, float]:
-        lo = float(special.ndtr(self._z(np.asarray(self.low)))) if np.isfinite(self.low) else 0.0
-        hi = float(special.ndtr(self._z(np.asarray(self.high)))) if np.isfinite(self.high) else 1.0
-        return lo, hi
-
-    def _base_ppf(self, u: np.ndarray) -> np.ndarray:
-        u = np.asarray(u, dtype=float)
-        if self.kind == "uniform":
-            return self.low + (self.high - self.low) * u
-        if self.kind == "loguniform":
-            return np.exp(np.log(self.low) + (np.log(self.high) - np.log(self.low)) * u)
-        c_lo, c_hi = self._trunc()
-        p = np.clip(c_lo + (c_hi - c_lo) * u, 1e-300, 1 - 1e-16)
-        z = special.ndtri(p)
-        x = 10.0 ** (self.mean + self.std * z) if self.kind == "lognormal" else self.mean + self.std * z
-        return np.clip(x, self.low, self.high)
-
-    # -------------------------------------------------------------- mixture
-    def cdf(self, x: np.ndarray) -> np.ndarray:
-        base = self._base_cdf(x)
-        if self.mix_weight <= 0:
-            return base
-        uni = np.clip((np.asarray(x, float) - self.low) / (self.mix_high - self.low), 0.0, 1.0)
-        return (1.0 - self.mix_weight) * base + self.mix_weight * uni
-
-    def _inverse_table(self) -> tuple[np.ndarray, np.ndarray]:
-        if self._table is None:
-            # dense grid in the base quantiles plus the uniform part, then the mixture CDF
-            q = np.linspace(0.0, 1.0, 20001)
-            xs = np.unique(np.concatenate([self._base_ppf(q), np.linspace(self.low, self.mix_high, 4001)]))
-            self._table = (self.cdf(xs), xs)
-        return self._table
-
-    def transform(self, u: np.ndarray) -> np.ndarray:
-        if self.mix_weight <= 0:
-            return self._base_ppf(u)
-        c, xs = self._inverse_table()
-        u = np.asarray(u, dtype=float)
-        x = np.interp(u, c, xs)
-        # two Newton steps on the exact mixture CDF
-        for _ in range(2):
-            h = 1e-7 * np.maximum(np.abs(x), 1.0)
-            dens = (self.cdf(x + h) - self.cdf(x - h)) / (2 * h)
-            step = np.where(dens > 1e-12, (self.cdf(x) - u) / np.maximum(dens, 1e-12), 0.0)
-            x = np.clip(x - step, self.low, self.high)
-        return x
-
-    def inverse(self, x: np.ndarray) -> np.ndarray:
-        return self.cdf(x)
-
-    def log_density(self, x: np.ndarray) -> np.ndarray:
-        """ln p(x) (numerical derivative of the CDF; for diagnostics and plots)."""
-        x = np.asarray(x, float)
-        h = 1e-6 * np.maximum(np.abs(x), 1.0)
-        return np.log(np.maximum((self.cdf(x + h) - self.cdf(x - h)) / (2 * h), 1e-300))
-
     @property
     def edges(self) -> tuple[float, float]:
         return (self.low, self.high)
 
 
 def _bounds(r: Range, default_low: float, default_high: float) -> Bounds1D:
-    unbounded = r.kind in ("normal", "lognormal")
-    low = (
-        r.low if r.low is not None else (-np.inf if r.kind == "normal" else 0.0 if unbounded else default_low)
-    )
-    high = r.high if r.high is not None else (np.inf if unbounded else default_high)
+    if r.kind == "normal":
+        low = -np.inf if r.low is None else r.low
+        high = np.inf if r.high is None else r.high
+    elif r.kind == "lognormal":
+        low = 0.0 if r.low is None else r.low
+        high = np.inf if r.high is None else r.high
+    else:
+        low = default_low if r.low is None else r.low
+        high = default_high if r.high is None else r.high
     return Bounds1D(
         kind=r.kind,
         low=float(low),
         high=float(high),
         mean=0.0 if r.mean is None else float(r.mean),
         std=1.0 if r.std is None else float(r.std),
-        mix_weight=float(r.uniform_weight),
-        mix_high=float(r.uniform_high) if r.uniform_high is not None else 0.0,
     )
 
 

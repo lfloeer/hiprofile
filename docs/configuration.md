@@ -15,11 +15,11 @@ The validated configuration, the code version and the seed are written into ever
 | `model.parametrization` | `Literal['direct', 'effective']` | `direct` |  |
 | `model.response` | `str` | `boxcar` |  |
 | `model.supersample` | `int \| None` | `null` |  |
-| `priors.v_ctr` | `Range` | `{'kind': 'uniform', 'uniform_weight': 0.0}` | Line centre [km/s]. Uniform bounds default to the band minus `v_margin`. |
+| `priors.v_ctr` | `Range` | `{'kind': 'uniform'}` | Line centre [km/s]. Uniform bounds default to the band minus `v_margin`. |
 | `priors.v_margin` | `float` | `0.05` | Band fraction excluded at each edge |
-| `priors.delta_v` | `Range` | `{'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.35, 'uniform_weight': 0.1, 'uniform_high': 60.0}` | Line width [km/s]: log-normal around 160 km/s plus 10 % uniform below 60 km/s (dwarfs with Delta v ~ 0) |
-| `priors.delta_v_rand` | `Range` | `{'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2, 'uniform_weight': 0.0}` | Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s) |
-| `priors.alpha` | `Range` | `{'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25, 'uniform_weight': 0.05, 'uniform_high': 1.0}` | Asymmetry: normal(0, 0.25) on [-1, 1] plus 5 % uniform (THINGS: robust std 0.14, 3 of 34 strongly disturbed systems with \|alpha\| > 0.6) |
+| `priors.delta_v` | `Range` | `{'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}` | Line width [km/s]: log-normal around 160 km/s, 0.4 dex (THINGS: 0.1-566 km/s, median 153) |
+| `priors.delta_v_rand` | `Range` | `{'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}` | Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s) |
+| `priors.alpha` | `Range` | `{'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}` | Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14) |
 | `priors.amplitude_scale` | `Union[float, Literal['auto']]` | `auto` | Std of the half-normal prior on a_ring [flux * km/s] (a_disk: times disk_scale_ratio). Fix it for a survey so that evidences are comparable between spectra. |
 | `priors.disk_scale_ratio` | `float` | `0.3333333333333333` | Prior scale of a_disk relative to a_ring; 1/3 gives a prior median f of 0.25 (THINGS: median 0.15, mean 0.23) |
 | `priors.baseline_scale` | `Union[float, Literal['auto']]` | `auto` | Std of the Chebyshev coefficients; auto = 10 x noise rms |
@@ -74,7 +74,7 @@ Prior ranges (`priors.v_ctr`, `priors.delta_v`, ...) take `kind` (`uniform`, `lo
 | `n_components` | `int \| list[float]` | `1` |  |
 | `profiles` | `Literal['model', 'template', 'mixed']` | `model` |  |
 | `template_files` | `list[str]` | `[]` |  |
-| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform', 'uniform_weight': 0.0}, 'v_margin': 0.05, 'delta_v': {'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.35, 'uniform_weight': 0.1, 'uniform_high': 60.0}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2, 'uniform_weight': 0.0}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25, 'uniform_weight': 0.05, 'uniform_high': 1.0}, 'amplitude_scale': 'auto', 'disk_scale_ratio': 0.3333333333333333, 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
+| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'delta_v': {'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'amplitude_scale': 'auto', 'disk_scale_ratio': 0.3333333333333333, 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
 | `flux` | `Literal['prior', 'snr']` | `snr` |  |
 | `snr_range` | `tuple[float, float]` | `(3.0, 100.0)` |  |
 | `f_distribution` | `Literal['prior', 'uniform']` | `prior` |  |

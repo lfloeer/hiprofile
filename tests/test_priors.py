@@ -29,23 +29,20 @@ def test_normal_centre_prior():
 
 
 def test_default_shapes_follow_things(rng):
-    """Defaults: Delta v_rand ~ 12.6 km/s, alpha ~ N(0, 0.25), Delta v ~ 160 km/s with a narrow tail."""
+    """Defaults: Delta v ~ 160 km/s, Delta v_rand ~ 12.6 km/s, alpha ~ N(0, 0.25)."""
     v = np.arange(1000) * 5.0
     p = build_prior(("profile",), Priors(), v)
     t = p(rng.uniform(size=(200000, 4)))
     dv, sig, a = t[:, 1], t[:, 2], t[:, 3]
+    # median of log-normal(2.2, 0.4) truncated at 800 km/s: 10^(2.2 + 0.4 ndtri(0.5 * Phi((log10 800 - 2.2) / 0.4)))
+    assert abs(np.median(dv) - 151.4) < 3 and dv.max() <= 800.0
     assert abs(np.median(sig) - 12.6) < 0.3 and sig.min() >= 4.0 and sig.max() <= 60.0
-    assert abs(np.median(np.abs(a)) - 0.17) < 0.01 and np.all(np.abs(a) <= 1)  # normal(0, .25) + 5 % uniform
-    assert 0.0 <= dv.min() and dv.max() <= 800.0
-    assert abs(np.mean(dv < 60) - (0.1 + 0.9 * 0.114)) < 0.01  # uniform part + log-normal tail
-    np.testing.assert_allclose(p.inverse(t[:1000]), p.inverse(p(p.inverse(t[:1000]))), atol=1e-6)
+    assert abs(np.std(a) - 0.25) < 0.01 and np.all(np.abs(a) <= 1)
 
 
-def test_truncated_lognormal_round_trip(rng):
+def test_truncated_round_trip(rng):
     from hiprofile.inference.priors import Bounds1D
 
-    b = Bounds1D("lognormal", 4.0, 60.0, mean=1.1, std=0.2)
     u = rng.uniform(size=1000)
-    np.testing.assert_allclose(b.inverse(b.transform(u)), u, atol=1e-10)
-    m = Bounds1D("lognormal", 0.0, 800.0, mean=2.2, std=0.35, mix_weight=0.1, mix_high=60.0)
-    np.testing.assert_allclose(m.inverse(m.transform(u)), u, atol=1e-4)
+    for b in (Bounds1D("lognormal", 4.0, 60.0, mean=1.1, std=0.2), Bounds1D("normal", -1.0, 1.0, std=0.25)):
+        np.testing.assert_allclose(b.inverse(b.transform(u)), u, atol=1e-10)

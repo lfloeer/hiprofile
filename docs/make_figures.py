@@ -66,10 +66,10 @@ def priors() -> Path:
             "delta_v",
             "Δv [km/s]",
             np.linspace(0, 800, 33),
-            "log-normal 160 km/s, 0.35 dex\n+ 10 % uniform < 60 km/s",
+            "log-normal 160 km/s, 0.4 dex",
         ),
         ("delta_v_rand", "Δv_rand [km/s]", np.linspace(4, 40, 37), "log-normal 12.6 km/s, 0.2 dex"),
-        ("alpha", "α", np.linspace(-1, 1, 41), "normal(0, 0.25) + 5 % uniform on [−1, 1]"),
+        ("alpha", "α", np.linspace(-1, 1, 41), "normal(0, 0.25) on [−1, 1]"),
         ("f", "f (solid-body fraction)", np.linspace(0, 1, 21), "a_disk scale = a_ring / 3"),
     ]
     fig, axes = plt.subplots(1, 4, figsize=(13, 3.1))
@@ -84,7 +84,7 @@ def priors() -> Path:
         ax.set_title(desc, loc="left", fontsize=8, color=style.INK_2)
     axes[0].legend(loc="upper right")
     fig.suptitle(
-        "Default priors vs. the THINGS fits of Stewart et al. (2014)", x=0.01, ha="left", fontsize=11, y=1.12
+        "Default priors vs. the THINGS fits of Stewart et al. (2014)", x=0.01, ha="left", fontsize=11, y=1.06
     )
     return _save(fig, "priors_things.png")
 

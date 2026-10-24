@@ -22,8 +22,6 @@ class Range(_Base):
 
     ``uniform`` and ``loguniform`` on [low, high]; ``normal`` (mean, std) and
     ``lognormal`` (mean and std of log10 x) optionally truncated to [low, high].
-    ``uniform_weight`` > 0 mixes in a uniform component on [low, uniform_high],
-    e.g. to keep very narrow profiles possible under a log-normal width prior.
     """
 
     kind: Literal["uniform", "loguniform", "normal", "lognormal"] = "uniform"
@@ -31,8 +29,6 @@ class Range(_Base):
     high: float | None = None
     mean: float | None = None
     std: float | None = None
-    uniform_weight: float = Field(0.0, ge=0.0, lt=1.0)
-    uniform_high: float | None = None
 
     @model_validator(mode="after")
     def _check(self) -> Range:
@@ -45,8 +41,6 @@ class Range(_Base):
             raise ValueError("log-uniform prior needs low > 0")
         if self.kind == "lognormal" and self.low is not None and self.low < 0:
             raise ValueError("log-normal prior needs low >= 0")
-        if self.uniform_weight > 0 and (self.uniform_high is None or self.low is None):
-            raise ValueError("uniform_weight needs low and uniform_high")
         return self
 
 
@@ -59,22 +53,17 @@ class Priors(_Base):
     # Defaults from the 34 THINGS fits of Stewart et al. (2014, Table 1 and App. B.2),
     # widened for survey galaxies; see docs/priors.md.
     delta_v: Range = Field(
-        default_factory=lambda: Range(
-            kind="lognormal", mean=2.2, std=0.35, low=0.0, high=800.0, uniform_weight=0.1, uniform_high=60.0
-        ),
-        description="Line width [km/s]: log-normal around 160 km/s plus 10 % uniform below 60 km/s "
-        "(dwarfs with Delta v ~ 0)",
+        default_factory=lambda: Range(kind="lognormal", mean=2.2, std=0.4, low=0.0, high=800.0),
+        description="Line width [km/s]: log-normal around 160 km/s, 0.4 dex "
+        "(THINGS: 0.1-566 km/s, median 153)",
     )
     delta_v_rand: Range = Field(
         default_factory=lambda: Range(kind="lognormal", mean=1.1, std=0.2, low=4.0, high=60.0),
         description="Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s)",
     )
     alpha: Range = Field(
-        default_factory=lambda: Range(
-            kind="normal", mean=0.0, std=0.25, low=-1.0, high=1.0, uniform_weight=0.05, uniform_high=1.0
-        ),
-        description="Asymmetry: normal(0, 0.25) on [-1, 1] plus 5 % uniform (THINGS: robust std 0.14, "
-        "3 of 34 strongly disturbed systems with |alpha| > 0.6)",
+        default_factory=lambda: Range(kind="normal", mean=0.0, std=0.25, low=-1.0, high=1.0),
+        description="Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14)",
     )
     amplitude_scale: float | Literal["auto"] = Field(
         "auto",
