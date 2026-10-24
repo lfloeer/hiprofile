@@ -21,3 +21,16 @@ def test_simulate_fit_report_plot(tmp_path):
     assert main(["fit", str(sims / "spectra.txt"), "--config", str(cfg), "--out", str(out), "--resume"]) == 0
     assert main(["report", str(out), "--format", "csv"]) == 0
     assert main(["plot", str(out), "sim000000"]) == 0
+
+
+def test_example_configurations_load():
+    from pathlib import Path
+
+    import yaml
+
+    from hiprofile.config import Config
+    from hiprofile.simulate import SimConfig
+
+    root = Path(__file__).resolve().parents[1] / "examples"
+    Config.model_validate(yaml.safe_load((root / "survey.yaml").read_text()))
+    SimConfig.model_validate(yaml.safe_load((root / "simulate.yaml").read_text()))

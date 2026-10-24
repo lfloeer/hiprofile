@@ -27,7 +27,6 @@ sampler:
   backend: smc           # smc (fastest) | nautilus (most precise) | dynesty | ultranest | quick
   check_backend: nautilus
   n_live: 400
-  baseline_evidence: reweight
 output:
   n_posterior: 2000
   plots: sample          # none | flagged | sample | all
