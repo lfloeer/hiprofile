@@ -112,8 +112,9 @@ def figure(summary: dict[str, dict], path: Path, n: int) -> None:
     style.apply()
     import matplotlib.pyplot as plt
 
-    labels = {"white": "white (ignored)", "hanning": "Hanning (wrong guess)", "estimate": "estimated",
+    labels = {"white": "white (ignored)", "hanning": "Hanning (close guess)", "estimate": "estimated",
               "oracle": "true correlation"}  # fmt: skip
+    short = {"white": "white", "hanning": "Hanning", "estimate": "estimate", "oracle": "truth"}
     fig, axes = plt.subplots(1, 3, figsize=(14, 3.8), gridspec_kw={"width_ratios": [1.2, 1.2, 0.8]})
     for ax, key, nominal in ((axes[0], "coverage68", 0.68), (axes[1], "coverage95", 0.95)):
         band = 2 * np.sqrt(nominal * (1 - nominal) / n)
@@ -143,7 +144,7 @@ def figure(summary: dict[str, dict], path: Path, n: int) -> None:
         color=style.SERIES[0],
         label="P(detect) > 0.9",
     )
-    ax.set_xticks(x, [labels[k].split(" (")[0] for k in summary], fontsize=8)
+    ax.set_xticks(x, [short[k] for k in summary], fontsize=8)
     ax.set_ylabel("false-positive rate (line-free spectra)")
     ax.legend(fontsize=8)
     fig.suptitle(
