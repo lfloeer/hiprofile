@@ -36,7 +36,7 @@ from hiprofile.inference.derived import DERIVED, classic_widths, profile_derived
 from hiprofile.inference.priors import ModelPrior, build_prior
 from hiprofile.likelihood.marginal import NAMP, MarginalLikelihood, build_likelihood, default_amp_scale
 from hiprofile.likelihood.noise import NoiseModel, build_noise
-from hiprofile.likelihood.rfi import RFIResult, robust_prefit
+from hiprofile.likelihood.rfi import RFIResult, outlier_mask, robust_prefit
 from hiprofile.model.kernel import PROFILE_NPARAM, SpectralGrid
 from hiprofile.samplers import run as run_sampler
 from hiprofile.samplers.base import SamplerResult, systematic_resample
@@ -308,11 +308,7 @@ def apply_rfi(ctx: FitContext) -> None:
         k_min=ctx.config.model.k_min,
     )
     ctx.rfi = res
-    bad = res.q > cfg.threshold
-    if cfg.close_holes and bad.size > 2:
-        hole = np.zeros_like(bad)
-        hole[1:-1] = bad[:-2] & bad[2:]
-        bad |= hole
+    bad = outlier_mask(res.q, cfg.threshold, cfg.close_holes, cfg.max_width_channels)
     if not bad.any():
         return
     if cfg.action == "mask":
@@ -323,7 +319,7 @@ def apply_rfi(ctx: FitContext) -> None:
             sigma=sig_full[ctx.good], good_index=np.flatnonzero(ctx.good), rho=ctx.noise.rho
         )
     else:
-        q = res.q[ctx.noise.good_index]
+        q = np.where(bad, res.q, 0.0)[ctx.noise.good_index]
         ctx.noise = ctx.noise.scaled(1.0 / np.sqrt(np.clip(1.0 - q, 1e-4, 1.0)))
 
 
@@ -386,6 +382,79 @@ def _compact(
     return theta, lw - logsumexp(lw), ll
 
 
+def residual_peaks(
+    resid: np.ndarray, good: np.ndarray, n_peaks: int, threshold: float = 3.0
+) -> list[tuple[int, float]]:
+    """(channel, FWHM in channels) of the strongest features of a whitened residual.
+
+    Gaussian kernels of 2 and 6 channels act as matched filters for narrow and
+    broad lines; each smoothed residual is scaled to unit noise and its local
+    maxima above `threshold` are kept, strongest first, one per neighbourhood.
+    """
+    r = np.where(good, resid, 0.0)
+    found: list[tuple[float, int, float]] = []
+    for sig in (2.0, 6.0):
+        x = np.arange(-int(4 * sig), int(4 * sig) + 1)
+        k = np.exp(-0.5 * (x / sig) ** 2)
+        k /= k.sum()
+        s = np.convolve(r, k, mode="same") / np.sqrt(np.sum(k**2))
+        s[~good] = 0.0
+        for i in range(1, s.size - 1):
+            if s[i] >= threshold and s[i] >= s[i - 1] and s[i] > s[i + 1]:
+                lo = hi = i
+                while lo > 0 and s[lo - 1] > 0.5 * s[i]:
+                    lo -= 1
+                while hi < s.size - 1 and s[hi + 1] > 0.5 * s[i]:
+                    hi += 1
+                # remove the kernel broadening in quadrature
+                width = float(np.sqrt(max((hi - lo + 1) ** 2 - (2.355 * sig) ** 2, 1.0)))
+                found.append((float(s[i]), i, width))
+    found.sort(reverse=True)
+    out: list[tuple[int, float]] = []
+    for _, i, w in found:
+        if all(abs(i - j) > max(5.0, 0.5 * (w + wj)) for j, wj in out):
+            out.append((i, w))
+        if len(out) >= n_peaks:
+            break
+    return out
+
+
+def seed_components(ctx: FitContext, n: int, out: FitResult, n_seeds: int) -> np.ndarray | None:
+    """Unit-cube starts for N = n: the N-1 posterior medians plus one new profile on each of the
+    strongest residual features (a second, fainter line that random starts rarely hit)."""
+    prev = out.posteriors.get(n - 1)
+    if prev is None or n_seeds <= 0:
+        return None
+    like = ctx.likelihood(n - 1)
+    s = prev.summary()
+    theta = np.array([s[name] for name in prev.names])
+    mean, _ = like.conditional(theta[None])
+    model = like.model(theta[None], mean)[0]
+    gi = ctx.noise.good_index
+    resid = np.zeros(ctx.spectrum.n_chan)
+    resid[gi] = (ctx.spectrum.flux[gi] - model[gi]) / ctx.noise.sigma
+    good = np.zeros(ctx.spectrum.n_chan, bool)
+    good[gi] = True
+    peaks = residual_peaks(resid, good, n_seeds)
+    if not peaks:
+        return None
+    prior = ctx.prior(n)
+    n_par = PROFILE_NPARAM + 1
+    blocks = theta[: (n - 1) * n_par].reshape(n - 1, n_par)
+    tail = theta[(n - 1) * n_par :]
+    sig = float(prior.delta_v_rand.transform(np.array([0.5]))[0])
+    seeds = []
+    for chan, width in peaks:
+        w50 = width * ctx.grid.dv
+        new = np.array([ctx.spectrum.velocity[chan], min(max(w50 - 2.355 * sig, 5.0), 790.0), sig, 0.0, 0.3])
+        allb = np.vstack([blocks, new])
+        th = np.r_[allb[np.argsort(allb[:, 0])].ravel(), tail]
+        u = prior.inverse(th[None])[0]
+        if np.all(np.isfinite(u)):
+            seeds.append(np.clip(u, 1e-4, 1 - 1e-4))
+    return np.array(seeds) if seeds else None
+
+
 def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
     """Evidences for all K at fixed N (one sampler run) and the K-marginalised posterior."""
     cfg = ctx.config
@@ -405,7 +474,8 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
     prior = ctx.prior(n)
     mode = cfg.sampler.mode
     t0 = time.perf_counter()
-    quick = _run(ctx, like, prior, "quick", salt=100 * n)
+    seeds = seed_components(ctx, n, out, cfg.sampler.n_seeds) if n >= 2 else None
+    quick = _run(ctx, like, prior, "quick", salt=100 * n, **({} if seeds is None else {"init_u": seeds}))
     gated = False
     if mode != "quick" and cfg.sampler.gate_margin is not None:
         prev = [e.log_z for e in out.evidences if e.n < n]
@@ -414,7 +484,10 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
         res = quick
         method = "quick-gated" if gated else "quick"
     else:
-        res = _run(ctx, like, prior, cfg.sampler.backend, salt=10 * n)
+        extra: dict[str, Any] = {}
+        if cfg.sampler.backend in ("smc", "jax-smc") and cfg.sampler.init_fraction > 0 and quick.proposal:
+            extra["init_proposal"] = (quick.proposal, cfg.sampler.init_fraction)
+        res = _run(ctx, like, prior, cfg.sampler.backend, salt=10 * n, **extra)
         method = "marginal"
     check: tuple[float, float] | None = None
     if mode == "check" and not gated:

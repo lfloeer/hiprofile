@@ -28,11 +28,11 @@ def _log_prior_z(z: np.ndarray) -> np.ndarray:
     return -np.sum(np.logaddexp(0.0, z) + np.logaddexp(0.0, -z), axis=1)
 
 
-def _next_beta(log_l: np.ndarray, beta: float, target_ess: float) -> float:
+def _next_beta(log_l: np.ndarray, beta: float, target_ess: float, base: np.ndarray | float = 0.0) -> float:
     lo, hi = beta, 1.0
 
     def ess(b: float) -> float:
-        lw = (b - beta) * log_l
+        lw = base + (b - beta) * log_l
         lw -= np.max(lw)
         w = np.exp(lw)
         return w.sum() ** 2 / np.sum(w**2)
@@ -59,8 +59,17 @@ def run_smc(
     ess_fraction: float = 0.5,
     n_moves: int = 10,
     max_steps: int = 500,
+    init_proposal: tuple[tuple[list[Any], np.ndarray], float] | None = None,
     **options: Any,
 ) -> SamplerResult:
+    """Tempered SMC from the prior to the posterior.
+
+    ``init_proposal = ((dists, mix), fraction)`` starts that fraction of the
+    particles from a mixture of z-space distributions (the quick backend's
+    importance proposal, centred on the modes it found) and the rest from the
+    prior. The initial importance weights prior / q0 make the evidence exact
+    for this defensive mixture, and q0 >= (1 - fraction) prior bounds them.
+    """
     rng = np.random.default_rng(seed)
     like = CountingLikelihood(loglike)
     n = n_particles or max(1000, 2 * n_live)
@@ -72,21 +81,35 @@ def run_smc(
     with Timer() as t:
         u = rng.uniform(size=(n, ndim))
         z = np.log(u) - np.log1p(-u)
-        log_l = eval_ll(z)
         log_pz = _log_prior_z(z)
+        base = np.zeros(n)
+        if init_proposal is not None and init_proposal[1] > 0:
+            (dists, mix), frac = init_proposal
+            mix = np.asarray(mix, float) / np.sum(mix)
+            counts = rng.multinomial(round(frac * n), mix)
+            seeded = [np.atleast_2d(d.rvs(size=c)) for d, c in zip(dists, counts, strict=True) if c > 0]
+            if seeded:
+                zs = np.vstack(seeded)
+                z[: zs.shape[0]] = zs
+                log_pz = _log_prior_z(z)
+                log_q = logsumexp([np.log(m) + d.logpdf(z) for d, m in zip(dists, mix, strict=True)], axis=0)
+                log_q0 = np.logaddexp(np.log1p(-frac) + log_pz, np.log(frac) + log_q)
+                base = log_pz - log_q0
+        log_l = eval_ll(z)
         beta = 0.0
         log_z = 0.0
         var_terms = 0.0
         betas = [0.0]
         acc_hist = []
         for _ in range(max_steps):
-            new = _next_beta(log_l, beta, ess_fraction * n)
-            lw = (new - beta) * log_l
+            new = _next_beta(log_l, beta, ess_fraction * n, base)
+            lw = base + (new - beta) * log_l
             log_z += float(logsumexp(lw) - np.log(n))
             w = np.exp(lw - np.max(lw))
             var_terms += float(np.var(w) / (np.mean(w) ** 2 * n))
             idx = systematic_resample(w / w.sum(), n, rng)
             z, log_l, log_pz = z[idx], log_l[idx], log_pz[idx]
+            base = np.zeros(n)
             beta = new
             betas.append(beta)
             cov = np.cov(z.T).reshape(ndim, ndim) + 1e-9 * np.eye(ndim)

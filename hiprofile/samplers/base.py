@@ -32,6 +32,9 @@ class SamplerResult:
     n_like: int = 0
     stats: dict[str, Any] = field(default_factory=dict)
     trace: dict[str, np.ndarray] = field(default_factory=dict)
+    # quick backend: (frozen z-space distributions, mixture weights) of the final
+    # importance proposal; warm start for the SMC backend
+    proposal: Any = None
 
     @property
     def weights(self) -> np.ndarray:

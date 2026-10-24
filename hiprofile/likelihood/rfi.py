@@ -51,6 +51,31 @@ def _normal_logpdf(r: np.ndarray, s: np.ndarray) -> np.ndarray:
     return -0.5 * (r / s) ** 2 - np.log(s) - LOG_SQRT_2PI
 
 
+def outlier_mask(
+    q: np.ndarray, threshold: float, close_holes: bool = True, max_width: int | None = 3
+) -> np.ndarray:
+    """Channels to treat as RFI, from the outlier probabilities of the pre-stage.
+
+    A single channel between two outliers is masked with them. A run of more
+    than `max_width` outlier channels (gaps of up to two channels count as part
+    of the run) is not RFI but signal the one-component model of the pre-stage
+    cannot explain, typically a second line, and stays in the fit.
+    """
+    bad = q > threshold
+    if bad.size < 3:
+        return bad
+    if close_holes:
+        hole = np.zeros_like(bad)
+        hole[1:-1] = bad[:-2] & bad[2:]
+        bad |= hole
+    if max_width is not None:
+        idx = np.flatnonzero(bad)
+        for run in np.split(idx, np.flatnonzero(np.diff(idx) > 3) + 1):
+            if run.size and run[-1] - run[0] + 1 > max_width:
+                bad[run[0] : run[-1] + 1] = False
+    return bad
+
+
 def robust_prefit(
     flux: np.ndarray,
     grid: SpectralGrid,

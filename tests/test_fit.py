@@ -106,3 +106,65 @@ def test_rfi_burst_is_fully_masked_and_not_fitted_as_a_line(grid, rng):
     assert res.best_n == 1
     assert not res.flags["unresolved"]
     assert abs(res.posteriors[1].summary()["v_ctr_1"] - truth[0]) < 20
+
+
+def test_residual_peaks_find_narrow_and_broad_features(rng):
+    from hiprofile.inference.fit import residual_peaks
+
+    r = rng.normal(size=600)
+    x = np.arange(600)
+    r += 4.0 * np.exp(-0.5 * ((x - 100) / 2.0) ** 2)  # narrow, 4 sigma peak
+    r += 1.5 * np.exp(-0.5 * ((x - 400) / 12.0) ** 2)  # broad, weak per channel
+    good = np.ones(600, bool)
+    good[250:260] = False
+    peaks = residual_peaks(r, good, 3)
+    chans = [c for c, _ in peaks]
+    assert any(abs(c - 100) <= 2 for c in chans) and any(abs(c - 400) <= 6 for c in chans)
+    widths = dict(peaks)
+    assert widths[min(chans, key=lambda c: abs(c - 400))] > widths[min(chans, key=lambda c: abs(c - 100))]
+
+
+def test_second_fainter_line_is_found(grid, rng):
+    """A bright line plus a well separated line at S/N ~ 7: random starts miss it, residual seeds find it."""
+    y = profile(grid, [1500.0, 150.0, 12.0, 0.1, 20.0, 0.25]) + profile(
+        grid, [2500.0, 60.0, 10.0, 0.0, 3.0, 0.3]
+    )
+    y += 0.02 * rng.normal(size=grid.n_chan)
+    y[[40, 41, 42, 350]] += [0.3, 0.6, 0.3, 0.4]  # a 3-channel RFI burst and a spike
+    spec = Spectrum(grid.velocity, y, sigma=np.full(grid.n_chan, 0.02), id="pair")
+    res = fit_spectrum(spec, QUICK.updated(model={"n_max": 2}))
+    assert res.status == "ok", res.error
+    masked = set(np.flatnonzero(res.mask))
+    assert masked >= {40, 41, 42, 350}
+    assert not masked & set(range(290, 310)), "the second line must not be masked as RFI"
+    assert res.best_n == 2, res.p_n
+    s = res.posteriors[2].summary()
+    assert abs(s["v_ctr_1"] - 1500.0) < 10 and abs(s["v_ctr_2"] - 2500.0) < 20
+
+
+def test_outlier_mask_keeps_long_runs():
+    from hiprofile.likelihood.rfi import outlier_mask
+
+    q = np.zeros(60)
+    q[[5, 7]] = 0.9  # spike pair with a one-channel hole
+    q[20:23] = 0.9  # three-channel burst
+    q[30:34] = 0.9  # four channels: a line, not RFI
+    q[[40, 41, 44, 45]] = 0.9  # six-channel run with a two-channel gap: a line
+    bad = outlier_mask(q, 0.5)
+    assert set(np.flatnonzero(bad)) == {5, 6, 7, 20, 21, 22}
+    assert set(np.flatnonzero(outlier_mask(q, 0.5, max_width=None))) == {
+        5,
+        6,
+        7,
+        20,
+        21,
+        22,
+        30,
+        31,
+        32,
+        33,
+        40,
+        41,
+        44,
+        45,
+    }

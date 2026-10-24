@@ -145,6 +145,13 @@ class RFIConfig(_Base):
         "spike of one or two channels cannot be absorbed as a line",
     )
     close_holes: bool = Field(True, description="Also mask a single channel between two masked ones")
+    max_width_channels: int | None = Field(
+        3,
+        ge=1,
+        description="Longest run of outlier channels (gaps of up to two channels included) treated as RFI; "
+        "a longer run is signal the one-component pre-stage cannot explain, typically a second line, "
+        "and stays in the fit; null: no limit",
+    )
 
 
 class SamplerConfig(_Base):
@@ -159,6 +166,19 @@ class SamplerConfig(_Base):
         5.0,
         description="Skip nested sampling for N when its quick evidence is this many nats below the "
         "best model with fewer components (null: always sample)",
+    )
+    n_seeds: int = Field(
+        3,
+        ge=0,
+        description="Warm starts of the quick stage for N >= 2: the N-1 solution plus a new component on "
+        "each of the strongest residual features (random starts rarely hit a second line)",
+    )
+    init_fraction: float = Field(
+        0.25,
+        ge=0,
+        lt=1,
+        description="Fraction of the SMC particles drawn from the quick-stage posterior instead of the "
+        "prior (defensive mixture with importance weights, the evidence stays exact); 0 disables",
     )
     options: dict[str, Any] = Field(default_factory=dict)
     likelihood_backend: Literal["numpy", "jax"] = "numpy"

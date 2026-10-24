@@ -88,22 +88,24 @@ def find_modes(
 ) -> list[tuple[np.ndarray, float]]:
     """Distinct local maxima of log p(z), best first.
 
-    Starts are the best of ``n_init`` random points, or the given ``init_u``
-    (warm start, e.g. the modes of a neighbouring model).
+    Starts are the best of ``n_init`` random points; every row of ``init_u``
+    (warm starts: the solution of a neighbouring model with a new component
+    placed on a residual feature, which random starts rarely hit) is
+    optimised in addition and first.
     """
-    if init_u is not None:
-        u0 = np.clip(np.atleast_2d(init_u), 1e-6, 1 - 1e-6)
-        n_starts = u0.shape[0]
-    else:
-        u0 = rng.uniform(0.02, 0.98, size=(n_init, ndim))
+    u0 = rng.uniform(0.02, 0.98, size=(n_init, ndim))
     z0 = np.log(u0) - np.log1p(-u0)
     f0 = target(z0)
     order = np.argsort(f0)[::-1]
+    starts = [z0[i] for i in order[: n_starts * 3]]
+    if init_u is not None:
+        ui = np.clip(np.atleast_2d(init_u), 1e-6, 1 - 1e-6)
+        starts = [*(np.log(ui) - np.log1p(-ui)), *starts]
+        n_starts += ui.shape[0]
     modes: list[tuple[np.ndarray, float]] = []
-    for idx in order[: n_starts * 3]:
+    for start in starts:
         if len(modes) >= n_starts:
             break
-        start = z0[idx]
         if any(np.max(np.abs(expit(start) - expit(m))) < 0.02 for m, _ in modes):
             continue
 
@@ -221,4 +223,5 @@ def run_quick(
             "is_ess": ess,
             "modes_u": [expit(z).tolist() for z, _, _ in comps],
         },
+        proposal=(dists, mix),
     )
