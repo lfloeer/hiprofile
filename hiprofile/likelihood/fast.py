@@ -77,77 +77,98 @@ if HAVE_NUMBA:
         return a, bvec
 
     @numba.njit(cache=True)
-    def woodbury(basis, idx, chol, tw, rw, g_tt, b_t, amp_prec, rr, const):
-        """ln L and the conditional mean / covariance of the amplitudes.
+    def woodbury(basis, idx, chol, tw, rw, g_tt, b_t, amp_prec, rr, const, log_lam_b, k_min):
+        """ln L_K and the amplitude moments for every baseline order K = k_min..k_max.
 
-        basis (B, q, n_chan) is evaluated on the good channels idx. chol
+        basis (B, q, n_chan) is evaluated on the good channels idx; chol
         (bw + 1, n_good) is the lower banded Cholesky factor of C in the storage
         chol[d, j] = L[j + d, j]; tw (nb, n_good), rw (n_good) are whitened;
-        g_tt = tw tw^T + Lambda_b^-1, b_t = tw rw; const = ln|C| + ln|Lambda| + n ln 2 pi.
-        Returns ln L (B,), E[a | theta, y] (B, q) and Cov[a | theta, y] (B, q, q)
-        for the q amplitude columns (baseline marginalised).
+        g_tt = tw tw^T + Lambda_b^-1 (Lambda_b diagonal), b_t = tw rw;
+        const = ln|C| + n ln 2 pi + ln|Lambda_amp|; log_lam_b[k] = ln lambda_k of
+        coefficient k. A_K is the leading (q + K + 1) block of A, so one
+        Cholesky factorisation serves all K.
+
+        Returns ll (B, nK), E[a | theta, y, K] (B, nK, q) and
+        Cov[a | theta, y, K] (B, nK, q, q); an order whose block is not positive
+        definite gets ll = -1e300 and the identity covariance.
         """
         nbatch, q, _ = basis.shape
-        p = q + tw.shape[0]
-        out = np.empty(nbatch)
-        amp_mean = np.zeros((nbatch, q))
-        amp_cov = np.zeros((nbatch, q, q))
+        nb = tw.shape[0]
+        p = q + nb
+        n_k = nb - k_min
+        out = np.full((nbatch, n_k), -1e300)
+        amp_mean = np.zeros((nbatch, n_k, q))
+        amp_cov = np.zeros((nbatch, n_k, q, q))
+        for r in range(nbatch):
+            for kk in range(n_k):
+                for i in range(q):
+                    amp_cov[r, kk, i, i] = 1.0
         bw = np.empty((q, idx.shape[0]))
         a = np.empty((p, p))
         bvec = np.empty(p)
+        z = np.empty(p)
         work = np.empty(p)
+        logdet_cum = np.empty(p + 1)
+        quad_cum = np.empty(p + 1)
+        lam_cum = np.empty(nb + 1)
+        lam_cum[0] = 0.0
+        for k in range(nb):
+            lam_cum[k + 1] = lam_cum[k] + log_lam_b[k]
         for r in range(nbatch):
             _assemble(basis, r, idx, chol, tw, rw, g_tt, b_t, amp_prec, bw, a, bvec)
-            # Cholesky A = L L^T in place (lower triangle), ln|A|, b^T A^-1 b
-            logdet = 0.0
-            ok = True
+            # Cholesky A = L L^T in place (lower triangle); stop at the first
+            # non-positive pivot, the leading blocks before it stay valid
+            jfail = p
+            logdet_cum[0] = 0.0
             for j in range(p):
                 s = a[j, j]
                 for k in range(j):
                     s -= a[j, k] * a[j, k]
                 if s <= 0.0:
-                    ok = False
+                    jfail = j
                     break
                 d = math.sqrt(s)
                 a[j, j] = d
-                logdet += 2.0 * math.log(d)
+                logdet_cum[j + 1] = logdet_cum[j] + 2.0 * math.log(d)
                 for i in range(j + 1, p):
                     s = a[i, j]
                     for k in range(j):
                         s -= a[i, k] * a[j, k]
                     a[i, j] = s / d
-            if not ok:
-                out[r] = -1e300
-                continue
-            # forward solve L z = b; b^T A^-1 b = z^T z
-            quad = 0.0
-            for i in range(p):
+            # forward solve L z = b; b_K^T A_K^-1 b_K = sum_{i < m} z_i^2
+            quad_cum[0] = 0.0
+            for i in range(jfail):
                 s = bvec[i]
                 for k in range(i):
-                    s -= a[i, k] * bvec[k]
-                bvec[i] = s / a[i, i]
-                quad += bvec[i] * bvec[i]
-            out[r] = -0.5 * (rr - quad + const + logdet)
-            # mean = L^-T z
-            for i in range(p - 1, -1, -1):
-                s = bvec[i]
-                for k in range(i + 1, p):
-                    s -= a[k, i] * bvec[k]
-                bvec[i] = s / a[i, i]
-            for i in range(q):
-                amp_mean[r, i] = bvec[i]
-            # covariance block: columns of A^-1 for the amplitude indices
-            for c in range(q):
-                for i in range(p):
-                    s = 1.0 if i == c else 0.0
-                    for k in range(i):
-                        s -= a[i, k] * work[k]
-                    work[i] = s / a[i, i]
-                for i in range(p - 1, -1, -1):
-                    s = work[i]
-                    for k in range(i + 1, p):
+                    s -= a[i, k] * z[k]
+                z[i] = s / a[i, i]
+                quad_cum[i + 1] = quad_cum[i] + z[i] * z[i]
+            for kk in range(n_k):
+                kord = k_min + kk
+                m = q + kord + 1
+                if m > jfail:
+                    continue
+                out[r, kk] = -0.5 * (rr - quad_cum[m] + const + lam_cum[kord + 1] + logdet_cum[m])
+                # mean = L_m^-T z_m
+                for i in range(m - 1, -1, -1):
+                    s = z[i]
+                    for k in range(i + 1, m):
                         s -= a[k, i] * work[k]
                     work[i] = s / a[i, i]
                 for i in range(q):
-                    amp_cov[r, i, c] = work[i]
+                    amp_mean[r, kk, i] = work[i]
+                # covariance block: amplitude columns of A_m^-1
+                for c in range(q):
+                    for i in range(m):
+                        s = 1.0 if i == c else 0.0
+                        for k in range(i):
+                            s -= a[i, k] * work[k]
+                        work[i] = s / a[i, i]
+                    for i in range(m - 1, -1, -1):
+                        s = work[i]
+                        for k in range(i + 1, m):
+                            s -= a[k, i] * work[k]
+                        work[i] = s / a[i, i]
+                    for i in range(q):
+                        amp_cov[r, kk, i, c] = work[i]
         return out, amp_mean, amp_cov

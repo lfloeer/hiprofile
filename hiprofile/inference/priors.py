@@ -7,7 +7,7 @@ draws the simulated galaxies and drives the samplers.
 
 Physical parameters per component:
 
-* ``profile``: (v_ctr, delta_v, delta_v_rand, alpha)
+* ``profile``: (v_ctr, delta_v, delta_v_rand, alpha, f)
 * ``gauss`` (RFI): (v_ctr, sigma)
 
 plus an optional trailing log10 noise scale.
@@ -37,6 +37,7 @@ from scipy import special
 from hiprofile.config import Priors, Range
 
 FWHM = 2.0 * np.sqrt(2.0 * np.log(2.0))
+NPROFILE = 5  # v_ctr, delta_v, delta_v_rand, alpha, f
 
 
 @dataclass(frozen=True)
@@ -142,6 +143,7 @@ class ModelPrior:
     delta_v: Bounds1D
     delta_v_rand: Bounds1D
     alpha: Bounds1D
+    f: Bounds1D
     rfi_v: Bounds1D
     rfi_sigma: Bounds1D
     parametrization: str = "direct"
@@ -159,7 +161,7 @@ class ModelPrior:
         for c in self.components:
             if c == "profile":
                 ip += 1
-                names += [f"v_ctr_{ip}", f"delta_v_{ip}", f"delta_v_rand_{ip}", f"alpha_{ip}"]
+                names += [f"v_ctr_{ip}", f"delta_v_{ip}", f"delta_v_rand_{ip}", f"alpha_{ip}", f"f_{ip}"]
             else:
                 ig += 1
                 names += [f"rfi_v_{ig}", f"rfi_sigma_{ig}"]
@@ -176,7 +178,7 @@ class ModelPrior:
         for c in self.components:
             if c == "profile":
                 cols.append(i)
-            i += 4 if c == "profile" else 2
+            i += NPROFILE if c == "profile" else 2
         return cols
 
     def _gauss_cols(self) -> list[int]:
@@ -184,7 +186,7 @@ class ModelPrior:
         for c in self.components:
             if c == "gauss":
                 cols.append(i)
-            i += 4 if c == "profile" else 2
+            i += NPROFILE if c == "profile" else 2
         return cols
 
     # ---------------------------------------------------------------- widths
@@ -222,6 +224,7 @@ class ModelPrior:
             for c in pc:
                 theta[:, c + 1], theta[:, c + 2] = self._widths(u[:, c + 1], u[:, c + 2])
                 theta[:, c + 3] = self.alpha.transform(u[:, c + 3])
+                theta[:, c + 4] = self.f.transform(u[:, c + 4])
         gc = self._gauss_cols()
         if gc:
             ug = u[:, gc]
@@ -246,6 +249,7 @@ class ModelPrior:
             for c in pc:
                 u[:, c + 1], u[:, c + 2] = self._widths_inverse(theta[:, c + 1], theta[:, c + 2])
                 u[:, c + 3] = self.alpha.inverse(theta[:, c + 3])
+                u[:, c + 4] = self.f.inverse(theta[:, c + 4])
         gc = self._gauss_cols()
         if gc:
             ug = self.rfi_v.inverse(theta[:, gc])
@@ -268,6 +272,8 @@ class ModelPrior:
                 out[name] = self.delta_v.edges
             elif name.startswith("alpha"):
                 out[name] = self.alpha.edges
+            elif name.startswith("f_"):
+                out[name] = self.f.edges
         return out
 
     def __call__(self, u: np.ndarray) -> np.ndarray:
@@ -294,6 +300,7 @@ def build_prior(
         delta_v=_bounds(priors.delta_v, 0.0, 600.0),
         delta_v_rand=_bounds(priors.delta_v_rand, 4.0, 60.0),
         alpha=_bounds(priors.alpha, -1.0, 1.0),
+        f=_bounds(priors.f, 0.0, 1.0),
         rfi_v=Bounds1D("uniform", v_lo, v_hi),
         rfi_sigma=Bounds1D("loguniform", lo_c * dv, hi_c * dv),
         parametrization=parametrization,

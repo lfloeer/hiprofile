@@ -38,16 +38,17 @@ class SimConfig(BaseModel):
     profiles: Literal["model", "template", "mixed"] = "model"
     template_files: list[str] = Field(default_factory=list)
     priors: Priors = Field(default_factory=lambda: Priors())
-    # flux: "prior" draws a_ring, a_disk ~ half-normal(amplitude_scale) (SBC);
-    # "snr" draws the integrated S/N log-uniformly in snr_range
+    # flux: "prior" draws S ~ half-normal(amplitude_scale) (SBC); "snr" draws
+    # the integrated S/N log-uniformly in snr_range. All other profile
+    # parameters, f included, come from the fit priors.
     flux: Literal["prior", "snr"] = "snr"
     snr_range: tuple[float, float] = (3.0, 100.0)
-    f_distribution: Literal["prior", "uniform"] = "prior"
-    f_range: tuple[float, float] = (0.0, 1.0)  # for f_distribution = uniform
     noise_sigma: float = 0.01
     noise_correlation: Literal["white", "hanning"] = "white"
     baseline: Literal["none", "chebyshev", "sine"] = "none"
     baseline_order: int = 1
+    # with baseline_order_min set, the order is drawn uniformly from [min, order]
+    baseline_order_min: int | None = None
     baseline_scale: float = 0.01
     sine_amplitude: float = 0.5  # in units of noise sigma
     sine_period: tuple[float, float] = (100.0, 600.0)  # km/s
@@ -112,36 +113,28 @@ def simulate_spectrum(cfg: SimConfig, rng: np.random.Generator, sid: str) -> tup
     kinds = []
     if n:
         prior = build_prior(("profile",) * n, cfg.priors, v)
-        theta = prior.transform(rng.uniform(size=(1, prior.ndim)))[0].reshape(n, 4)
+        theta = prior.transform(rng.uniform(size=(1, prior.ndim)))[0].reshape(n, 5)
         for j in range(n):
             kind = cfg.profiles
             if kind == "mixed":
                 kind = "template" if rng.uniform() < 0.5 else "model"
             kinds.append(kind)
-            vc, width, sig, alpha = theta[j]
+            vc, width, sig, alpha, f = theta[j]
             if cfg.flux == "prior":
                 amp_scale = cfg.priors.amplitude_scale
                 if amp_scale == "auto":
                     raise ValueError("flux = prior needs a fixed priors.amplitude_scale")
-                ratio = cfg.priors.disk_scale_ratio
-                a = np.abs(rng.normal(0.0, float(amp_scale) * np.array([1.0, ratio])))
-                s_tot, f = float(a.sum()), float(a[1] / a.sum())
+                s_tot = float(abs(rng.normal(0.0, float(amp_scale))))
             else:
                 snr = np.exp(rng.uniform(*np.log(cfg.snr_range)))
                 # integrated S/N over the line: S / (sigma dv sqrt(W / dv))
                 w_eff = max(width + 2.35 * sig, cfg.dv)
                 s_tot = float(snr * cfg.noise_sigma * cfg.dv * np.sqrt(w_eff / cfg.dv))
-                if cfg.f_distribution == "prior":
-                    # same shape as the fit prior: f = a_disk / (a_ring + a_disk)
-                    ar, ad = np.abs(rng.normal(0.0, [1.0, cfg.priors.disk_scale_ratio]))
-                    f = float(ad / (ar + ad))
-                else:
-                    f = float(rng.uniform(*cfg.f_range))
-                a = np.array([s_tot * (1 - f), s_tot * f])
+            a = np.array([s_tot * (1 - f), s_tot * f])
             if kind == "model":
-                b = profile_basis(grid, theta[j][None])[0]
+                b = profile_basis(grid, theta[j][None, :4])[0]
                 signal += a[0] * b[0] + a[1] * b[1]
-                d = profile_derived(grid, theta[j][None], a[None])
+                d = profile_derived(grid, theta[j][None, :4], a[None])
                 comp = {
                     "v_ctr": vc,
                     "delta_v": width,
@@ -177,9 +170,12 @@ def simulate_spectrum(cfg: SimConfig, rng: np.random.Generator, sid: str) -> tup
     # baseline
     base = np.zeros(cfg.n_chan)
     if cfg.baseline == "chebyshev":
-        c = rng.normal(0, cfg.baseline_scale, cfg.baseline_order + 1)
-        base = c @ chebyshev_basis(cfg.n_chan, cfg.baseline_order)
-        truth.baseline = {"kind": "chebyshev", "order": cfg.baseline_order, "coef": c.tolist()}
+        order = cfg.baseline_order
+        if cfg.baseline_order_min is not None:
+            order = int(rng.integers(cfg.baseline_order_min, cfg.baseline_order + 1))
+        c = rng.normal(0, cfg.baseline_scale, order + 1)
+        base = c @ chebyshev_basis(cfg.n_chan, order) if order >= 0 else base
+        truth.baseline = {"kind": "chebyshev", "order": order, "coef": c.tolist()}
     elif cfg.baseline == "sine":
         period = rng.uniform(*cfg.sine_period)
         phase = rng.uniform(0, 2 * np.pi)

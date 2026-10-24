@@ -50,39 +50,71 @@ def test_kernel_matches_numpy(rng, n, dv, response):
     assert np.max(np.abs(a - b)) < 1e-12 * np.max(np.abs(a))
 
 
+def _theta(rng, n, n_comp):
+    cols = []
+    for _ in range(n_comp):  # distinct components (identical ones make A singular)
+        cols.append(
+            np.c_[
+                rng.uniform(1200, 2000, n),
+                rng.uniform(0, 400, n),
+                rng.uniform(5, 40, n),
+                rng.uniform(-1, 1, n),
+                rng.uniform(0, 1, n),
+            ]
+        )
+    return np.concatenate(cols, axis=1)
+
+
+def _noise(rng, n, corr, sigma=0.02):
+    """Noise realisation consistent with the correlation model."""
+    eps = rng.normal(size=n + 2)
+    if corr == "hanning":
+        return np.convolve(eps, [0.25, 0.5, 0.25], mode="valid") / np.sqrt(0.375) * sigma
+    return eps[:n] * sigma
+
+
 @pytest.mark.parametrize(
-    "corr,comps,k",
-    [("white", ["profile"], 2), ("hanning", ["profile", "profile"], 0), ("white", ["profile"], -1)],
+    "corr,comps,k,k_min",
+    [
+        ("white", ["profile"], 2, 2),
+        ("hanning", ["profile", "profile"], 0, 0),
+        ("white", ["profile"], -1, -1),
+        ("white", ["profile"], 3, 0),
+        ("hanning", ["profile", "profile"], 3, -1),
+    ],
 )
-def test_compiled_likelihood_matches_numpy(rng, monkeypatch, corr, comps, k):
+def test_compiled_likelihood_matches_numpy(rng, monkeypatch, corr, comps, k, k_min):
     v = 1000.0 + 5.0 * np.arange(256)
     g = SpectralGrid.from_velocities(v)
-    y = rng.normal(size=256) * 0.02
+    y = _noise(rng, 256, corr)
     good = np.ones(256, bool)
     good[[3, 4, 100]] = False
     nm = build_noise(y, good, None, corr)
-    like = build_likelihood(y, g, nm, comps, k, 10.0, 0.1)
-    th = np.c_[
-        rng.uniform(1200, 2000, 32), rng.uniform(0, 400, 32), rng.uniform(5, 40, 32), rng.uniform(-1, 1, 32)
-    ]
-    th = np.tile(th, (1, len(comps)))
+    like = build_likelihood(y, g, nm, comps, k, 10.0, 0.1, k_min=k_min)
+    th = _theta(rng, 32, len(comps))
     assert like._compiled
     fast = like.loglike(th)
+    fast_k = like.loglike_k(th)
+    m_fast, c_fast = like.moments(th)[1:]
     monkeypatch.setattr(fast_ll, "HAVE_NUMBA", False)
     monkeypatch.setattr(kernel, "USE_COMPILED", False)
     slow = like.loglike(th)
-    np.testing.assert_allclose(fast, slow, rtol=1e-11, atol=1e-8)
+    # ln L ~ -5e5 for this noise-only data: the two code paths sum in different orders
+    np.testing.assert_allclose(fast, slow, rtol=1e-10, atol=1e-8)
+    np.testing.assert_allclose(fast_k, like.loglike_k(th), rtol=1e-10, atol=1e-8)
+    m_slow, c_slow = like.moments(th)[1:]
+    # identical components give nearly collinear columns (condition number ~ 1e8)
+    np.testing.assert_allclose(m_fast, m_slow, rtol=1e-7, atol=1e-12)
+    np.testing.assert_allclose(c_fast, c_slow, rtol=1e-7, atol=1e-15)
 
 
 def test_compiled_conditional_matches_numpy(rng, monkeypatch):
     v = 1000.0 + 5.0 * np.arange(200)
     g = SpectralGrid.from_velocities(v)
-    y = rng.normal(size=200) * 0.02
+    y = _noise(rng, 200, "hanning")
     nm = build_noise(y, np.ones(200, bool), None, "hanning")
-    like = build_likelihood(y, g, nm, ["profile"], 1, 10.0, 0.1)
-    th = np.c_[
-        rng.uniform(1200, 1800, 8), rng.uniform(0, 400, 8), rng.uniform(5, 40, 8), rng.uniform(-1, 1, 8)
-    ]
+    like = build_likelihood(y, g, nm, ["profile"], 1, 10.0, 0.1, k_min=0)
+    th = _theta(rng, 8, 1)
     m1, c1 = like.conditional(th)
     monkeypatch.setattr(fast_ll, "HAVE_NUMBA", False)
     m2, c2 = like.conditional(th)

@@ -1,21 +1,19 @@
 """Positivity of the amplitudes: orthant probabilities of the conditional Gaussian.
 
-The amplitudes a_ring, a_disk (and RFI amplitudes) have half-normal priors,
-i.e. zero-mean Gaussians truncated to a >= 0. Marginalising them gives
+The component amplitudes (the integrated flux S of each profile, the flux of
+each RFI Gaussian) have half-normal priors, i.e. zero-mean Gaussians
+truncated to a >= 0. Marginalising them gives
 
-    p(y | theta) = p_gauss(y | theta) * P(a >= 0 | theta, y) / P_prior(a >= 0)
+    p(y | theta, K) = p_gauss(y | theta, K) * P(a >= 0 | theta, y, K) / P_prior(a >= 0)
 
-with P_prior = 2^-n_amp. The sampling target uses, per component, the exact
-orthant probability of that component's amplitudes (bivariate normal CDF via
-Owen's T function for a profile, the normal CDF for an RFI component); for
-several components the cross-component correlations are left out and
-corrected exactly afterwards by Monte Carlo reweighting
+with P_prior = 2^-q for q amplitudes. The orthant probability is exact for one
+amplitude (normal CDF) and two (bivariate normal CDF via Owen's T function).
+For three or more the product of the marginal probabilities is used in the
+sampling target and corrected afterwards by Monte Carlo reweighting
 (:mod:`hiprofile.inference.amplitudes`).
 """
 
 from __future__ import annotations
-
-from collections.abc import Sequence
 
 import numpy as np
 from scipy import special
@@ -54,25 +52,20 @@ def log_bvn_orthant(mean: np.ndarray, cov: np.ndarray) -> np.ndarray:
     return np.log(np.maximum(p, _TINY))
 
 
-def log_orthant(components: Sequence[str], mean: np.ndarray, cov: np.ndarray) -> np.ndarray:
-    """Sum over components of ln P(component amplitudes >= 0 | theta, y).
+def log_orthant(mean: np.ndarray, cov: np.ndarray) -> np.ndarray:
+    """ln P(a >= 0 | theta, y) for amplitude means (B, q) and covariances (B, q, q).
 
-    mean (B, q), cov (B, q, q) of the amplitude columns in component order.
+    Exact for q <= 2; the product of the marginals for q >= 3.
     """
-    out = np.zeros(mean.shape[0])
-    col = 0
-    for c in components:
-        if c == "profile":
-            sl = slice(col, col + 2)
-            out += log_bvn_orthant(mean[:, sl], cov[:, sl, sl])
-            col += 2
-        else:
-            sd = np.sqrt(np.maximum(cov[:, col, col], _TINY))
-            out += special.log_ndtr(mean[:, col] / sd)
-            col += 1
-    return out
+    q = mean.shape[-1]
+    if q == 0:
+        return np.zeros(mean.shape[0])
+    if q == 2:
+        return log_bvn_orthant(mean, cov)
+    sd = np.sqrt(np.maximum(np.diagonal(cov, axis1=-2, axis2=-1), _TINY))
+    return np.sum(special.log_ndtr(mean / sd), axis=-1)
 
 
-def orthant_is_exact(components: Sequence[str]) -> bool:
-    """True if the per-component orthant term is the exact joint probability."""
-    return len(components) <= 1
+def orthant_is_exact(n_amp: int) -> bool:
+    """True if :func:`log_orthant` is the exact joint probability for ``n_amp`` amplitudes."""
+    return n_amp <= 2

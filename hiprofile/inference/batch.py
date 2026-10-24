@@ -26,7 +26,7 @@ from hiprofile._backend import get_xp
 from hiprofile.config import Config
 from hiprofile.inference.fit import prepare
 from hiprofile.inference.priors import ModelPrior, build_prior
-from hiprofile.likelihood.orthant import LOG2, log_bvn_orthant
+from hiprofile.likelihood.orthant import LOG2, log_orthant
 from hiprofile.model.kernel import SpectralGrid, chebyshev_basis, profile_basis
 from hiprofile.spectrum import Spectrum
 
@@ -40,9 +40,8 @@ class BatchedLikelihood:
     flux: np.ndarray  # (S, n)
     weight: np.ndarray  # (S, n) 1 / sigma, 0 for masked channels
     baseline_order: int
-    amp_scale: np.ndarray  # (S,) prior std of a_ring
+    amp_scale: np.ndarray  # (S,) prior std of the integrated flux S
     baseline_scale: np.ndarray  # (S,)
-    disk_scale_ratio: float = 1.0
 
     def __post_init__(self) -> None:
         import jax
@@ -55,8 +54,7 @@ class BatchedLikelihood:
         rw = self.flux * self.weight
         self.n_good = (self.weight > 0).sum(axis=1)
         logdet_c = -2.0 * np.sum(np.log(np.where(self.weight > 0, self.weight, 1.0)), axis=1)
-        amp = np.stack([self.amp_scale, self.amp_scale * self.disk_scale_ratio], axis=1)  # (S, 2)
-        logdet_lam = 2.0 * np.sum(np.log(amp), axis=1) + 2.0 * self.nb * np.log(self.baseline_scale)
+        logdet_lam = 2.0 * np.log(self.amp_scale) + 2.0 * self.nb * np.log(self.baseline_scale)
         g_tt = (
             np.einsum("skn,sjn->skj", tw, tw)
             + np.eye(self.nb)[None] / self.baseline_scale[:, None, None] ** 2
@@ -69,15 +67,17 @@ class BatchedLikelihood:
             b_t=xp.asarray(np.einsum("skn,sn->sk", tw, rw)),
             rr=xp.asarray(np.sum(rw**2, axis=1)),
             const=xp.asarray(logdet_c + logdet_lam + self.n_good * LOG_2PI),
-            amp_prec=xp.asarray(1.0 / amp**2),
+            amp_prec=xp.asarray(1.0 / self.amp_scale**2),
             shift=xp.asarray(self.v_shift),
         )
         grid = self.grid
 
         def one(theta, tw, rw, w, g_tt, b_t, rr, const, amp_prec, shift):
             th = theta.at[:, 0].add(-shift)
-            bw = profile_basis(grid, th, "jax") * w  # (P, 2, n)
-            g_bb = xp.einsum("pqn,prn->pqr", bw, bw) + xp.diag(amp_prec)
+            rd = profile_basis(grid, th[:, :4], "jax")  # (P, 2, n)
+            f = th[:, 4][:, None]
+            bw = (((1.0 - f) * rd[:, 0] + f * rd[:, 1]) * w)[:, None, :]  # (P, 1, n)
+            g_bb = xp.einsum("pqn,prn->pqr", bw, bw) + amp_prec * xp.eye(1)
             g_bt = xp.einsum("pqn,kn->pqk", bw, tw)
             p = theta.shape[0]
             top = xp.concatenate([g_bb, g_bt], axis=2)
@@ -90,8 +90,8 @@ class BatchedLikelihood:
             logdet_a = 2.0 * xp.sum(xp.log(xp.diagonal(chol, axis1=1, axis2=2)), axis=1)
             sol = xp.linalg.solve(a, bvec[..., None])[..., 0]
             ll = -0.5 * (rr - xp.sum(bvec * sol, axis=1) + const + logdet_a)
-            amp_cov = xp.linalg.inv(a)[:, :2, :2]
-            return xp.where(xp.isfinite(ll), ll, -1e300), sol[:, :2], amp_cov
+            amp_cov = xp.linalg.inv(a)[:, :1, :1]
+            return xp.where(xp.isfinite(ll), ll, -1e300), sol[:, :1], amp_cov
 
         self._fn = jax.jit(jax.vmap(one))
         self._consts = consts
@@ -124,9 +124,9 @@ class BatchedLikelihood:
             c["shift"],
         )
         ll = np.array(ll)
-        mean = np.asarray(mean).reshape(-1, 2)
-        cov = np.asarray(cov).reshape(-1, 2, 2)
-        orth = log_bvn_orthant(mean, cov).reshape(ll.shape) + 2.0 * LOG2
+        mean = np.asarray(mean).reshape(-1, 1)
+        cov = np.asarray(cov).reshape(-1, 1, 1)
+        orth = log_orthant(mean, cov).reshape(ll.shape) + LOG2
         return np.where(ll > -1e299, ll + orth, ll)
 
 
@@ -229,7 +229,6 @@ def screen_batch(
         weight=weight,
         baseline_order=k,
         amp_scale=np.array([c.amp_scale for c in ctxs]),
-        disk_scale_ratio=cfg.priors.disk_scale_ratio,
         baseline_scale=np.array([c.baseline_scale for c in ctxs]),
     )
     priors = [build_prior(("profile",), cfg.priors, c.spectrum.velocity) for c in ctxs]

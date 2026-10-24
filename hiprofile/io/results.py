@@ -84,6 +84,9 @@ def write_result(res: FitResult, path: str | Path) -> Path:
             h = pg.create_group(f"N{n}")
             h.attrs["names"] = _json(post.names)
             h.attrs["k"] = post.k
+            h.attrs["k_values"] = _json(list(post.k_values))
+            if post.k_probability is not None:
+                h.attrs["k_probability"] = _json(np.asarray(post.k_probability).tolist())
             if post.k_samples is not None:
                 h.create_dataset("k_samples", data=np.asarray(post.k_samples, np.int16), compression="gzip")
             # theta, weights and log_l in double precision; u, beta and derived
@@ -174,6 +177,10 @@ def read_result(path: str | Path) -> FitResult:
                 derived={k: v[()].astype(float) for k, v in h["derived"].items()},
                 trace={k: v[()] for k, v in h["trace"].items()},
                 k_samples=h["k_samples"][()].astype(int) if "k_samples" in h else None,
+                k_values=json.loads(h.attrs["k_values"]) if "k_values" in h.attrs else [],
+                k_probability=np.asarray(json.loads(h.attrs["k_probability"]))
+                if "k_probability" in h.attrs
+                else None,
             )
     return res
 

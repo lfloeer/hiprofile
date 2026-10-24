@@ -38,6 +38,7 @@ STAGES = ("sbc", "detection", "misspec", "injection")
 SBC_AMP = 4.0
 SBC_BASE = 0.02
 SBC_SIGMA = 0.01
+SBC_KMAX = 3
 
 
 @dataclass
@@ -72,11 +73,12 @@ def stage_configs(stage: str, base: Config) -> list[tuple[str, SimConfig, Config
             priors=priors,
             noise_sigma=SBC_SIGMA,
             baseline="chebyshev",
-            baseline_order=1,
+            baseline_order=SBC_KMAX,
+            baseline_order_min=0,
             baseline_scale=SBC_BASE,
         )
         fit = base.updated(
-            model={"n_max": 1, "k_min": 1, "k_max": 1, "n_rfi": 0},
+            model={"n_max": 1, "k_min": 0, "k_max": SBC_KMAX, "n_rfi": 0},
             priors={"amplitude_scale": SBC_AMP, "baseline_scale": SBC_BASE},
             rfi={"prefit": False},
             noise={"sigma": "input"},
@@ -222,6 +224,7 @@ def analyze(stage: str, run_dir: Path, truth: list[dict[str, Any]], cfg: Config)
     res["flag_rates"] = {k[5:]: float(np.mean([bool(r.get(k, False)) for r in rows])) for k in flag_cols}
     if stage == "sbc":
         res.update(sbc_ranks(run_dir, truth))
+        res.update(k_calibration(rows, truth))
     if stage in ("detection", "injection"):
         res.update(detection_metrics(rows, truth, cfg))
     if stage in ("misspec", "detection", "injection", "sbc"):
@@ -273,6 +276,45 @@ def sbc_ranks(
         out["coverage95"][k] = float(np.mean(cover[k]["95"]))
     out["n_sbc"] = int(max((len(v) for v in ranks.values()), default=0))
     return out
+
+
+def k_calibration(rows: list[dict[str, Any]], truth: list[dict[str, Any]]) -> dict[str, Any]:
+    """Calibration of P(K | y) against the simulated baseline order.
+
+    Reliability: pairs (P(K = k | y), 1[K_true = k]) over all k, binned in the
+    predicted probability; confusion of the most probable K against the truth.
+    """
+    k_true = np.array([int(t.get("baseline_order", -1)) for t in truth])
+    k_cols = sorted({k for r in rows for k in r if k.startswith("p_k")}, key=lambda s: int(s[3:]))
+    if not k_cols or np.all(k_true < 0):
+        return {}
+    k_vals = [int(c[3:]) for c in k_cols]
+    p = np.array(
+        [[float(r.get(c, np.nan)) if r.get(c) is not None else np.nan for c in k_cols] for r in rows]
+    )
+    ok = np.all(np.isfinite(p), axis=1)
+    p, kt = p[ok], k_true[ok]
+    hit = kt[:, None] == np.asarray(k_vals)[None]
+    bins = np.linspace(0, 1, 11)
+    rel = []
+    for lo, hi in itertools.pairwise(bins):
+        sel = (p >= lo) & (p < hi if hi < 1 else p <= hi)
+        rel.append(
+            [float(0.5 * (lo + hi)), int(sel.sum()), float(np.mean(hit[sel])) if sel.any() else float("nan")]
+        )
+    best = np.asarray(k_vals)[np.argmax(p, axis=1)]
+    conf = np.zeros((len(k_vals), len(k_vals)), int)
+    for a, b in zip(kt, best, strict=True):
+        if a in k_vals:
+            conf[k_vals.index(a), k_vals.index(b)] += 1
+    expected = float(np.mean(p[hit]))  # mean P(K_true | y)
+    return {
+        "k_values": k_vals,
+        "k_reliability": rel,
+        "k_confusion": conf.tolist(),
+        "k_mean_p_true": expected,
+        "k_accuracy": float(np.mean(best == kt)),
+    }
 
 
 def detection_metrics(rows: list[dict[str, Any]], truth: list[dict[str, Any]], cfg: Config) -> dict[str, Any]:
@@ -386,6 +428,15 @@ def to_markdown(summary: dict[str, Any]) -> str:
             for k, p in r["rank_pvalue"].items():
                 lines.append(f"| {k} | {p:.3f} | {r['coverage68'][k]:.3f} | {r['coverage95'][k]:.3f} |")
             lines.append("")
+        if "k_confusion" in r:
+            lines += [
+                f"baseline order: P(K_true | y) averages {r['k_mean_p_true']:.2f}, most probable K correct "
+                f"in {r['k_accuracy']:.0%} (rows: true K, columns: most probable K, K = {r['k_values']}):",
+                "",
+                "```",
+            ]
+            lines += ["  ".join(f"{v:5d}" for v in row) for row in r["k_confusion"]]
+            lines += ["```", ""]
         if "confusion" in r:
             lines += ["confusion matrix (rows: true N, columns: fitted N):", "", "```"]
             lines += ["  ".join(f"{v:5d}" for v in row) for row in r["confusion"]]

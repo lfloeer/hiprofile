@@ -6,7 +6,7 @@ from hiprofile.config import Config
 from hiprofile.inference.fit import ModelEvidence, fit_spectrum, model_probabilities, spectrum_seed
 from hiprofile.io.results import read_result, write_result
 
-QUICK = Config().updated(sampler={"mode": "quick"}, model={"k_max": 1, "n_max": 1})
+QUICK = Config().updated(sampler={"mode": "quick"}, model={"k_min": 0, "k_max": 1, "n_max": 1})
 
 
 def test_quick_fit_recovers_line(line_spectrum, tmp_path):
@@ -19,6 +19,12 @@ def test_quick_fit_recovers_line(line_spectrum, tmp_path):
     assert abs(s["delta_v_1"] - truth[1]) < 15
     assert abs(s["S_1"] - truth[4]) / truth[4] < 0.1
     assert s["W50_1_p16"] < s["W50_1"] < s["W50_1_p84"]
+    assert 0.0 <= s["f_1"] <= 1.0
+    post = res.posteriors[1]
+    assert post.k_values == [0, 1] and post.k_probability is not None
+    np.testing.assert_allclose(post.k_probability.sum(), 1.0)
+    assert set(post.k_samples) <= {0, 1}
+    assert {e.method for e in res.evidences if e.n == 1} == {"quick"}
     assert res.model_band.shape == (5, spec.n_chan)
     # round trip
     p = write_result(res, tmp_path / "r.h5")

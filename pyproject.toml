@@ -60,6 +60,7 @@ known-local-folder = ["conftest"]
 [tool.ruff.lint.per-file-ignores]
 "hiprofile/plots/report.py" = ["E501"]  # embedded CSS/HTML
 "benchmarks/*" = ["B023"]  # lambdas are called immediately inside the loop
+"docs/*" = ["RUF001", "RUF007"]  # Greek letters and minus signs in figure labels
 
 [tool.mypy]
 python_version = "3.11"

@@ -19,6 +19,7 @@ FLAG_NAMES = (
     "negative_amplitudes",
     "rfi",
     "sampler_budget",
+    "prior_dominated",
     "failed",
 )
 
@@ -46,6 +47,7 @@ def compute_flags(
         "negative_amplitudes": get("negative_fraction", 0.0) > cfg.negative_fraction,
         "rfi": get("rfi_fraction", 0.0) > rfi_fraction_max,
         "sampler_budget": bool(metrics.get("sampler_budget", False)),
+        "prior_dominated": get("constraint_delta_v", 1.0) < cfg.min_constraint,
         "failed": bool(metrics.get("failed", False)),
     }
     return {k: bool(v) for k, v in flags.items()}

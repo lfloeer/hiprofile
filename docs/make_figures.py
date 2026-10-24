@@ -56,11 +56,9 @@ def priors() -> Path:
 
     pr = build_prior(("profile",), Priors(), np.arange(1000) * 5.0)
     rng = np.random.default_rng(0)
-    u = rng.uniform(size=(400000, 4))
+    u = rng.uniform(size=(400000, 5))
     th = pr(u)
-    ratio = Priors().disk_scale_ratio
-    ar, ad = np.abs(rng.normal(0.0, [1.0, ratio], size=(400000, 2))).T
-    draws = {"delta_v": th[:, 1], "delta_v_rand": th[:, 2], "alpha": th[:, 3], "f": ad / (ar + ad)}
+    draws = {"delta_v": th[:, 1], "delta_v_rand": th[:, 2], "alpha": th[:, 3], "f": th[:, 4]}
     panels = [
         (
             "delta_v",
@@ -70,7 +68,7 @@ def priors() -> Path:
         ),
         ("delta_v_rand", "Δv_rand [km/s]", np.linspace(4, 40, 37), "log-normal 12.6 km/s, 0.2 dex"),
         ("alpha", "α", np.linspace(-1, 1, 41), "normal(0, 0.25) on [−1, 1]"),
-        ("f", "f (solid-body fraction)", np.linspace(0, 1, 21), "a_disk scale = a_ring / 3"),
+        ("f", "f (solid-body fraction)", np.linspace(0, 1, 21), "uniform on [0, 1]"),
     ]
     fig, axes = plt.subplots(1, 4, figsize=(13, 3.1))
     for ax, (key, label, bins, desc) in zip(axes, panels, strict=True):

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 
 class _Base(BaseModel):
@@ -65,16 +65,15 @@ class Priors(_Base):
         default_factory=lambda: Range(kind="normal", mean=0.0, std=0.25, low=-1.0, high=1.0),
         description="Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14)",
     )
+    f: Range = Field(
+        default_factory=lambda: Range(kind="uniform", low=0.0, high=1.0),
+        description="Solid-body fraction: uniform on [0, 1] (Stewart et al. used a nearly flat "
+        "exponential; THINGS median 0.15, mean 0.23)",
+    )
     amplitude_scale: float | Literal["auto"] = Field(
         "auto",
-        description="Std of the half-normal prior on a_ring [flux * km/s] (a_disk: times "
-        "disk_scale_ratio). Fix it for a survey so that evidences are comparable between spectra.",
-    )
-    disk_scale_ratio: float = Field(
-        1.0 / 3.0,
-        gt=0.0,
-        description="Prior scale of a_disk relative to a_ring; 1/3 gives a prior median f of 0.25 "
-        "(THINGS: median 0.15, mean 0.23)",
+        description="Std of the half-normal prior on the integrated flux S of each component "
+        "[flux * km/s]. Fix it for a survey so that evidences are comparable between spectra.",
     )
     baseline_scale: float | Literal["auto"] = Field(
         "auto", description="Std of the Chebyshev coefficients; auto = 10 x noise rms"
@@ -88,15 +87,16 @@ class Priors(_Base):
         None, description="Fit a global noise scale factor with log-uniform prior in this range"
     )
 
-    @field_validator("alpha")
+    @field_validator("alpha", "f")
     @classmethod
-    def _alpha(cls, v: Range) -> Range:
+    def _bounded(cls, v: Range, info: ValidationInfo) -> Range:
+        lo_max, hi_max = (-1.0, 1.0) if info.field_name == "alpha" else (0.0, 1.0)
         if v.kind not in ("uniform", "normal"):
-            raise ValueError("alpha prior must be uniform or (truncated) normal")
-        low = -1.0 if v.low is None else v.low
-        high = 1.0 if v.high is None else v.high
-        if low < -1 or high > 1:
-            raise ValueError("alpha prior must lie within [-1, 1]")
+            raise ValueError(f"{info.field_name} prior must be uniform or (truncated) normal")
+        low = lo_max if v.low is None else v.low
+        high = hi_max if v.high is None else v.high
+        if low < lo_max or high > hi_max:
+            raise ValueError(f"{info.field_name} prior must lie within [{lo_max}, {hi_max}]")
         return v.model_copy(update={"low": low, "high": high})
 
 
@@ -148,14 +148,6 @@ class SamplerConfig(_Base):
     )
     check_backend: Literal["nautilus", "dynesty", "ultranest", "smc"] = "nautilus"
     n_live: int = Field(400, ge=20)
-    baseline_evidence: Literal["reweight", "rerun"] = Field(
-        "reweight",
-        description="reweight: sample once per N at the preferred K and importance-reweight "
-        "to the other K (rerun when the effective sample size is too small)",
-    )
-    reweight_min_ess: float = Field(
-        200.0, gt=0, description="Minimum Kish ESS of the samples reweighted to another K"
-    )
     gate_margin: float | None = Field(
         5.0,
         description="Skip nested sampling for N when its quick evidence is this many nats below the "
@@ -172,6 +164,11 @@ class DiagnosticsConfig(_Base):
     edge_mass: float = 0.2
     min_ess: float = 500.0
     logz_sigma: float = 3.0
+    min_constraint: float = Field(
+        0.3,
+        description="Flag `prior_dominated` when the posterior 16-84 % width of delta_v is wider than "
+        "(1 - min_constraint) times the prior width, i.e. the line width is not measured",
+    )
     negative_fraction: float = Field(
         0.5,
         description="Flag when this fraction of amplitude draws is negative. Narrow profiles make "

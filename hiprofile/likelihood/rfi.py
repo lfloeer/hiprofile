@@ -63,6 +63,7 @@ def robust_prefit(
     background: str = "positive",
     n_iter: int = 8,
     backend: str = "numpy",
+    k_min: int | None = None,
 ) -> RFIResult:
     idx = noise.good_index
     y = np.asarray(flux, float)[idx]
@@ -85,6 +86,7 @@ def robust_prefit(
             amp_scale,
             baseline_scale,
             backend=backend,
+            k_min=k_min,
         )
         target = _Target(CountingLikelihood(like.loglike), prior.transform)
         modes = find_modes(target, prior.ndim, rng, n_init=128 if z_best is not None else 512, n_starts=2)

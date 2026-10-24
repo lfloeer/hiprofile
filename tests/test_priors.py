@@ -8,11 +8,17 @@ def test_round_trip_and_ordering(rng):
     v = np.arange(512) * 5.0
     for par in ("direct", "effective"):
         p = build_prior(("profile", "profile", "gauss"), Priors(), v, par)
+        assert p.names == [
+            "v_ctr_1", "delta_v_1", "delta_v_rand_1", "alpha_1", "f_1",
+            "v_ctr_2", "delta_v_2", "delta_v_rand_2", "alpha_2", "f_2",
+            "rfi_v_1", "rfi_sigma_1",
+        ]  # fmt: skip
         u = rng.uniform(size=(2000, p.ndim))
         t = p(u)
         np.testing.assert_allclose(p.inverse(t), u, atol=1e-9)
-        assert np.all(t[:, 0] < t[:, 4])
+        assert np.all(t[:, 0] < t[:, 5])
         assert np.all(t[:, 2] >= 4.0 - 1e-9)
+        assert np.all((t[:, 4] >= 0) & (t[:, 4] <= 1))
 
 
 def test_order_statistics_are_uniform(rng):
@@ -24,20 +30,28 @@ def test_normal_centre_prior():
     v = np.arange(100) * 5.0
     pr = Priors(v_ctr=Range(kind="normal", mean=250.0, std=20.0))
     p = build_prior(("profile",), pr, v)
-    t = p(np.full((1, 4), 0.5))
+    t = p(np.full((1, 5), 0.5))
     assert abs(t[0, 0] - 250.0) < 1e-9
+    assert abs(t[0, 4] - 0.5) < 1e-12  # uniform f
 
 
 def test_default_shapes_follow_things(rng):
-    """Defaults: Delta v ~ 160 km/s, Delta v_rand ~ 12.6 km/s, alpha ~ N(0, 0.25)."""
+    """Defaults: Delta v ~ 160 km/s, Delta v_rand ~ 12.6 km/s, alpha ~ N(0, 0.25), f uniform."""
     v = np.arange(1000) * 5.0
     p = build_prior(("profile",), Priors(), v)
-    t = p(rng.uniform(size=(200000, 4)))
-    dv, sig, a = t[:, 1], t[:, 2], t[:, 3]
-    # median of log-normal(2.2, 0.4) truncated at 800 km/s: 10^(2.2 + 0.4 ndtri(0.5 * Phi((log10 800 - 2.2) / 0.4)))
+    t = p(rng.uniform(size=(200000, 5)))
+    dv, sig, a, f = t[:, 1], t[:, 2], t[:, 3], t[:, 4]
+    # median of log-normal(2.2, 0.4) truncated at 800 km/s:
+    # 10^(2.2 + 0.4 ndtri(0.5 Phi((log10 800 - 2.2) / 0.4)))
     assert abs(np.median(dv) - 151.4) < 3 and dv.max() <= 800.0
     assert abs(np.median(sig) - 12.6) < 0.3 and sig.min() >= 4.0 and sig.max() <= 60.0
     assert abs(np.std(a) - 0.25) < 0.01 and np.all(np.abs(a) <= 1)
+    assert abs(np.mean(f) - 0.5) < 0.005 and abs(np.std(f) - 1 / np.sqrt(12)) < 0.003
+
+
+def test_edges_include_f():
+    p = build_prior(("profile",), Priors(), np.arange(100) * 5.0)
+    assert p.edge_bounds()["f_1"] == (0.0, 1.0)
 
 
 def test_truncated_round_trip(rng):
