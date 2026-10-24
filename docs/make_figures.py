@@ -433,83 +433,76 @@ def misspec_figure(stage_dir: Path) -> Path:
     return _save(fig, "misspec_flags.png")
 
 
-def _median_err(c) -> float:
+def _median_err(c, q: str = "W50") -> float:
     """Standard error of a median from the robust scatter and the number of detections."""
     n = max(c["n"] * c["completeness"], 1.0)
-    return 1.2533 * c["bayes_W50_scatter"] / np.sqrt(n)
+    return 1.2533 * c[f"bayes_{q}_scatter"] / np.sqrt(n)
 
 
 def bias_figure(root: Path, name: str = "bias_study.png") -> Path:
-    """Conditional bias of W50 against S/N for fixed true widths (benchmarks/bias_study.py)."""
+    """Conditional bias of W50 and W20 against S/N for fixed true widths (benchmarks/bias_study.py)."""
     import json
 
     sets = [
         (p, json.loads((root / f"bias_{p}" / "bias_table.json").read_text())) for p in ("default", "flat")
     ]
     widths = sorted({c["delta_v"] for _, t in sets[0:1] for c in t})
-    fig, axes = plt.subplots(1, 3, figsize=(13, 3.8))
-    for ax, (_, table), title in zip(
-        axes[:2], sets, ("default priors (THINGS)", "flat priors (log-uniform widths)"), strict=True
-    ):
+    fig, grid = plt.subplots(2, 3, figsize=(13, 7.4), sharex=True)
+    for row, q in zip(grid, ("W50", "W20"), strict=True):
+        for ax, (_, table), title in zip(
+            row[:2], sets, ("default priors", "flat priors (log-uniform widths)"), strict=True
+        ):
+            for i, dv in enumerate(widths):
+                cells = sorted((c for c in table if c["delta_v"] == dv), key=lambda c: c["snr"])
+                snr = [c["snr"] for c in cells]
+                ax.plot(
+                    snr,
+                    [c[f"bayes_{q}_bias"] for c in cells],
+                    "-o",
+                    color=style.SERIES[i],
+                    lw=2,
+                    ms=4,
+                    label=f"Δv = {dv:.0f} km/s",
+                )
+                ax.fill_between(
+                    snr,
+                    [c[f"bayes_{q}_bias"] - _median_err(c, q) for c in cells],
+                    [c[f"bayes_{q}_bias"] + _median_err(c, q) for c in cells],
+                    color=style.SERIES[i],
+                    alpha=0.15,
+                    lw=0,
+                )
+            ax.set_ylabel(f"median {q} − truth [km/s]")
+            ax.set_title(f"{q}, posterior median, {title}", loc="left", fontsize=9)
+        ax = row[2]
         for i, dv in enumerate(widths):
-            cells = sorted((c for c in table if c["delta_v"] == dv), key=lambda c: c["snr"])
-            snr = [c["snr"] for c in cells]
-            w50 = cells[0]["delta_v"] + 2.35 * 12.0  # approximate true W50 for the legend
+            cells = sorted((c for c in sets[0][1] if c["delta_v"] == dv), key=lambda c: c["snr"])
             ax.plot(
-                snr,
-                [c["bayes_W50_bias"] for c in cells],
-                "-o",
-                color=style.SERIES[i],
-                lw=2,
-                ms=4,
-                label=f"Δv = {dv:.0f} km/s (W50 ≈ {w50:.0f})",
-            )
-            ax.fill_between(
-                snr,
-                [c["bayes_W50_bias"] - _median_err(c) for c in cells],
-                [c["bayes_W50_bias"] + _median_err(c) for c in cells],
-                color=style.SERIES[i],
-                alpha=0.15,
-                lw=0,
-            )
-        ax.axhline(0, color=style.INK_2, lw=0.8)
+                [c["snr"] for c in cells], [c[f"classic_{q}_bias"] for c in cells], "-o",
+                color=style.SERIES[i], lw=2, ms=4,
+            )  # fmt: skip
+        ax.set_ylabel(f"classical {q} − truth [km/s]")
+        ax.set_title(f"{q}, classical measurement on the same spectra", loc="left", fontsize=9)
+        lim = max(
+            abs(c[key])
+            for _, t in sets
+            for c in t
+            for key in (f"bayes_{q}_bias", f"classic_{q}_bias")
+            if np.isfinite(c[key])
+        )
+        for ax in row:
+            ax.axhline(0, color=style.INK_2, lw=0.8)
+            ax.set_ylim(-1.1 * lim, 1.1 * lim)
+    for ax in grid[1]:
         _log_snr_axis(ax, (3, 5, 8, 15, 40))
         ax.set_xlabel("true integrated S/N")
-        ax.set_ylabel("median W50 − truth [km/s]")
-        ax.set_title(f"posterior median, {title}", loc="left", fontsize=9)
-    ax = axes[2]
-    for i, dv in enumerate(widths):
-        cells = sorted((c for c in sets[0][1] if c["delta_v"] == dv), key=lambda c: c["snr"])
-        ax.plot(
-            [c["snr"] for c in cells],
-            [c["classic_W50_bias"] for c in cells],
-            "-o",
-            color=style.SERIES[i],
-            lw=2,
-            ms=4,
-        )
-    ax.axhline(0, color=style.INK_2, lw=0.8)
-    _log_snr_axis(ax, (3, 5, 8, 15, 40))
-    ax.set_xlabel("true integrated S/N")
-    ax.set_ylabel("classical W50 − truth [km/s]")
-    ax.set_title("classical W50 on the same spectra", loc="left", fontsize=9)
-    lim = max(
-        abs(c[key])
-        for _, t in sets
-        for c in t
-        for key in ("bayes_W50_bias", "classic_W50_bias")
-        if np.isfinite(c[key])
-    )
-    lo, hi = -1.1 * lim, 1.1 * lim
-    for ax in axes:
-        ax.set_ylim(lo, hi)
-    axes[0].legend(fontsize=8, loc="lower right")
+    grid[0, 0].legend(fontsize=8, loc="lower right")
     fig.suptitle(
-        "Conditional bias of W50 for fixed true profiles (median per cell, band: uncertainty of the median)",
+        "Conditional bias for fixed true profiles (median of 20 spectra per cell, band: its uncertainty)",
         x=0.01,
         ha="left",
         fontsize=11,
-        y=1.03,
+        y=1.0,
     )
     return _save(fig, name)
 
