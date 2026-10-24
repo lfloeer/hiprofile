@@ -207,25 +207,32 @@ cz scale of the catalogue.
 
 | AGC | code | S/N | W50 ALFALFA | W50 hiprofile (16–84 %) | S ALFALFA | S hiprofile | note |
 |---|---|---|---|---|---|---|---|
-| 238702 | 1 | 7.1 | 139 ± 8 | 168 (144–195) | 0.92 ± 0.07 | 1.07 (0.93–1.21) | second component = window-edge artefact |
-| 258145 | 1 | 6.9 | 210 ± 59 | 200 (194–229) | 0.85 ± 0.07 | 0.73 (0.61–0.87) | second component on a 3 mJy bump 700 km/s away |
-| 102780 | 1 | 7.6 | 190 ± 5 | 187 (179–193) | 1.04 ± 0.07 | 1.07 (0.94–1.20) | |
-| 219208 | 1 | 7.4 | 369 ± 18 | 391 (359–423) | 1.45 ± 0.11 | 1.25 (1.03–1.51) | |
-| 258284 | 1 | 8.5 | 476 ± 32 | 510 (477–538) | 2.12 ± 0.13 | 1.97 (1.70–2.24) | |
-| 257950 | 1 | 7.3 | 49 ± 6 | 62 (51–83) | 0.51 ± 0.05 | 0.61 (0.51–0.73) | |
-| 232843 | 2 | 5.2 | 111 ± 11 | 359 (78–427) | 0.62 ± 0.08 | 1.26 (0.97–1.48) | bimodal: one horn or the full profile |
-| 732650 | 2 | 6.2 | 63 ± 41 | 209 (197–220) | 0.38 ± 0.03 | 1.21 (1.11–1.32) | neighbour AGC 231950 in the beam |
-| 260144 | 2 | 5.8 | 136 ± 50 | 353 (252–438) | 0.66 ± 0.06 | 1.11 (0.85–1.36) | neighbour AGC 260955 in the beam |
-| 203516 | 2 | 6.0 | 81 ± 8 | 75 (63–90) | 0.60 ± 0.07 | 0.63 (0.53–0.74) | |
+| 238702 | 1 | 7.1 | 139 ± 8 | 158 (139–184) | 0.92 ± 0.07 | 1.04 (0.90–1.19) | second component = window-edge artefact |
+| 258145 | 1 | 6.9 | 210 ± 59 | 211 (183–269) | 0.85 ± 0.07 | 0.73 (0.56–1.11) | |
+| 102780 | 1 | 7.6 | 190 ± 5 | 187 (179–194) | 1.04 ± 0.07 | 1.07 (0.94–1.20) | |
+| 219208 | 1 | 7.4 | 369 ± 18 | 388 (360–413) | 1.45 ± 0.11 | 1.25 (1.04–1.49) | |
+| 258284 | 1 | 8.5 | 476 ± 32 | 508 (476–535) | 2.12 ± 0.13 | 1.97 (1.69–2.25) | |
+| 257950 | 1 | 7.3 | 49 ± 6 | 62 (49–86) | 0.51 ± 0.05 | 0.62 (0.52–0.75) | |
+| 232843 | 2 | 5.2 | 111 ± 11 | 399 (74–427) | 0.62 ± 0.08 | 1.27 (1.01–1.48) | bimodal: one horn or the full profile |
+| 732650 | 2 | 6.2 | 63 ± 41 | 209 (199–220) | 0.38 ± 0.03 | 1.20 (1.10–1.31) | neighbour AGC 231950 in the beam |
+| 260144 | 2 | 5.8 | 136 ± 50 | 321 (215–397) | 0.66 ± 0.06 | 1.02 (0.79–1.28) | neighbour AGC 260955 in the beam |
+| 203516 | 2 | 6.0 | 81 ± 8 | 75 (62–88) | 0.60 ± 0.07 | 0.63 (0.53–0.74) | |
 
-W50 in km/s, S in Jy km/s. The systemic velocities agree within 1.4σ of the
-posterior errors (4–79 km/s) for all sources but the confused AGC 732650.
+W50 in km/s, S in Jy km/s. The systemic velocities agree within 1.7σ of the
+posterior errors (3–81 km/s) for all sources but the confused AGC 732650.
+
+The fits use the default solid-body prior f ~ Beta(1, 3). With the earlier
+uniform prior the f medians of six sources lay at 0.45–0.76, including
+0.76 for a 350 km/s wide line; with Beta(1, 3) they are 0.08–0.27, apart
+from the two blends of two galaxies (0.46, 0.52), whose summed profiles are
+genuinely dome-shaped. Widths and fluxes moved by less than their errors.
 
 * **HIcode 1:** all six widths and fluxes agree with the catalogue within
-  the combined errors. In two spectra hiprofile prefers N = 2, but the
+  the combined errors. In AGC 238702 hiprofile prefers N = 2, but the
   catalogue source is one of the components and is measured correctly; the
-  extra component sits on the rising edge of the extracted window or on a
-  broad 3 mJy bump that is not in the catalogue.
+  extra component sits on the rising edge of the extracted window. With the
+  earlier uniform f prior AGC 258145 also got a second component, on a broad
+  3 mJy bump 700 km/s away; with Beta(1, 3) it is fitted as N = 1.
 * **HIcode 2:** one of four agrees. Two of the three others are confused: a
   catalogued neighbour 2.9′ and 3.8′ away (inside the 3.5′ Arecibo beam)
   overlaps in velocity, and the single-spectrum fit measures the blend,
