@@ -36,6 +36,8 @@ The validated configuration, the code version and the seed are written into ever
 | `rfi.action` | `Literal['mask', 'inflate']` | `mask` |  |
 | `rfi.n_iter` | `int` | `8` |  |
 | `rfi.flag_fraction` | `float` | `0.05` |  |
+| `rfi.min_sigma_channels` | `float` | `2.0` | Smallest Delta v_rand (in channels) of the line model in the pre-stage, so that a spike of one or two channels cannot be absorbed as a line |
+| `rfi.close_holes` | `bool` | `True` | Also mask a single channel between two masked ones |
 | `sampler.mode` | `Literal['quick', 'full', 'check']` | `full` |  |
 | `sampler.backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']` | `smc` | smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower |
 | `sampler.check_backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc']` | `nautilus` |  |
@@ -49,6 +51,7 @@ The validated configuration, the code version and the seed are written into ever
 | `diagnostics.edge_mass` | `float` | `0.2` |  |
 | `diagnostics.min_ess` | `float` | `500.0` |  |
 | `diagnostics.logz_sigma` | `float` | `3.0` |  |
+| `diagnostics.min_w50_channels` | `float` | `2.0` | Flag `unresolved` when a component's W50 is narrower than this many channels |
 | `diagnostics.min_constraint` | `float` | `0.3` | Flag `prior_dominated` when the posterior 16-84 % width of delta_v is wider than (1 - min_constraint) times the prior width, i.e. the line width is not measured |
 | `diagnostics.negative_fraction` | `float` | `0.5` | Flag when this fraction of amplitude draws is negative. Narrow profiles make ring and disk nearly degenerate, so 10 % (roadmap value) flags most of them. |
 | `diagnostics.multimodal_weight` | `float` | `0.1` |  |
