@@ -228,6 +228,7 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--figure", default=None)
+    ap.add_argument("--correlation", default="auto", help="noise.correlation (auto: hanning + white part)")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -240,7 +241,7 @@ def main() -> None:
         )
         lines.append(f"spectra/AGC{r['AGCNr']}.txt AGC{r['AGCNr']}")
     (out / "spectra.txt").write_text("\n".join(lines) + "\n")
-    (out / "alfalfa.yaml").write_text(CONFIG)
+    (out / "alfalfa.yaml").write_text(CONFIG + f"noise:\n  correlation: {args.correlation}\n")
     subprocess.run(
         [
             "hiprofile",

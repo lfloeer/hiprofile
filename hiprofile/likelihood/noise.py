@@ -11,6 +11,7 @@ NumPy backend and a dense inverse factor for JAX (shapes must be static there).
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -123,61 +124,82 @@ def make_positive(rho: np.ndarray, floor: float = 0.02) -> np.ndarray:
     return with_white(rho, eps)
 
 
-def _raw_acf(resid: np.ndarray, good: np.ndarray, max_lag: int) -> tuple[np.ndarray, np.ndarray]:
-    """Sample correlation rho_0..rho_max_lag over pairs of good channels and the pair counts."""
-    r = np.where(good, np.asarray(resid, float), np.nan)
-    med = np.nanmedian(r)
-    mad = MAD_TO_STD * np.nanmedian(np.abs(r - med))
-    r = np.where(np.abs(r - med) < 5.0 * mad, r - med, np.nan)  # clip what the mask missed
-    ok = np.isfinite(r)
-    c0 = float(np.mean(r[ok] ** 2))
-    rho, counts = [1.0], [int(ok.sum())]
-    for k in range(1, max_lag + 1):
-        pair = ok[:-k] & ok[k:]
-        n = int(pair.sum())
-        if n < 20:
-            break
-        rho.append(float(np.mean(r[:-k][pair] * r[k:][pair]) / c0))
-        counts.append(n)
-    return np.array(rho), np.array(counts)
+def _difference_variances(resid: np.ndarray, good: np.ndarray, orders: tuple[int, ...]) -> np.ndarray:
+    """Robust (MAD) variances of the k-th differences of the residuals over good channels."""
+    y = np.where(good, np.asarray(resid, float), np.nan)
+    out = []
+    for k in orders:
+        f = np.array([(-1.0) ** (k - j) * math.comb(k, j) for j in range(k + 1)])
+        d = np.convolve(y, f, mode="valid")
+        d = d[np.isfinite(d)]
+        out.append((MAD_TO_STD * np.median(np.abs(d - np.median(d)))) ** 2 if d.size >= 16 else np.nan)
+    return np.array(out)
 
 
-def estimate_correlation(
-    resid: np.ndarray, good: np.ndarray, max_lag: int = 6, floor: float = 0.01
-) -> np.ndarray:
-    """Noise correlation rho_0..rho_m from residuals (model already subtracted).
+def _kernel_rho(h1: float, h2: float, eps: float) -> np.ndarray:
+    taps = np.array([h2, h1, 1.0, h1, h2])
+    acf = np.correlate(taps, taps, mode="full")[taps.size - 1 :]
+    return with_white(acf / acf[0], eps)
 
-    The noise is modelled as white noise smoothed by an unknown short
-    symmetric kernel h (taps -q..q, q = max_lag // 2), which is what
-    spectrometer windows, Hanning smoothing and regridding do. h is fitted
-    so that rho = h * h / |h|^2 matches the sample correlation of the
-    residuals over pairs of good channels (masks leave gaps), weighted by the
-    pair counts. Unlike a truncated sample correlation this is positive
-    definite by construction and needs no choice of the last lag;
-    :func:`make_positive` then adds the white floor that bounds the
-    condition number.
+
+def estimate_correlation(resid: np.ndarray, good: np.ndarray, floor: float = WHITE_FLOOR) -> np.ndarray:
+    """Noise correlation rho_0..rho_4 from residuals (model already subtracted).
+
+    The noise is modelled as white noise smoothed by an unknown symmetric
+    kernel [h2, h1, 1, h1, h2] with h >= 0 (spectrometer windows, Hanning,
+    Gaussian or interpolation smoothing all have non-negative taps) plus a
+    white fraction eps. The three parameters are fitted to the ratios of the
+    robust variances of the 2nd, 3rd and 4th to the 1st differences of the
+    residuals. Differences suppress what the residuals contain besides
+    noise at low frequencies (baseline ripple, line residues), which biases a
+    sample autocorrelation, and they weight the high frequencies whose power
+    the whitening divides by; the Nyquist band in particular, where smoothing
+    kernels have (almost) no power and real data some. The result is positive
+    definite by construction; eps >= ``floor`` bounds the condition number.
+    Masked channels leave gaps: differences across them are skipped.
     """
     from scipy import optimize
 
-    raw, counts = _raw_acf(resid, good, max_lag)
-    lags = raw.size - 1
-    if lags == 0:
+    orders = (1, 2, 3, 4)
+    v = _difference_variances(resid, good, orders)
+    if not np.all(np.isfinite(v)) or v[0] <= 0:
         return np.array([1.0])
-    q = max(lags // 2, 1)
-    wts = np.sqrt(counts[1:])
+    obs = np.log(v[1:] / v[0])
+    n = int(np.sum(good))
+    # standard error of a log MAD variance (efficiency 0.37) ~ sqrt(2 / (0.37 n))
+    err = np.sqrt(5.4 / max(n, 16))
+    filters = [np.array([(-1.0) ** (k - j) * math.comb(k, j) for j in range(k + 1)]) for k in orders]
 
-    def model(half: np.ndarray) -> np.ndarray:
-        h = np.r_[half[:0:-1], half]  # symmetric taps -q..q
-        acf = np.correlate(h, h, mode="full")[h.size - 1 :]
-        acf = np.pad(acf, (0, max(0, lags + 1 - acf.size)))[: lags + 1]
-        return acf / acf[0]
+    def predicted(h1: float, h2: float, eps: float) -> np.ndarray:
+        rho = _kernel_rho(h1, h2, eps)
+        fv = np.array([_filtered_variance(f, rho) for f in filters])
+        return np.log(fv[1:] / fv[0])
 
-    start = np.r_[1.0, np.zeros(q)]
-    res = optimize.least_squares(lambda x: (model(x)[1:] - raw[1:]) * wts, start, method="lm")
-    rho = model(res.x)
+    # Nested models, chosen by AIC: white; 3 taps + white part; 5 taps + white part.
+    # Without the selection, white noise is fitted by a kernel plus a large white
+    # part that mimics it (the two are degenerate there).
+    candidates: list[tuple[float, tuple[float, float, float]]] = [
+        (float(np.sum(((predicted(0.0, 0.0, 1.0) - obs) / err) ** 2)), (0.0, 0.0, 1.0))
+    ]
+    for free_h2 in (False, True):
+        k_par = 3 if free_h2 else 2
+
+        def resid_fn(x: np.ndarray, free_h2: bool = free_h2) -> np.ndarray:
+            h1, h2, eps = (x[0], x[1], x[2]) if free_h2 else (x[0], 0.0, x[1])
+            return (predicted(h1, h2, eps) - obs) / err
+
+        lo = [0.0, 0.0, floor] if free_h2 else [0.0, floor]
+        hi = [5.0, 5.0, 1.0] if free_h2 else [5.0, 1.0]
+        starts = ([0.5, 0.05, 0.05], [1.0, 0.4, 0.02]) if free_h2 else ([0.5, 0.05], [0.2, 0.3])
+        for start in starts:
+            res = optimize.least_squares(resid_fn, start, bounds=(lo, hi), method="trf")
+            x = res.x
+            par = (x[0], x[1], x[2]) if free_h2 else (x[0], 0.0, x[1])
+            candidates.append((2.0 * res.cost + 2 * k_par, par))
+    _, best = min(candidates, key=lambda c: c[0])
+    rho = _kernel_rho(*best)
     keep = np.flatnonzero(np.abs(rho) > 1e-4)
-    rho = rho[: int(keep[-1]) + 1] if keep.size else np.array([1.0])
-    return make_positive(rho, floor)
+    return rho[: int(keep[-1]) + 1] if keep.size else np.array([1.0])
 
 
 def with_white(rho: np.ndarray, eps: float) -> np.ndarray:

@@ -73,7 +73,7 @@ scans), which correlates neighbouring channels. `noise.correlation`:
 | value | correlation |
 |---|---|
 | `auto` (default) | the smoothing in `model.response` (`hanning`, `kernel(...)`) plus an estimated white part; white without smoothing |
-| `estimate` | measured on the residuals of the robust pre-fit: the noise is modelled as white noise smoothed by an unknown short symmetric kernel $h$ (7 taps), fitted so that $h \star h$ matches the sample correlation of the residuals over pairs of unmasked channels |
+| `estimate` | measured on the residuals of the robust pre-fit: white noise smoothed by an unknown symmetric kernel $[h_2, h_1, 1, h_1, h_2]$ with $h \ge 0$ plus a white part, fitted to the variance ratios of the 2nd–4th to the 1st differences of the residuals; white, 3-tap and 5-tap models are chosen by AIC |
 | `white`, `hanning`, `hanning-decimated`, `[ρ₁, ρ₂, …]` | fixed; a `+white` suffix adds an estimated white part |
 
 Two details keep the noise model safe on real data. Its power spectrum is
@@ -81,7 +81,16 @@ kept above 0.5 % (`+white`) or 1 % (`estimate`) of the mean (a white floor); an 
 power at the Nyquist frequency, real spectra do not, and whitening with it
 amplified that component by orders of magnitude (χ²_red up to 10⁴ on
 ALFALFA spectra). And the estimate is positive definite by construction,
-so masks and gaps cannot break the Cholesky factorisation. The fitted
+so masks and gaps cannot break the Cholesky factorisation. Differences
+rather than the sample autocorrelation, because the residuals also contain
+baseline ripple and line residues at low frequencies, which bias the
+autocorrelation (on ALFALFA spectra ρ₃ down to −0.27) and which a smoothing
+kernel cannot represent; differences suppress them and weight the high
+frequencies that the whitening divides by. Non-negative taps, because every
+physical smoothing has them; a free kernel turns noise in the higher lags
+into side lobes with deep spectral notches. The price: ρ₂ of a broad kernel
+is determined to about 0.03 only, which changes the noise of a flux
+integrated over a line by about 2 %. The fitted
 correlation is stored as the metrics `noise_rho` and `noise_rho1`.
 `estimate` costs one extra pre-fit iteration when the RFI pre-stage is off;
 [Validation](validation.md#correlated-noise) compares the options on noise
