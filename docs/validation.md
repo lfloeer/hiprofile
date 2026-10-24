@@ -295,6 +295,23 @@ W20 error in km/s (true W20 431 km/s for Δv = 400, 50 km/s for Δv = 20).
   rotation rare (P(Δv > 400 km/s) = 7 %), and with a per-channel S/N of
   about 1 the data cannot overrule that.
 
+**Are the intervals still right?** On average over the population, yes;
+for one width, no. In the SBC the 68 % / 95 % coverage of W20 is
+0.61 / 0.94 for true S/N < 2, 0.64 / 0.93 for 2–3 and 0.66 / 0.88 for 3–4
+(143, 59 and 67 spectra; all inside their ±2σ bands). For fixed widths at
+S/N 3 it is 0.03 / 0.20 for Δv = 20 km/s, 0.12 / 0.81 for 50, 0.56 / 0.98
+for 100, 0.92 / 0.99 for 200 and 0.41 / 0.97 for 400 km/s. The posterior
+there is the prior (its 16–84 % width, 240 km/s, equals the prior's), and a
+20 km/s line has W20 = 50 km/s, below the prior's 2.5 % quantile of
+58 km/s: the prior's own 95 % interval excludes it. In the SBC the 18
+spectra with S/N < 4 and W20 < 100 km/s are all outside their 68 %
+intervals, those with W20 > 350 km/s 74 % of the time; the many lines in the
+middle of the prior make up for them. At S/N 5 the fixed-width coverages are
+0.67–0.88 except for the narrowest lines (0.25). For undetected spectra the
+`prior_dominated` flag is not set, as no profile flag is (P(detect) < 0.5
+already says the width is not measured); among the detected spectra at
+S/N 3 it marks 17–50 %.
+
 This is the conditional bias that comes with a calibrated posterior: over
 the population the prior describes, the errors average out (SBC), for one
 kind of galaxy they do not. Uses that need widths unbiased for a fixed
