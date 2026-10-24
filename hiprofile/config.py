@@ -115,15 +115,20 @@ class RFIConfig(_Base):
 
 class SamplerConfig(_Base):
     mode: Literal["quick", "full", "check"] = "full"
-    backend: Literal["nautilus", "dynesty", "ultranest", "smc", "quick"] = "nautilus"
-    check_backend: Literal["nautilus", "dynesty", "ultranest", "smc"] = "dynesty"
+    backend: Literal["nautilus", "dynesty", "ultranest", "smc", "quick"] = Field(
+        "smc",
+        description="smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower",
+    )
+    check_backend: Literal["nautilus", "dynesty", "ultranest", "smc"] = "nautilus"
     n_live: int = Field(400, ge=20)
     baseline_evidence: Literal["reweight", "rerun"] = Field(
         "reweight",
         description="reweight: sample once per N at the preferred K and importance-reweight "
         "to the other K (rerun when the effective sample size is too small)",
     )
-    reweight_min_ess: float = Field(0.2, gt=0, le=1)
+    reweight_min_ess: float = Field(
+        200.0, gt=0, description="Minimum Kish ESS of the samples reweighted to another K"
+    )
     gate_margin: float | None = Field(
         5.0,
         description="Skip nested sampling for N when its quick evidence is this many nats below the "

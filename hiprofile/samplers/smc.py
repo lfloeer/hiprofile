@@ -21,6 +21,8 @@ from hiprofile.samplers.base import (
     systematic_resample,
 )
 
+ERR_CALIBRATION = 2.0
+
 
 def _log_prior_z(z: np.ndarray) -> np.ndarray:
     return -np.sum(np.logaddexp(0.0, z) + np.logaddexp(0.0, -z), axis=1)
@@ -111,7 +113,10 @@ def run_smc(
         log_weights=np.zeros(n),
         log_l=log_l,
         log_z=log_z,
-        log_z_err=float(np.sqrt(var_terms)),
+        # The incremental-weight variance underestimates the run-to-run scatter
+        # (MCMC moves leave the particles correlated); a factor 2 matches
+        # repeated runs on 4- and 8-dimensional profile fits (docs/inference.md).
+        log_z_err=float(ERR_CALIBRATION * np.sqrt(var_terms)),
         backend="smc",
         runtime=t.elapsed,
         n_like=like.n_calls,

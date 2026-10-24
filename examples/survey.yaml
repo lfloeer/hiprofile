@@ -24,8 +24,8 @@ rfi:
   action: mask
 sampler:
   mode: full             # quick | full | check
-  backend: nautilus      # nautilus | dynesty | ultranest | smc | quick
-  check_backend: dynesty
+  backend: smc           # smc (fastest) | nautilus (most precise) | dynesty | ultranest | quick
+  check_backend: nautilus
   n_live: 400
   baseline_evidence: reweight
 output:

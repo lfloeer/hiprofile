@@ -36,11 +36,12 @@ The validated configuration, the code version and the seed are written into ever
 | `rfi.n_iter` | `int` | `8` |  |
 | `rfi.flag_fraction` | `float` | `0.05` |  |
 | `sampler.mode` | `Literal['quick', 'full', 'check']` | `full` |  |
-| `sampler.backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']` | `nautilus` |  |
-| `sampler.check_backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc']` | `dynesty` |  |
+| `sampler.backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']` | `smc` | smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower |
+| `sampler.check_backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc']` | `nautilus` |  |
 | `sampler.n_live` | `int` | `400` |  |
 | `sampler.baseline_evidence` | `Literal['reweight', 'rerun']` | `reweight` | reweight: sample once per N at the preferred K and importance-reweight to the other K (rerun when the effective sample size is too small) |
-| `sampler.reweight_min_ess` | `float` | `0.2` |  |
+| `sampler.reweight_min_ess` | `float` | `200.0` | Minimum Kish ESS of the samples reweighted to another K |
+| `sampler.gate_margin` | `float \| None` | `5.0` | Skip nested sampling for N when its quick evidence is this many nats below the best model with fewer components (null: always sample) |
 | `sampler.options` | `dict[str, Any]` | `{}` |  |
 | `sampler.likelihood_backend` | `Literal['numpy', 'jax']` | `numpy` |  |
 | `diagnostics.ppp_min` | `float` | `0.01` |  |

@@ -454,10 +454,10 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
             lw_k = lw + ll_k - ll
             lz = ref.log_z + float(logsumexp(lw_k))
             w_k = np.exp(lw_k - logsumexp(lw_k))
-            frac = dm.kish_ess(w_k) / max(base_ess, 1.0)
-            ess_frac[k] = frac
+            ess_k = dm.kish_ess(w_k)
+            ess_frac[k] = ess_k / max(base_ess, 1.0)
             best_so_far = max(log_z_g.values())
-            if frac < cfg.sampler.reweight_min_ess and lz > best_so_far - 5.0:
+            if ess_k < cfg.sampler.reweight_min_ess and lz > best_so_far - 5.0:
                 results[k] = _run(ctx, likes[k], prior, backend, salt=10 * n + k)
                 methods[k] = "sampled"
                 log_z_g[k], log_z_e[k] = results[k].log_z, results[k].log_z_err

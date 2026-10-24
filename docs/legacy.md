@@ -53,8 +53,11 @@ log-posterior values. The new kernel reproduces all 432 profiles to
 
 `tests/reference/benchmark_legacy.json`: one legacy model evaluation takes
 27 / 50 / 112 / 206 µs for 256 / 512 / 1024 / 2048 channels (supersample 2,
-single profile, x86_64). See `benchmarks/bench_kernel.py` for the comparison
-with the new kernel.
+single profile, x86_64). `benchmarks/bench_kernel.py` writes the comparison to
+`tests/reference/benchmark_new.json`. On the same grid as the legacy code
+(supersample 2, no padding) the compiled kernel computes ring *and* disk in
+3.5 / 7.2 / 16 / 39 µs per parameter vector in batches (5–8x faster than
+legacy) and 13 / 17 / 21 / 59 µs as single calls (2–3.5x faster).
 
 ## Not reproduced
 

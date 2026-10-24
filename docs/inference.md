@@ -104,18 +104,55 @@ All backends implement `run(loglike, prior_transform, ndim) -> SamplerResult`
 
 | backend | role |
 |---|---|
-| `nautilus` | default: fewest likelihood calls in low dimension |
+| `smc` | **default**: adaptive tempered SMC (1000 particles, random-walk moves), one batched likelihood call per step; with `--gpu` (JAX likelihood) the batch runs as one XLA call |
+| `nautilus` | most precise ln Z, fewest likelihood calls, but ~10x slower here because its neural-network training dominates for a cheap likelihood; default `check_backend` |
 | `dynesty` | second opinion, well-documented diagnostics |
 | `ultranest` | robustness check, conservative ln Z errors |
-| `smc` | adaptive tempered SMC, one batched call per step; with `--gpu` (JAX likelihood) the batch runs as one XLA call on CPU or GPU |
 | `quick` | MAP + Laplace + adaptive importance sampling; quick look and start values, may miss modes |
 
-Modes: `--mode quick` (quick backend everywhere), `--mode full` (nested
-sampling, all N and K), `--mode check` (additionally runs `check_backend` at
-K* and flags $|\Delta\ln Z| > 3\sigma$).
+Modes: `--mode quick` (quick backend everywhere), `--mode full` (sampling of
+all N and K), `--mode check` (additionally runs `check_backend` at K* and
+flags $|\Delta\ln Z| > 3\sigma$).
 
-On a cheap likelihood (~100 µs per evaluation) nautilus spends most of its
-time training its neural network; `n_networks = 1` is set by default. In
-measurements on a 400-channel spectrum (N = 1) all backends agreed in ln Z
-within 0.4 (nautilus 12.9k calls / 14 s, UltraNest 26k / 12 s, dynesty 43k / 28 s,
-SMC 91k / 9 s, quick 6.9k / 1.4 s).
+Every nested sampler has a time / call budget (nautilus 600 s or 10⁶ calls,
+dynesty and UltraNest 10⁶ calls); a fit that hits it gets the `sampler_budget` flag.
+
+### Accuracy and speed
+
+Measured on a 512-channel spectrum (S/N 15, first-order baseline), eight seeds per setting:
+
+| backend | N = 1: ln Z bias / scatter / time | N = 2: ln Z bias / scatter / time |
+|---|---|---|
+| nautilus (reference) | – / 0.02 / 10 s | – / 0.03 / 40–46 s |
+| smc, 1000 particles, 10 moves | −0.04 / 0.10 / 0.9 s | +0.25 / 0.23 / 3.2 s |
+| smc, 1000 particles, 20 moves | 0.00 / 0.11 / 1.8 s | +0.16 / 0.11 / 6.6 s |
+| quick | −0.03 / 0.02 / 0.3 s | −0.1 / 0.1 / 0.7 s (low ESS) |
+
+dynesty and UltraNest lie 0.05–0.15 above nautilus for N = 2, so part of the SMC
+offset is nautilus' own. The SMC error from the incremental-weight variance
+underestimates the run-to-run scatter by about a factor 2 and is multiplied by
+2. Offsets of a few tenths in ln Z change model probabilities by tens of
+per cent at most; use `--backend nautilus` or `--mode check` where precise
+evidences matter.
+
+### Compiled kernel and likelihood
+
+With numba installed (a default dependency), the ring/disk kernel and the
+Woodbury algebra run as compiled loops (`hiprofile.model.fast`,
+`hiprofile.likelihood.fast`): table-based Bessel functions (Estrin scheme),
+recurrences for the phase factor and the Gaussian, direct scattering into the
+folded spectrum, banded whitening and a small Cholesky solve per parameter
+vector. They agree with the NumPy reference to 1e-12 (tests/test_fast.py).
+One evaluation of the marginal likelihood (one component, 512 channels, K = 2)
+takes about 19 µs in batches and 36 µs as a single call; the NumPy path takes
+about 100 µs and 300 µs.
+
+Complete fits with the default configuration (N ≤ 2, K = 0…3, RFI pre-stage), one process:
+
+| spectrum | before (NumPy kernel, nautilus) | now (numba, smc) |
+|---|---|---|
+| pure noise | 15–55 s | 3.4 s |
+| one component | 100–220 s | 4.9 s |
+| two components | 100–250 s | 9 s |
+
+`benchmarks/bench_kernel.py` and `benchmarks/bench_fit.py` reproduce the numbers.

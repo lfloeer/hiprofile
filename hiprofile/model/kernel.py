@@ -35,10 +35,13 @@ import numpy as np
 import scipy.fft
 
 from hiprofile._backend import get_xp
+from hiprofile.model import fast as _fast
 from hiprofile.model.bessel import bessel_terms
 from hiprofile.model.response import transfer_function
 
 PROFILE_NPARAM = 4
+# Use the compiled (numba) kernel for the NumPy backend when numba is installed
+USE_COMPILED = True
 GAUSS_NPARAM = 2
 
 
@@ -314,6 +317,8 @@ def profile_basis(grid: SpectralGrid, theta, backend: str = "numpy"):
     ``theta[..., :] = (v_ctr, dv, dv_rand, alpha)``; any leading batch shape.
     """
     if backend == "numpy":
+        if USE_COMPILED and _fast.available():
+            return _fast.profile_basis_fast(grid, theta)
         return _profile_basis_numpy(grid, np.asarray(theta, dtype=float))
     return _to_channels(grid, profile_fourier(grid, theta, backend), backend)
 

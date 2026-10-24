@@ -23,8 +23,8 @@ jobs:
         run: uv pip install --system -e ".[dev]"
       - name: Lint
         run: |
-          ruff check hiprofile tests
-          ruff format --check hiprofile tests
+          ruff check hiprofile tests benchmarks
+          ruff format --check hiprofile tests benchmarks
       - name: Type check
         run: mypy hiprofile
       - name: Tests (golden files, kernel, likelihood, CLI)

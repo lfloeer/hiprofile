@@ -23,6 +23,7 @@ dependencies = [
     "pydantic>=2.5",
     "pyyaml>=6.0",
     "nautilus-sampler>=1.0",
+    "numba>=0.59",
 ]
 
 [project.optional-dependencies]
@@ -58,6 +59,7 @@ known-local-folder = ["conftest"]
 
 [tool.ruff.lint.per-file-ignores]
 "hiprofile/plots/report.py" = ["E501"]  # embedded CSS/HTML
+"benchmarks/*" = ["B023"]  # lambdas are called immediately inside the loop
 
 [tool.mypy]
 python_version = "3.11"

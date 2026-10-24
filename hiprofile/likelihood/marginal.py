@@ -30,6 +30,7 @@ from typing import Any
 import numpy as np
 
 from hiprofile._backend import get_xp
+from hiprofile.likelihood import fast as _fast_ll
 from hiprofile.likelihood.noise import NoiseModel
 from hiprofile.model.kernel import (
     GAUSS_NPARAM,
@@ -43,6 +44,7 @@ from hiprofile.model.kernel import (
 NPARAM = {"profile": PROFILE_NPARAM, "gauss": GAUSS_NPARAM}
 NAMP = {"profile": 2, "gauss": 1}
 LOG_2PI = math.log(2.0 * math.pi)
+COMPILED_CHUNK = 64
 
 
 @dataclass
@@ -218,8 +220,46 @@ class MarginalLikelihood:
             a, bvec = g_bb, b_b
         return a, bvec, rr * scale2, logdet_c
 
+    @property
+    def _compiled(self) -> bool:
+        return self.backend == "numpy" and not self.noise_scale and self.n_amp > 0 and _fast_ll.available()
+
+    def _fast_args(self) -> tuple:
+        p = self._pre
+        if "fast" not in p:
+            chol = self.noise.sigma[None, :] if self.noise.white else self.noise.cholesky_banded()
+            const = p["logdet_c"] + p["logdet_lam"] + p["n"] * LOG_2PI
+            tw = np.ascontiguousarray(np.asarray(p["tw"], dtype=float).reshape(self.n_base, self.noise.n))
+            p["fast"] = (
+                np.ascontiguousarray(self.good_index, dtype=np.int64),
+                np.ascontiguousarray(chol, dtype=float),
+                tw,
+                np.ascontiguousarray(p["rw"]),
+                np.ascontiguousarray(np.asarray(p["g_tt"]).reshape(self.n_base, self.n_base)),
+                np.ascontiguousarray(np.asarray(p["b_t"]).reshape(self.n_base)),
+                np.ascontiguousarray(p["amp_prec"]),
+                float(p["rr"]),
+                float(const),
+            )
+        return p["fast"]
+
+    def _loglike_compiled(self, theta) -> np.ndarray:
+        basis = np.ascontiguousarray(self.basis(theta))
+        return _fast_ll.woodbury(basis, *self._fast_args())
+
     def loglike(self, theta):
         """ln p(y | theta), vectorised over the leading axis of ``theta``."""
+        if self._compiled:
+            th = np.atleast_2d(np.asarray(theta, dtype=float))
+            if th.shape[0] <= COMPILED_CHUNK:
+                return self._loglike_compiled(th)
+            # chunks keep the temporary basis arrays in cache
+            return np.concatenate(
+                [
+                    self._loglike_compiled(th[i : i + COMPILED_CHUNK])
+                    for i in range(0, th.shape[0], COMPILED_CHUNK)
+                ]
+            )
         xp = get_xp(self.backend)
         p = self._pre
         if self.n_linear == 0:
@@ -248,10 +288,15 @@ class MarginalLikelihood:
         if self.n_linear == 0:
             nb = np.atleast_2d(theta).shape[0]
             return np.zeros((nb, 0)), np.zeros((nb, 0, 0))
-        terms = self._jit_terms if self.backend == "jax" else self._terms
-        a, bvec, _, _ = terms(xp.asarray(theta, dtype=float))
-        a = np.asarray(a)
-        bvec = np.asarray(bvec)
+        if self._compiled:
+            th = np.atleast_2d(np.asarray(theta, dtype=float))
+            basis = np.ascontiguousarray(self.basis(th))
+            a, bvec = _fast_ll.gram(basis, *self._fast_args()[:-2])
+        else:
+            terms = self._jit_terms if self.backend == "jax" else self._terms
+            a, bvec, _, _ = terms(xp.asarray(theta, dtype=float))
+            a = np.asarray(a)
+            bvec = np.asarray(bvec)
         cov = np.linalg.inv(a)
         cov = 0.5 * (cov + np.swapaxes(cov, 1, 2))
         mean = np.einsum("bpq,bq->bp", cov, bvec)

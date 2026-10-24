@@ -18,7 +18,7 @@ flags, and optionally plots. Over all spectra it builds a catalogue
 
 ```bash
 uv pip install "hiprofile[all]"      # JAX, dynesty, UltraNest, matplotlib, pyarrow
-uv pip install hiprofile             # minimal: NumPy kernel + nautilus
+uv pip install hiprofile             # minimal: compiled kernel, SMC and nautilus
 ```
 
 Extras: `[jax]`, `[gpu]` (CUDA JAX), `[samplers]`, `[plots]`, `[parquet]`, `[dev]`.
@@ -39,7 +39,7 @@ Extras: `[jax]`, `[gpu]` (CUDA JAX), `[samplers]`, `[plots]`, `[parquet]`, `[dev
 hiprofile/
   model/        Fourier kernel, ring and disk basis functions, spectrometer response
   likelihood/   marginalisation, noise models, baseline priors, RFI pre-stage
-  samplers/     nautilus, dynesty, ultranest, smc, quick (MAP + Laplace + IS)
+  samplers/     smc (default), nautilus, dynesty, ultranest, quick (MAP + Laplace + IS)
   inference/    fit per spectrum: N and K, evidences, amplitudes, derived quantities
   simulate/     simulator, templates, injection
   validate/     SBC, confusion matrix, coverage

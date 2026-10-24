@@ -103,6 +103,10 @@ class NoiseModel:
             ab[d, : n - d] = r * self.sigma[d:] * self.sigma[:-d]
         return ab
 
+    def cholesky_banded(self) -> np.ndarray:
+        """Lower banded Cholesky factor, storage ab[d, j] = L[j + d, j]."""
+        return self._chol_banded()
+
     def _chol_banded(self) -> np.ndarray:
         if "chol" not in self._cache:
             self._cache["chol"] = scipy.linalg.cholesky_banded(self._banded_cov(), lower=True)

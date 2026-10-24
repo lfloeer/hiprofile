@@ -19,14 +19,16 @@ Chebyshev baseline order K, P(detect), quality metrics and flags;
 
 * **Model kernel** (`hiprofile.model`): ring and disk basis functions evaluated in
   Fourier space (Bessel functions, Gaussian, exact channel integration and
-  Hanning/Tukey responses), NumPy and JAX (`jit`, `vmap`, gradients). Only
-  four parameters are nonlinear: v_ctr, Δv, Δv_rand, α.
+  Hanning/Tukey responses); compiled with numba by default, NumPy fallback, and
+  JAX (`jit`, `vmap`, gradients). Only four parameters are nonlinear: v_ctr,
+  Δv, Δv_rand, α. A full fit of a 512-channel spectrum (N ≤ 2, K ≤ 3) takes
+  3–10 s on one core.
 * **Likelihood** (`hiprofile.likelihood`): ring/disk amplitudes and the Chebyshev
   baseline are marginalised analytically (Woodbury); white or Hanning-correlated
   noise; masks; a robust outlier-mixture pre-stage for RFI.
-* **Samplers** (`hiprofile.samplers`): nautilus (default), dynesty, UltraNest,
-  tempered SMC and a quick MAP + Laplace + importance-sampling mode behind one
-  interface; `--mode quick | full | check`.
+* **Samplers** (`hiprofile.samplers`): tempered SMC (default, fastest), nautilus
+  (most precise evidences), dynesty, UltraNest and a quick MAP + Laplace +
+  importance-sampling mode behind one interface; `--mode quick | full | check`.
 * **Model comparison** (`hiprofile.inference`): evidences for all N and K with a
   Poisson prior on N; amplitude positivity by exact reweighting.
 * **Validation** (`hiprofile simulate`, `hiprofile validate`): simulation-based
