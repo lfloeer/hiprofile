@@ -259,6 +259,7 @@ def compare(args: argparse.Namespace) -> None:
               f"{c['W50_pull'][0]:+.2f} {c['W50_pull'][1]:.2f}")  # fmt: skip
     if args.figures:
         figures(table, summary, Path(args.figures))
+        outlier_figure(out, table, Path(args.figures) / "alfalfa_survey_outliers.png")
 
 
 def _binned(ax, x: np.ndarray, y: np.ndarray, edges: np.ndarray, color: str, label: str) -> None:
@@ -363,6 +364,54 @@ def figures(table: list[dict], summary: dict, outdir: Path) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     path = outdir / "alfalfa_survey.png"
     fig.savefig(path, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+    print("wrote", path)
+
+
+def outlier_figure(out: Path, table: list[dict], path: Path, n: int = 12) -> None:
+    """Spectra of the detected sources whose W50 differs most from the catalogue."""
+    from hiprofile.io.results import read_result
+    from hiprofile.plots import style
+
+    style.apply()
+    import matplotlib.pyplot as plt
+
+    det = [r for r in table if r["status"] == "ok" and float(r["p_detect"]) > 0.5]
+    det.sort(key=lambda r: -abs(np.log(float(r["W50"]) / float(r["W50_cat"]))))
+    fig, axes = plt.subplots(3, 4, figsize=(16, 9.5))
+    for ax, row in zip(axes.flat, det[:n], strict=False):
+        res = read_result(out / "results" / "spectra" / f"AGC{row['agc']}.h5")
+        cz = res.velocity / (1.0 - res.velocity / C)
+        mjy = 1000.0
+        ax.step(cz, res.flux * mjy, where="mid", color=style.INK, lw=0.6)
+        band = res.model_band * mjy
+        ax.fill_between(cz, band[1], band[3], color=style.SERIES[0], alpha=0.35, lw=0, step="mid")
+        ax.plot(cz, band[2], color=style.SERIES[0], lw=1.4)
+        top = float(np.max(band[2])) or 1.0
+        marks = (
+            ((row["W50_cat"], row["cz_cat"]), style.SERIES[1], 0.5, "ALFALFA W50"),
+            ((row["W50"], row["cz"]), style.SERIES[0], 0.38, "hiprofile W50"),
+        )
+        for (w, c), color, y, lab in marks:
+            w, c = float(w), float(c)
+            ax.plot(
+                [c - w / 2, c + w / 2], [y * top] * 2, color=color, lw=3, solid_capstyle="butt", label=lab
+            )
+        ax.set_xlim(cz.min(), cz.max())
+        head = f"AGC {row['agc']} (code {row['code']}, S/N {float(row['snr_cat']):.1f}), N = {row['best_n']}"
+        widths = f"W50 {float(row['W50_cat']):.0f} / {float(row['W50']):.0f} km/s"
+        ax.set_title(f"{head}\n{widths}; {row['flags'] or 'no flags'}", fontsize=8, loc="left")
+        ax.tick_params(labelsize=7)
+    axes[0, 0].legend(fontsize=7, loc="upper left")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("mJy", fontsize=8)
+    fig.suptitle(
+        "Largest W50 differences: spectrum, posterior median and 68 % band (blue), "
+        "catalogue (orange) and hiprofile (blue) W50 at half height",
+        x=0.01, ha="left", fontsize=11,
+    )  # fmt: skip
+    fig.tight_layout()
+    fig.savefig(path, dpi=110, bbox_inches="tight")
     plt.close(fig)
     print("wrote", path)
 
