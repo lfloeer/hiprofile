@@ -46,7 +46,7 @@ class Bounds1D:
 
     ``uniform`` and ``loguniform`` on [low, high]; ``normal`` (mean, std) and
     ``lognormal`` (mean, std of log10 x), truncated to [low, high] (infinite
-    bounds allowed).
+    bounds allowed); ``beta`` (shapes a, b) scaled to [low, high].
     """
 
     kind: str
@@ -54,6 +54,8 @@ class Bounds1D:
     high: float
     mean: float = 0.0
     std: float = 1.0
+    a: float = 1.0
+    b: float = 1.0
 
     def _z(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=float)
@@ -74,6 +76,8 @@ class Bounds1D:
             return self.low + (self.high - self.low) * u
         if self.kind == "loguniform":
             return np.exp(np.log(self.low) + (np.log(self.high) - np.log(self.low)) * u)
+        if self.kind == "beta":
+            return self.low + (self.high - self.low) * special.betaincinv(self.a, self.b, u)
         c_lo, c_hi = self._trunc()
         z = special.ndtri(np.clip(c_lo + (c_hi - c_lo) * u, 1e-300, 1 - 1e-16))
         x = 10.0 ** (self.mean + self.std * z) if self.kind == "lognormal" else self.mean + self.std * z
@@ -85,6 +89,9 @@ class Bounds1D:
             return np.clip((x - self.low) / (self.high - self.low), 0.0, 1.0)
         if self.kind == "loguniform":
             return np.clip((np.log(x) - np.log(self.low)) / (np.log(self.high) - np.log(self.low)), 0.0, 1.0)
+        if self.kind == "beta":
+            t = np.clip((x - self.low) / (self.high - self.low), 0.0, 1.0)
+            return special.betainc(self.a, self.b, t)
         c_lo, c_hi = self._trunc()
         return np.clip((special.ndtr(self._z(x)) - c_lo) / (c_hi - c_lo), 0.0, 1.0)
 
@@ -109,6 +116,8 @@ def _bounds(r: Range, default_low: float, default_high: float) -> Bounds1D:
         high=float(high),
         mean=0.0 if r.mean is None else float(r.mean),
         std=1.0 if r.std is None else float(r.std),
+        a=1.0 if r.a is None else float(r.a),
+        b=1.0 if r.b is None else float(r.b),
     )
 
 
@@ -263,7 +272,11 @@ class ModelPrior:
         return u
 
     def edge_bounds(self) -> dict[str, tuple[float, float]]:
-        """Hard prior edges of each named parameter (for the prior-edge diagnostic)."""
+        """Hard prior edges of each named parameter (for the prior-edge diagnostic).
+
+        Only truncations the truth could lie beyond count. f is left out: [0, 1]
+        is its definition, and f near 0 (no solid-body part) is a valid result.
+        """
         out: dict[str, tuple[float, float]] = {}
         for name in self.names:
             if name.startswith("delta_v_rand"):
@@ -272,8 +285,6 @@ class ModelPrior:
                 out[name] = self.delta_v.edges
             elif name.startswith("alpha"):
                 out[name] = self.alpha.edges
-            elif name.startswith("f_"):
-                out[name] = self.f.edges
         return out
 
     def __call__(self, u: np.ndarray) -> np.ndarray:

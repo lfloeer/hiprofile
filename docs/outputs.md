@@ -68,7 +68,7 @@ crossings.
 | `chi2_red`, `ppp` (posterior predictive p) | `ppp` | p < `diagnostics.ppp_min` (0.01) |
 | `wiggle_J`, `wiggle_snr` (Stewart et al. Eq. 8) | `wiggle` | J > `wiggle_max` and J² significant at 3σ |
 | `residual_acf` (lag 1–3, in units of 1/√n) | `residual_acf` | any \|value\| > `acf_sigma` (4) |
-| `edge_<par>`, `edge_mass` (posterior mass next to a bound of f, α, Δv, Δv_rand: within half the posterior's 16–84 % width, at most 1/20 of the range) | `prior_edge` | > `edge_mass` (0.2): the bound cuts the posterior |
+| `edge_<par>`, `edge_mass` (posterior mass next to a bound of α, Δv, Δv_rand (f is bounded by definition and not checked): within half the posterior's 16–84 % width, at most 1/20 of the range) | `prior_edge` | > `edge_mass` (0.2): the bound cuts the posterior |
 | `multimodal_weight`, `multimodal_separation` (2-means in the unit cube) | `multimodal` | weight > 0.1 and separation > 4 |
 | `ess` (Kish) | `low_ess` | < `min_ess` (500) |
 | `logz_check_sigma` (check mode) | `logz_mismatch` | > `logz_sigma` (3) |

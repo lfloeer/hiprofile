@@ -20,7 +20,7 @@ The validated configuration, the code version and the seed are written into ever
 | `priors.delta_v` | `Range` | `{'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}` | Line width [km/s]: log-normal around 160 km/s, 0.4 dex (THINGS: 0.1-566 km/s, median 153) |
 | `priors.delta_v_rand` | `Range` | `{'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}` | Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s) |
 | `priors.alpha` | `Range` | `{'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}` | Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14) |
-| `priors.f` | `Range` | `{'kind': 'uniform', 'low': 0.0, 'high': 1.0}` | Solid-body fraction: uniform on [0, 1] (Stewart et al. used a nearly flat exponential; THINGS median 0.15, mean 0.23) |
+| `priors.f` | `Range` | `{'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}` | Solid-body fraction: Beta(1, 3), density 3 (1 - f)^2, median 0.21, P(f > 0.7) = 2.7 %; fitted to the 34 THINGS galaxies (median 0.15, 3 % above 0.7), which reject a uniform prior |
 | `priors.amplitude_scale` | `Union[float, Literal['auto']]` | `auto` | Std of the half-normal prior on the integrated flux S of each component [flux * km/s]. Fix it for a survey so that evidences are comparable between spectra. |
 | `priors.baseline_scale` | `Union[float, Literal['auto']]` | `auto` | Std of the Chebyshev coefficients; auto = 10 x noise rms |
 | `priors.baseline_mean` | `list[float] \| None` | `null` |  |
@@ -79,7 +79,7 @@ Prior ranges (`priors.v_ctr`, `priors.delta_v`, ...) take `kind` (`uniform`, `lo
 | `n_components` | `int \| list[float]` | `1` |  |
 | `profiles` | `Literal['model', 'template', 'mixed']` | `model` |  |
 | `template_files` | `list[str]` | `[]` |  |
-| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'delta_v': {'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'uniform', 'low': 0.0, 'high': 1.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
+| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'delta_v': {'kind': 'lognormal', 'low': 0.0, 'high': 800.0, 'mean': 2.2, 'std': 0.4}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
 | `flux` | `Literal['prior', 'snr']` | `snr` |  |
 | `snr_range` | `tuple[float, float]` | `(3.0, 100.0)` |  |
 | `noise_sigma` | `float` | `0.01` |  |

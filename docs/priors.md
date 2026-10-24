@@ -13,18 +13,31 @@ lower S/N.
 | Δv | log-normal, log₁₀ = 2.2 ± 0.4 (≈ 160 km/s), ≤ 800 km/s | 0.1–566 km/s, median 153; two dwarfs with Δv ≈ 0 | Stewart B.2: log-normal 2.2 ± 0.3; ALFALFA width function: modified Schechter with w* ≈ 300 km/s, α ≈ −0.56 (Oman 2022) |
 | Δv_rand | log-normal, log₁₀ = 1.1 ± 0.2 (≈ 12.6 km/s), 4–60 km/s | 8–32 km/s, median 12.4, log₁₀ 1.13 ± 0.16 | Stewart B.2: 1.17 ± 0.14; resolved HI dispersions ≈ 10 ± 2 km/s (Tamburro et al. 2009); narrow / broad super-profile components 6.5 ± 1.5 / 16.8 ± 4.3 km/s (Ianjamasimanana et al. 2012) |
 | α | normal(0, 0.25) truncated to [−1, 1] | median 0.00, robust σ 0.14; 3 of 34 with \|α\| > 0.6 (NGC 3077, NGC 1569, Ho I) | Stewart B.2: normal(0, 0.2) |
-| f | uniform on [0, 1] (sampled parameter) | median 0.15, mean 0.23 | Stewart B.2: exponential with scale 0.3, i.e. nearly flat on [0, 1] |
+| f | Beta(1, 3), density 3(1 − f)², median 0.21, P(f > 0.7) = 2.7 % | median 0.15, mean 0.23, 1 of 34 above 0.7 (0.93); a uniform prior is rejected (KS p < 0.001), Beta(1, 3) is not (p = 0.13) | Stewart B.2: exponentially decreasing with characteristic constant 0.3 (printed as 0.3 e^(−0.3 f), which would be nearly flat; the text describes a decreasing prior) |
 | v_ctr | uniform over the band minus 5 % margins; normal(v_cat, 20–50 km/s) for targeted spectra | – | Stewart B.2: normal, σ = 20 km/s |
 | S | half-normal (`amplitude_scale`, fix per survey) | – | Stewart: flat (improper, unusable for evidences) |
 | K | flat over `k_min` … `k_max`, coefficients N(0, `baseline_scale`²) | – | Stewart: order by maximum evidence |
 
 All priors are simple one-parameter-family shapes (log-normal, truncated
-normal, uniform, half-normal); Δv uses 0.4 dex instead of the 0.3 dex of
+normal, beta, uniform, half-normal); Δv uses 0.4 dex instead of the 0.3 dex of
 Stewart et al. so that narrow dwarf profiles keep prior mass. The flux S keeps
 a half-normal prior so that it can be marginalised analytically; positivity
 enters the sampling target exactly through the orthant probability (see
 [Inference](inference.md)). f is a sampled parameter with its own prior: an
 implicit f prior from two amplitude scales would depend on S.
+
+**Solid-body fraction.** f is the fraction of the HI inside the radius where
+the rotation curve turns over. In spirals that radius is small compared with
+the HI disk, so most of the gas sits on the flat part and f is small; only
+dwarfs whose rotation curve rises across the whole disk approach f ≈ 1. A
+uniform prior gave such solid-body profiles 30 % of the prior mass, and at
+low S/N, where the data barely constrain f, it pulled posterior medians to
+0.5–0.8 even for 350 km/s wide lines. Beta(1, 3) follows the THINGS
+distribution and keeps f > 0.7 possible (2.7 %) but rare. Physics also says
+that f should fall with galaxy mass, but the THINGS fits show only a weak
+trend with Δv (Spearman r = −0.22, p = 0.22), and Δv is V_rot sin i, so a
+prior on f conditional on Δv would also penalise face-on spirals; f keeps a
+single prior.
 
 The simulator draws from the same priors (`hiprofile simulate`, all
 validation stages), so simulated galaxies look like the ones the fit expects.

@@ -21,20 +21,25 @@ class Range(_Base):
     """A one-dimensional prior.
 
     ``uniform`` and ``loguniform`` on [low, high]; ``normal`` (mean, std) and
-    ``lognormal`` (mean and std of log10 x) optionally truncated to [low, high].
+    ``lognormal`` (mean and std of log10 x) optionally truncated to [low, high];
+    ``beta`` (shape parameters a, b) scaled to [low, high].
     """
 
-    kind: Literal["uniform", "loguniform", "normal", "lognormal"] = "uniform"
+    kind: Literal["uniform", "loguniform", "normal", "lognormal", "beta"] = "uniform"
     low: float | None = None
     high: float | None = None
     mean: float | None = None
     std: float | None = None
+    a: float | None = None
+    b: float | None = None
 
     @model_validator(mode="after")
     def _check(self) -> Range:
         if self.kind in ("normal", "lognormal"):
             if self.mean is None or self.std is None or self.std <= 0:
                 raise ValueError(f"{self.kind} prior needs mean and std > 0")
+        if self.kind == "beta" and (self.a is None or self.b is None or self.a <= 0 or self.b <= 0):
+            raise ValueError("beta prior needs shape parameters a > 0 and b > 0")
         if self.low is not None and self.high is not None and self.high <= self.low:
             raise ValueError("prior needs high > low")
         if self.kind == "loguniform" and self.low is not None and self.low <= 0:
@@ -66,9 +71,9 @@ class Priors(_Base):
         description="Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14)",
     )
     f: Range = Field(
-        default_factory=lambda: Range(kind="uniform", low=0.0, high=1.0),
-        description="Solid-body fraction: uniform on [0, 1] (Stewart et al. used a nearly flat "
-        "exponential; THINGS median 0.15, mean 0.23)",
+        default_factory=lambda: Range(kind="beta", a=1.0, b=3.0, low=0.0, high=1.0),
+        description="Solid-body fraction: Beta(1, 3), density 3 (1 - f)^2, median 0.21, P(f > 0.7) = 2.7 %; "
+        "fitted to the 34 THINGS galaxies (median 0.15, 3 % above 0.7), which reject a uniform prior",
     )
     amplitude_scale: float | Literal["auto"] = Field(
         "auto",
@@ -91,8 +96,8 @@ class Priors(_Base):
     @classmethod
     def _bounded(cls, v: Range, info: ValidationInfo) -> Range:
         lo_max, hi_max = (-1.0, 1.0) if info.field_name == "alpha" else (0.0, 1.0)
-        if v.kind not in ("uniform", "normal"):
-            raise ValueError(f"{info.field_name} prior must be uniform or (truncated) normal")
+        if v.kind not in ("uniform", "normal", "beta"):
+            raise ValueError(f"{info.field_name} prior must be uniform, (truncated) normal or beta")
         low = lo_max if v.low is None else v.low
         high = hi_max if v.high is None else v.high
         if low < lo_max or high > hi_max:
