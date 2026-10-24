@@ -57,3 +57,16 @@ def test_failed_spectrum_does_not_stop_the_run(tmp_path):
 
 def test_select_chunk():
     assert select_chunk(list(range(7)), (1, 3)) == [1, 4]
+
+
+def test_validate_stage_in_chunks(tmp_path):
+    from hiprofile.validate import run_stage
+
+    cfg = Config().updated(sampler={"mode": "quick"}, output={"plots": "none"})
+    for i in range(2):
+        part = run_stage("sbc", tmp_path, 2, cfg, seed=3, chunk=(i, 2))
+        assert part["runs"] == {} and part["chunk"] == [i, 2]
+    assert not (tmp_path / "validate_sbc" / "summary.json").exists()
+    full = run_stage("sbc", tmp_path, 2, cfg, seed=3, resume=True)
+    assert full["runs"]["sbc"]["n_fitted"] == 2
+    assert (tmp_path / "validate_sbc" / "summary.md").exists()

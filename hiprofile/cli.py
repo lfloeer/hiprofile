@@ -135,14 +135,16 @@ def cmd_simulate(args: argparse.Namespace) -> int:
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
+    from hiprofile.runner import parse_chunk
     from hiprofile.validate import run_stage
 
     out = Path(args.out)
     _setup_logging(out, args.verbose)
     cfg = _load_config(args)
     stages = args.stage if args.stage else ["sbc"]
+    chunk = parse_chunk(args.chunk)
     for st in stages:
-        summ = run_stage(
+        run_stage(
             st,
             out,
             args.n,
@@ -151,9 +153,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
             seed=args.seed or 1,
             spectra=args.spectra,
             resume=args.resume,
+            chunk=chunk,
         )
-        print((out / f"validate_{st}" / "summary.md").read_text())
-        del summ
+        if chunk is None:
+            print((out / f"validate_{st}" / "summary.md").read_text())
+        else:
+            print(f"{st}: chunk {args.chunk} fitted; analyse with the same command, --resume and no --chunk")
     return 0
 
 
@@ -262,6 +267,7 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--spectra", help="signal-free survey spectra for the injection stage")
     v.add_argument("--seed", type=int)
     v.add_argument("--resume", action="store_true")
+    v.add_argument("--chunk", help="i/n: fit chunk i of n (SLURM arrays), then analyse with --resume")
     v.add_argument("-v", "--verbose", action="store_true")
     v.set_defaults(func=cmd_validate)
 

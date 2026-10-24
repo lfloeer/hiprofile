@@ -136,7 +136,14 @@ def run_stage(
     seed: int = 1,
     spectra: str | None = None,
     resume: bool = False,
+    chunk: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
+    """Simulate, fit and analyse one stage.
+
+    With `chunk = (i, n)` only the i-th of n slices of the spectra is fitted
+    (SLURM arrays) and nothing is analysed; a final call with `resume=True`
+    and no chunk collects the results.
+    """
     out_dir = Path(out_dir) / f"validate_{stage}"
     out_dir.mkdir(parents=True, exist_ok=True)
     summary: dict[str, Any] = {"stage": stage, "n": n, "seed": seed, "runs": {}}
@@ -153,9 +160,13 @@ def run_stage(
         else:
             sims = simulate_many(sim, n, sim_seed, prefix=f"{label[:3]}")
         sources, truth = _write_sims(sims, run_dir)
-        run_fits(sources, fit, run_dir, jobs=jobs, resume=resume)
+        run_fits(sources, fit, run_dir, jobs=jobs, chunk=chunk, resume=resume)
         (run_dir / "sim_config.yaml").write_text(json.dumps(sim.model_dump(mode="json"), indent=1))
-        summary["runs"][label] = analyze(stage, run_dir, truth, fit)
+        if chunk is None:
+            summary["runs"][label] = analyze(stage, run_dir, truth, fit)
+    if chunk is not None:
+        summary["chunk"] = list(chunk)
+        return summary
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=1, default=float))
     (out_dir / "summary.md").write_text(to_markdown(summary))
     return summary

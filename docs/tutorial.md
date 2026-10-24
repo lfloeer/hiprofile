@@ -61,6 +61,8 @@ print(res.p_detect, post.summary()["W50_1"])
 hiprofile validate --stage sbc --n 1000 --jobs 32 --out validation
 hiprofile validate --stage detection --stage misspec --n 500 --jobs 32 --out validation
 hiprofile validate --stage injection --spectra signal_free.txt --n 500 --out validation
+hiprofile validate --stage sbc --n 1000 --chunk 3/50 --out validation   # one SLURM array task
+hiprofile validate --stage sbc --n 1000 --resume --out validation       # analysis once all chunks are done
 ```
 
 Each stage writes `validation/validate_<stage>/summary.md`, `summary.json` and
