@@ -10,7 +10,7 @@ lower S/N.
 
 | parameter | default | THINGS fits | other references |
 |---|---|---|---|
-| Δv | log-normal, log₁₀ = 2.2 ± 0.4 (≈ 160 km/s), ≤ 800 km/s | 0.1–566 km/s, median 153; two dwarfs with Δv ≈ 0 | Stewart B.2: log-normal 2.2 ± 0.3; ALFALFA width function: modified Schechter with w* ≈ 300 km/s, α ≈ −0.56 (Oman 2022) |
+| Δv | gamma, shape 2.3, scale 83 km/s (median 166, 16–84 % 77–305 km/s), ≤ 800 km/s; fitted to the W50 of 25 434 ALFALFA detections | 0.1–566 km/s, median 153 (KS p = 0.75 against the gamma prior); two dwarfs with Δv ≈ 0 | Stewart B.2: log-normal 2.2 ± 0.3, which the log-normal fit to ALFALFA reproduces (2.19 ± 0.31) |
 | Δv_rand | log-normal, log₁₀ = 1.1 ± 0.2 (≈ 12.6 km/s), 4–60 km/s | 8–32 km/s, median 12.4, log₁₀ 1.13 ± 0.16 | Stewart B.2: 1.17 ± 0.14; resolved HI dispersions ≈ 10 ± 2 km/s (Tamburro et al. 2009); narrow / broad super-profile components 6.5 ± 1.5 / 16.8 ± 4.3 km/s (Ianjamasimanana et al. 2012) |
 | α | normal(0, 0.25) truncated to [−1, 1] | median 0.00, robust σ 0.14; 3 of 34 with \|α\| > 0.6 (NGC 3077, NGC 1569, Ho I) | Stewart B.2: normal(0, 0.2) |
 | f | Beta(1, 3), density 3(1 − f)², median 0.21, P(f > 0.7) = 2.7 % | median 0.15, mean 0.23, 1 of 34 above 0.7 (0.93); a uniform prior is rejected (KS p < 0.001), Beta(1, 3) is not (p = 0.13) | Stewart B.2: exponentially decreasing with characteristic constant 0.3 (printed as 0.3 e^(−0.3 f), which would be nearly flat; the text describes a decreasing prior) |
@@ -18,13 +18,44 @@ lower S/N.
 | S | half-normal; scale `amplitude_scale`: `auto` = max(10 × noise of the band-integrated flux, 2 × positive band flux), i.e. noise-set near the detection threshold and flat over a bright source (a narrower prior would split bright sources into pairs); fix per survey | – | Stewart: flat (improper, unusable for evidences) |
 | K | flat over `k_min` … `k_max`, coefficients N(0, `baseline_scale`²), `auto` = 10 × rms | the misspecification stage checks the K choice with a prior 50 × too wide | Stewart: order by maximum evidence |
 
-All priors are simple one-parameter-family shapes (log-normal, truncated
-normal, beta, uniform, half-normal); Δv uses 0.4 dex instead of the 0.3 dex of
-Stewart et al. so that narrow dwarf profiles keep prior mass. The flux S keeps
+All priors are simple one-parameter-family shapes (gamma, log-normal,
+truncated normal, beta, uniform, half-normal). The flux S keeps
 a half-normal prior so that it can be marginalised analytically; positivity
 enters the sampling target exactly through the orthant probability (see
 [Inference](inference.md)). f is a sampled parameter with its own prior: an
 implicit f prior from two amplitude scales would depend on S.
+
+**Rotational width.** W50 mixes the rotational width Δv with the random
+motions, the asymmetry and the solid-body fraction, so Δv cannot be read off
+a W50 histogram. `benchmarks/fit_width_prior.py` forward-models it instead:
+it draws profiles with Δv from a candidate prior and Δv_rand, α, f from the
+defaults, computes their W50 with the model and fits the candidate's
+parameters to the quantiles of the observed log W50. On the 25 434 HIcode 1
+detections of ALFALFA α.100 (rest-frame W50, median 170 km/s, 0.29 dex,
+skewed towards narrow lines):
+
+| Δv prior | quantile misfit | KS distance |
+|---|---|---|
+| previous default, log-normal 2.2 ± 0.4 dex | 0.079 dex | 0.106 |
+| log-normal fitted, 2.19 ± 0.31 dex | 0.058 dex | 0.077 |
+| log-normal × sin i (isotropic inclinations), 2.32 ± 0.27 dex | 0.045 dex | 0.060 |
+| **gamma fitted, k = 2.3, θ = 83 km/s** | **0.033 dex** | **0.043** |
+| gamma × sin i, k = 3.3, θ = 74 km/s | 0.031 dex | 0.038 |
+
+![Δv priors calibrated on ALFALFA W50](img/width_prior.png)
+
+The gamma is skewed towards small widths in log Δv like the data and falls
+off exponentially above 300 km/s like the velocity function of massive
+galaxies; projecting it with random inclinations hardly improves the fit
+and is left out. The previous 0.4 dex were a setting without data and
+predicted far too many very wide lines. The calibration describes the
+detected population of a flux-limited single-dish survey out to
+cz ≈ 18 000 km/s; deeper or interferometric surveys (WALLABY, FAST) select
+differently and should run the script on their own W50 catalogue
+(`--catalog FILE --w50-column ...`). The gamma density vanishes like
+Δv^1.3 towards Δv = 0: face-on or dispersion-dominated dwarfs get their
+width through Δv_rand, which leaves W50 right but makes the split between
+Δv and Δv_rand a prior statement (`prior_dominated`).
 
 **Solid-body fraction.** f is the fraction of the HI inside the radius where
 the rotation curve turns over. In spirals that radius is small compared with

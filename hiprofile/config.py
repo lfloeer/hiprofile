@@ -22,16 +22,18 @@ class Range(_Base):
 
     ``uniform`` and ``loguniform`` on [low, high]; ``normal`` (mean, std) and
     ``lognormal`` (mean and std of log10 x) optionally truncated to [low, high];
-    ``beta`` (shape parameters a, b) scaled to [low, high].
+    ``beta`` (shape parameters a, b) scaled to [low, high]; ``gamma`` (shape a,
+    scale) optionally truncated to [low, high].
     """
 
-    kind: Literal["uniform", "loguniform", "normal", "lognormal", "beta"] = "uniform"
+    kind: Literal["uniform", "loguniform", "normal", "lognormal", "beta", "gamma"] = "uniform"
     low: float | None = None
     high: float | None = None
     mean: float | None = None
     std: float | None = None
     a: float | None = None
     b: float | None = None
+    scale: float | None = None
 
     @model_validator(mode="after")
     def _check(self) -> Range:
@@ -40,6 +42,10 @@ class Range(_Base):
                 raise ValueError(f"{self.kind} prior needs mean and std > 0")
         if self.kind == "beta" and (self.a is None or self.b is None or self.a <= 0 or self.b <= 0):
             raise ValueError("beta prior needs shape parameters a > 0 and b > 0")
+        if self.kind == "gamma" and (self.a is None or self.scale is None or self.a <= 0 or self.scale <= 0):
+            raise ValueError("gamma prior needs shape a > 0 and scale > 0")
+        if self.kind == "gamma" and self.low is not None and self.low < 0:
+            raise ValueError("gamma prior needs low >= 0")
         if self.low is not None and self.high is not None and self.high <= self.low:
             raise ValueError("prior needs high > low")
         if self.kind == "loguniform" and self.low is not None and self.low <= 0:
@@ -58,9 +64,10 @@ class Priors(_Base):
     # Defaults from the 34 THINGS fits of Stewart et al. (2014, Table 1 and App. B.2),
     # widened for survey galaxies; see docs/priors.md.
     delta_v: Range = Field(
-        default_factory=lambda: Range(kind="lognormal", mean=2.2, std=0.4, low=0.0, high=800.0),
-        description="Line width [km/s]: log-normal around 160 km/s, 0.4 dex "
-        "(THINGS: 0.1-566 km/s, median 153)",
+        default_factory=lambda: Range(kind="gamma", a=2.3, scale=83.0, low=0.0, high=800.0),
+        description="Rotational width [km/s]: gamma with shape 2.3 and scale 83 km/s (median 166, "
+        "16-84 % 77-305 km/s), truncated at 800 km/s; fitted so that the predicted W50 matches the "
+        "25 434 ALFALFA alpha.100 detections (benchmarks/fit_width_prior.py)",
     )
     delta_v_rand: Range = Field(
         default_factory=lambda: Range(kind="lognormal", mean=1.1, std=0.2, low=4.0, high=60.0),

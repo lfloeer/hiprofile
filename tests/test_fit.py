@@ -105,7 +105,9 @@ def test_rfi_burst_is_fully_masked_and_not_fitted_as_a_line(grid, rng):
     assert set(np.flatnonzero(res.mask)) >= set(burst)
     assert res.best_n == 1
     assert not res.flags["unresolved"]
-    assert abs(res.posteriors[1].summary()["v_ctr_1"] - truth[0]) < 20
+    s = res.posteriors[1].summary()
+    half = 0.5 * (s["v_ctr_1_p84"] - s["v_ctr_1_p16"])  # ~1 sigma; this faint line has ~20 km/s
+    assert abs(s["v_ctr_1"] - truth[0]) < 2.5 * half
 
 
 def test_residual_peaks_find_narrow_and_broad_features(rng):

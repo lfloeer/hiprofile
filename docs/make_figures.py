@@ -65,7 +65,7 @@ def priors() -> Path:
             "delta_v",
             "Δv [km/s]",
             np.linspace(0, 800, 33),
-            "log-normal 160 km/s, 0.4 dex",
+            "gamma, k = 2.3, θ = 83 km/s (ALFALFA)",
         ),
         ("delta_v_rand", "Δv_rand [km/s]", np.linspace(4, 40, 37), "log-normal 12.6 km/s, 0.2 dex"),
         ("alpha", "α", np.linspace(-1, 1, 41), "normal(0, 0.25) on [−1, 1]"),

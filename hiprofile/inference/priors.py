@@ -38,7 +38,8 @@ class Bounds1D:
 
     ``uniform`` and ``loguniform`` on [low, high]; ``normal`` (mean, std) and
     ``lognormal`` (mean, std of log10 x), truncated to [low, high] (infinite
-    bounds allowed); ``beta`` (shapes a, b) scaled to [low, high].
+    bounds allowed); ``beta`` (shapes a, b) scaled to [low, high]; ``gamma``
+    (shape a, scale) truncated to [low, high].
     """
 
     kind: str
@@ -48,6 +49,7 @@ class Bounds1D:
     std: float = 1.0
     a: float = 1.0
     b: float = 1.0
+    scale: float = 1.0
 
     def _z(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=float)
@@ -57,9 +59,15 @@ class Bounds1D:
             return (lg - self.mean) / self.std
         return (x - self.mean) / self.std
 
+    def _cdf(self, x: np.ndarray) -> np.ndarray:
+        """Untruncated CDF of the normal, log-normal and gamma kinds."""
+        if self.kind == "gamma":
+            return special.gammainc(self.a, np.maximum(np.asarray(x, float), 0.0) / self.scale)
+        return special.ndtr(self._z(x))
+
     def _trunc(self) -> tuple[float, float]:
-        lo = float(special.ndtr(self._z(np.asarray(self.low)))) if np.isfinite(self.low) else 0.0
-        hi = float(special.ndtr(self._z(np.asarray(self.high)))) if np.isfinite(self.high) else 1.0
+        lo = float(self._cdf(np.asarray(self.low))) if np.isfinite(self.low) else 0.0
+        hi = float(self._cdf(np.asarray(self.high))) if np.isfinite(self.high) else 1.0
         return lo, hi
 
     def transform(self, u: np.ndarray) -> np.ndarray:
@@ -71,6 +79,9 @@ class Bounds1D:
         if self.kind == "beta":
             return self.low + (self.high - self.low) * special.betaincinv(self.a, self.b, u)
         c_lo, c_hi = self._trunc()
+        if self.kind == "gamma":
+            p = np.clip(c_lo + (c_hi - c_lo) * u, 0.0, 1.0)
+            return np.clip(self.scale * special.gammaincinv(self.a, p), self.low, self.high)
         z = special.ndtri(np.clip(c_lo + (c_hi - c_lo) * u, 1e-300, 1 - 1e-16))
         x = 10.0 ** (self.mean + self.std * z) if self.kind == "lognormal" else self.mean + self.std * z
         return np.clip(x, self.low, self.high)
@@ -85,7 +96,7 @@ class Bounds1D:
             t = np.clip((x - self.low) / (self.high - self.low), 0.0, 1.0)
             return special.betainc(self.a, self.b, t)
         c_lo, c_hi = self._trunc()
-        return np.clip((special.ndtr(self._z(x)) - c_lo) / (c_hi - c_lo), 0.0, 1.0)
+        return np.clip((self._cdf(x) - c_lo) / (c_hi - c_lo), 0.0, 1.0)
 
     @property
     def edges(self) -> tuple[float, float]:
@@ -96,7 +107,7 @@ def _bounds(r: Range, default_low: float, default_high: float) -> Bounds1D:
     if r.kind == "normal":
         low = -np.inf if r.low is None else r.low
         high = np.inf if r.high is None else r.high
-    elif r.kind == "lognormal":
+    elif r.kind in ("lognormal", "gamma"):
         low = 0.0 if r.low is None else r.low
         high = np.inf if r.high is None else r.high
     else:
@@ -110,6 +121,7 @@ def _bounds(r: Range, default_low: float, default_high: float) -> Bounds1D:
         std=1.0 if r.std is None else float(r.std),
         a=1.0 if r.a is None else float(r.a),
         b=1.0 if r.b is None else float(r.b),
+        scale=1.0 if r.scale is None else float(r.scale),
     )
 
 

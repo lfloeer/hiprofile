@@ -36,14 +36,16 @@ def test_normal_centre_prior():
 
 
 def test_default_shapes_follow_things(rng):
-    """Defaults: Delta v ~ 160 km/s, Delta v_rand ~ 12.6 km/s, alpha ~ N(0, 0.25), f ~ Beta(1, 3)."""
+    """Defaults: Delta v ~ Gamma(2.3, 83 km/s), Delta v_rand ~ 12.6 km/s, alpha ~ N(0, 0.25), f ~ B(1, 3)."""
+    from scipy import stats
+
     v = np.arange(1000) * 5.0
     p = build_prior(("profile",), Priors(), v)
     t = p(rng.uniform(size=(200000, 5)))
     dv, sig, a, f = t[:, 1], t[:, 2], t[:, 3], t[:, 4]
-    # median of log-normal(2.2, 0.4) truncated at 800 km/s:
-    # 10^(2.2 + 0.4 ndtri(0.5 Phi((log10 800 - 2.2) / 0.4)))
-    assert abs(np.median(dv) - 151.4) < 3 and dv.max() <= 800.0
+    # median of Gamma(2.3, scale 83 km/s) truncated at 800 km/s (ALFALFA calibration)
+    g = stats.gamma(2.3, scale=83.0)
+    assert abs(np.median(dv) - g.ppf(0.5 * g.cdf(800.0))) < 3 and dv.max() <= 800.0
     assert abs(np.median(sig) - 12.6) < 0.3 and sig.min() >= 4.0 and sig.max() <= 60.0
     assert abs(np.std(a) - 0.25) < 0.01 and np.all(np.abs(a) <= 1)
     assert abs(np.mean(f) - 0.25) < 0.003 and abs(np.median(f) - (1 - 0.5 ** (1 / 3))) < 0.003
@@ -66,5 +68,7 @@ def test_truncated_round_trip(rng):
         Bounds1D("normal", -1.0, 1.0, std=0.25),
         Bounds1D("beta", 0.0, 1.0, a=1.0, b=3.0),
         Bounds1D("beta", 0.0, 1.0, a=0.55, b=1.86),
+        Bounds1D("gamma", 0.0, 800.0, a=2.3, scale=83.0),
+        Bounds1D("gamma", 20.0, np.inf, a=0.8, scale=50.0),
     ):
         np.testing.assert_allclose(b.inverse(b.transform(u)), u, atol=1e-10)
