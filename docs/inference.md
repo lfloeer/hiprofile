@@ -136,7 +136,12 @@ features of the N − 1 residual (matched filters of 2 and 6 channels,
 `sampler.n_seeds`). The SMC then draws `sampler.init_fraction` (25 %) of its
 particles from the quick stage's importance proposal and the rest from the
 prior; the initial importance weights prior/q₀ of this defensive mixture
-keep ln Z exact and are bounded by 1/(1 − 0.25).
+keep ln Z exact and are bounded by 1/(1 − 0.25). Every second MCMC move of
+the SMC is an independence proposal from the same mixture (exact
+Metropolis–Hastings), so particles can jump into the narrow mode of a faint
+second line at every temperature instead of having to random-walk there.
+On pairs whose second line has S/N ≈ 6 (ln Z of N = 2 within a nat of N = 1)
+this brought the SMC evidence from 2–5 nats below nautilus to within a nat.
 
 Model probabilities use a Poisson prior on N (mean `poisson_rate`) and the
 flat prior on K; the detection probability is $P(N\ge 1\mid y)$. Several

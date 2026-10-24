@@ -28,6 +28,16 @@ def _log_prior_z(z: np.ndarray) -> np.ndarray:
     return -np.sum(np.logaddexp(0.0, z) + np.logaddexp(0.0, -z), axis=1)
 
 
+def _draw_mixture(dists: list[Any], mix: np.ndarray, n: int, rng: np.random.Generator) -> np.ndarray:
+    counts = rng.multinomial(n, mix)
+    parts = [np.atleast_2d(d.rvs(size=c)) for d, c in zip(dists, counts, strict=True) if c > 0]
+    return np.vstack(parts) if parts else np.zeros((0, dists[0].dim))
+
+
+def _log_mixture(dists: list[Any], mix: np.ndarray, z: np.ndarray) -> np.ndarray:
+    return logsumexp([np.log(m) + d.logpdf(z) for d, m in zip(dists, mix, strict=True)], axis=0)
+
+
 def _next_beta(log_l: np.ndarray, beta: float, target_ess: float, base: np.ndarray | float = 0.0) -> float:
     lo, hi = beta, 1.0
 
@@ -83,17 +93,16 @@ def run_smc(
         z = np.log(u) - np.log1p(-u)
         log_pz = _log_prior_z(z)
         base = np.zeros(n)
+        proposal: tuple[list[Any], np.ndarray] | None = None
         if init_proposal is not None and init_proposal[1] > 0:
             (dists, mix), frac = init_proposal
             mix = np.asarray(mix, float) / np.sum(mix)
-            counts = rng.multinomial(round(frac * n), mix)
-            seeded = [np.atleast_2d(d.rvs(size=c)) for d, c in zip(dists, counts, strict=True) if c > 0]
-            if seeded:
-                zs = np.vstack(seeded)
+            proposal = (dists, mix)
+            zs = _draw_mixture(dists, mix, round(frac * n), rng)
+            if zs.shape[0]:
                 z[: zs.shape[0]] = zs
                 log_pz = _log_prior_z(z)
-                log_q = logsumexp([np.log(m) + d.logpdf(z) for d, m in zip(dists, mix, strict=True)], axis=0)
-                log_q0 = np.logaddexp(np.log1p(-frac) + log_pz, np.log(frac) + log_q)
+                log_q0 = np.logaddexp(np.log1p(-frac) + log_pz, np.log(frac) + _log_mixture(dists, mix, z))
                 base = log_pz - log_q0
         log_l = eval_ll(z)
         beta = 0.0
@@ -116,7 +125,19 @@ def run_smc(
             chol = np.linalg.cholesky(cov)
             scale = 2.38 / np.sqrt(ndim)
             acc_total = 0.0
-            for _ in range(n_moves):
+            for m in range(n_moves):
+                if proposal is not None and m % 2 == 1:
+                    # independence move from the quick-stage mixture: lets particles jump
+                    # into a narrow mode (a faint second line) that random walks cannot reach
+                    prop = _draw_mixture(*proposal, n, rng)[rng.permutation(n)]
+                    lq_cur = _log_mixture(*proposal, z)
+                    lq_p = _log_mixture(*proposal, prop)
+                    ll_p = eval_ll(prop)
+                    lp_p = _log_prior_z(prop)
+                    log_a = beta * (ll_p - log_l) + lp_p - log_pz + lq_cur - lq_p
+                    acc = np.log(rng.uniform(size=n)) < log_a
+                    z[acc], log_l[acc], log_pz[acc] = prop[acc], ll_p[acc], lp_p[acc]
+                    continue
                 prop = z + scale * rng.standard_normal((n, ndim)) @ chol.T
                 ll_p = eval_ll(prop)
                 lp_p = _log_prior_z(prop)
@@ -126,7 +147,7 @@ def run_smc(
                 rate = acc.mean()
                 acc_total += rate
                 scale *= np.exp(rate - 0.3)
-            acc_hist.append(acc_total / n_moves)
+            acc_hist.append(acc_total / max(n_moves - (n_moves // 2 if proposal is not None else 0), 1))
             if beta >= 1.0:
                 break
         u = np.clip(expit(z), 1e-15, 1 - 1e-15)
