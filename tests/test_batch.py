@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from hiprofile import Spectrum
 from hiprofile.config import Config
@@ -9,7 +8,6 @@ from conftest import requires_jax
 
 
 @requires_jax
-@pytest.mark.slow
 def test_batched_likelihood_and_screen_match_single_spectrum():
     from hiprofile.inference.batch import BatchedLikelihood, screen_batch
     from hiprofile.inference.fit import prepare
@@ -32,6 +30,7 @@ def test_batched_likelihood_and_screen_match_single_spectrum():
         weight=np.array([1 / np.full(200, 0.02)] * 2),
         baseline_order=1,
         amp_scale=np.array([c.amp_scale for c in ctxs]),
+        disk_scale_ratio=cfg.priors.disk_scale_ratio,
         baseline_scale=np.array([c.baseline_scale for c in ctxs]),
     )
     th = np.array([[[1500.0, 150, 10, 0.1], [1480.0, 100, 20, -0.3]]] * 2)

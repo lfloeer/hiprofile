@@ -307,6 +307,14 @@ class MarginalLikelihood:
         return self.loglike(theta)
 
 
+def amplitude_scales(components: Sequence[str], scale: float, disk_ratio: float = 1.0) -> np.ndarray:
+    """Prior std of each amplitude column: (a_ring, a_disk) per profile, one per Gaussian."""
+    out: list[float] = []
+    for c in components:
+        out += [scale, scale * disk_ratio] if c == "profile" else [scale]
+    return np.asarray(out, dtype=float)
+
+
 def default_amp_scale(
     flux: np.ndarray, good: np.ndarray, sigma_rms: float, dv: float, factor: float = 10.0
 ) -> float:

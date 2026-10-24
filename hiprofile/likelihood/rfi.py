@@ -57,7 +57,7 @@ def robust_prefit(
     noise: NoiseModel,
     prior: ModelPrior,
     baseline_order: int,
-    amp_scale: float,
+    amp_scale: float | np.ndarray,
     baseline_scale: float,
     rng: np.random.Generator,
     background: str = "positive",

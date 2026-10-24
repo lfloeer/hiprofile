@@ -18,24 +18,35 @@ class _Base(BaseModel):
 
 
 class Range(_Base):
-    """A one-dimensional prior: uniform, log-uniform or normal."""
+    """A one-dimensional prior.
 
-    kind: Literal["uniform", "loguniform", "normal"] = "uniform"
+    ``uniform`` and ``loguniform`` on [low, high]; ``normal`` (mean, std) and
+    ``lognormal`` (mean and std of log10 x) optionally truncated to [low, high].
+    ``uniform_weight`` > 0 mixes in a uniform component on [low, uniform_high],
+    e.g. to keep very narrow profiles possible under a log-normal width prior.
+    """
+
+    kind: Literal["uniform", "loguniform", "normal", "lognormal"] = "uniform"
     low: float | None = None
     high: float | None = None
     mean: float | None = None
     std: float | None = None
+    uniform_weight: float = Field(0.0, ge=0.0, lt=1.0)
+    uniform_high: float | None = None
 
     @model_validator(mode="after")
     def _check(self) -> Range:
-        if self.kind == "normal":
+        if self.kind in ("normal", "lognormal"):
             if self.mean is None or self.std is None or self.std <= 0:
-                raise ValueError("normal prior needs mean and std > 0")
-        elif self.low is not None and self.high is not None:
-            if self.high <= self.low:
-                raise ValueError("prior needs high > low")
-            if self.kind == "loguniform" and self.low <= 0:
-                raise ValueError("log-uniform prior needs low > 0")
+                raise ValueError(f"{self.kind} prior needs mean and std > 0")
+        if self.low is not None and self.high is not None and self.high <= self.low:
+            raise ValueError("prior needs high > low")
+        if self.kind == "loguniform" and self.low is not None and self.low <= 0:
+            raise ValueError("log-uniform prior needs low > 0")
+        if self.kind == "lognormal" and self.low is not None and self.low < 0:
+            raise ValueError("log-normal prior needs low >= 0")
+        if self.uniform_weight > 0 and (self.uniform_high is None or self.low is None):
+            raise ValueError("uniform_weight needs low and uniform_high")
         return self
 
 
@@ -45,13 +56,34 @@ class Priors(_Base):
         description="Line centre [km/s]. Uniform bounds default to the band minus `v_margin`.",
     )
     v_margin: float = Field(0.05, ge=0, lt=0.5, description="Band fraction excluded at each edge")
-    delta_v: Range = Field(default_factory=lambda: Range(kind="uniform", low=0.0, high=600.0))
-    delta_v_rand: Range = Field(default_factory=lambda: Range(kind="loguniform", low=4.0, high=60.0))
-    alpha: Range = Field(default_factory=lambda: Range(kind="uniform", low=-1.0, high=1.0))
+    # Defaults from the 34 THINGS fits of Stewart et al. (2014, Table 1 and App. B.2),
+    # widened for survey galaxies; see docs/priors.md.
+    delta_v: Range = Field(
+        default_factory=lambda: Range(
+            kind="lognormal", mean=2.2, std=0.35, low=0.0, high=800.0, uniform_weight=0.1, uniform_high=60.0
+        ),
+        description="Line width [km/s]: log-normal around 160 km/s plus 10 % uniform below 60 km/s "
+        "(dwarfs with Delta v ~ 0)",
+    )
+    delta_v_rand: Range = Field(
+        default_factory=lambda: Range(kind="lognormal", mean=1.1, std=0.2, low=4.0, high=60.0),
+        description="Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s)",
+    )
+    alpha: Range = Field(
+        default_factory=lambda: Range(kind="normal", mean=0.0, std=0.25, low=-1.0, high=1.0),
+        description="Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: robust std 0.14, "
+        "15 % with |alpha| > 0.3)",
+    )
     amplitude_scale: float | Literal["auto"] = Field(
         "auto",
-        description="Std of the half-normal prior on a_ring and a_disk [flux * km/s]. "
-        "Fix it for a survey so that evidences are comparable between spectra.",
+        description="Std of the half-normal prior on a_ring [flux * km/s] (a_disk: times "
+        "disk_scale_ratio). Fix it for a survey so that evidences are comparable between spectra.",
+    )
+    disk_scale_ratio: float = Field(
+        1.0 / 3.0,
+        gt=0.0,
+        description="Prior scale of a_disk relative to a_ring; 1/3 gives a prior median f of 0.25 "
+        "(THINGS: median 0.15, mean 0.23)",
     )
     baseline_scale: float | Literal["auto"] = Field(
         "auto", description="Std of the Chebyshev coefficients; auto = 10 x noise rms"
@@ -68,9 +100,13 @@ class Priors(_Base):
     @field_validator("alpha")
     @classmethod
     def _alpha(cls, v: Range) -> Range:
-        if v.kind != "uniform" or (v.low or -1) < -1 or (v.high or 1) > 1:
-            raise ValueError("alpha prior must be uniform within [-1, 1]")
-        return v
+        if v.kind not in ("uniform", "normal"):
+            raise ValueError("alpha prior must be uniform or (truncated) normal")
+        low = -1.0 if v.low is None else v.low
+        high = 1.0 if v.high is None else v.high
+        if low < -1 or high > 1:
+            raise ValueError("alpha prior must lie within [-1, 1]")
+        return v.model_copy(update={"low": low, "high": high})
 
 
 class ModelConfig(_Base):

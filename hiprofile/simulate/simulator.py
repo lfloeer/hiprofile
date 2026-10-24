@@ -42,7 +42,8 @@ class SimConfig(BaseModel):
     # "snr" draws the integrated S/N log-uniformly in snr_range
     flux: Literal["prior", "snr"] = "snr"
     snr_range: tuple[float, float] = (3.0, 100.0)
-    f_range: tuple[float, float] = (0.0, 1.0)
+    f_distribution: Literal["prior", "uniform"] = "prior"
+    f_range: tuple[float, float] = (0.0, 1.0)  # for f_distribution = uniform
     noise_sigma: float = 0.01
     noise_correlation: Literal["white", "hanning"] = "white"
     baseline: Literal["none", "chebyshev", "sine"] = "none"
@@ -122,14 +123,20 @@ def simulate_spectrum(cfg: SimConfig, rng: np.random.Generator, sid: str) -> tup
                 amp_scale = cfg.priors.amplitude_scale
                 if amp_scale == "auto":
                     raise ValueError("flux = prior needs a fixed priors.amplitude_scale")
-                a = np.abs(rng.normal(0, float(amp_scale), 2))
+                ratio = cfg.priors.disk_scale_ratio
+                a = np.abs(rng.normal(0.0, float(amp_scale) * np.array([1.0, ratio])))
                 s_tot, f = float(a.sum()), float(a[1] / a.sum())
             else:
                 snr = np.exp(rng.uniform(*np.log(cfg.snr_range)))
                 # integrated S/N over the line: S / (sigma dv sqrt(W / dv))
                 w_eff = max(width + 2.35 * sig, cfg.dv)
                 s_tot = float(snr * cfg.noise_sigma * cfg.dv * np.sqrt(w_eff / cfg.dv))
-                f = float(rng.uniform(*cfg.f_range))
+                if cfg.f_distribution == "prior":
+                    # same shape as the fit prior: f = a_disk / (a_ring + a_disk)
+                    ar, ad = np.abs(rng.normal(0.0, [1.0, cfg.priors.disk_scale_ratio]))
+                    f = float(ad / (ar + ad))
+                else:
+                    f = float(rng.uniform(*cfg.f_range))
                 a = np.array([s_tot * (1 - f), s_tot * f])
             if kind == "model":
                 b = profile_basis(grid, theta[j][None])[0]

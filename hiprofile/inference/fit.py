@@ -36,6 +36,7 @@ from hiprofile.inference.priors import ModelPrior, build_prior
 from hiprofile.likelihood.marginal import (
     NAMP,
     MarginalLikelihood,
+    amplitude_scales,
     build_likelihood,
     default_amp_scale,
 )
@@ -213,7 +214,7 @@ class FitContext:
             noise or self.noise,
             self.components(n),
             k,
-            self.amp_scale,
+            amplitude_scales(self.components(n), self.amp_scale, pr.disk_scale_ratio),
             self.baseline_scale,
             baseline_mean=None if pr.baseline_mean is None else np.asarray(pr.baseline_mean),
             baseline_cov=None if pr.baseline_cov is None else np.asarray(pr.baseline_cov),
@@ -286,7 +287,7 @@ def apply_rfi(ctx: FitContext) -> None:
         ctx.noise,
         prior,
         k_pre,
-        ctx.amp_scale,
+        amplitude_scales(("profile",), ctx.amp_scale, ctx.config.priors.disk_scale_ratio),
         ctx.baseline_scale,
         ctx.rng,
         background=cfg.background,
