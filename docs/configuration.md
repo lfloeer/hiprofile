@@ -28,7 +28,7 @@ The validated configuration, the code version and the seed are written into ever
 | `priors.rfi_sigma_channels` | `tuple[float, float]` | `(0.3, 1.0)` | Width range of RFI components in channels |
 | `priors.noise_scale` | `tuple[float, float] \| None` | `null` | Fit a global noise scale factor with log-uniform prior in this range |
 | `noise.sigma` | `Literal['auto', 'input', 'estimate']` | `auto` | auto: use the input sigma column if present, else estimate |
-| `noise.correlation` | `str \| list[float]` | `auto` | white \| hanning \| hanning-decimated \| [rho_1, rho_2, ...]; a '+white' suffix (e.g. hanning+white) adds a white component whose fraction is estimated from the data; auto: hanning+white if the response contains hanning |
+| `noise.correlation` | `str \| list[float]` | `auto` | auto \| estimate \| white \| hanning \| hanning-decimated \| [rho_1, rho_2, ...]; a '+white' suffix (e.g. hanning+white) adds a white component whose fraction is estimated from the data. auto: the correlation of the channel smoothing in model.response (hanning, kernel) plus an estimated white part, white without smoothing. estimate: rho_1..rho_m measured on the residuals of the robust pre-fit (any smoothing, regridding or spectrometer window) |
 | `noise.signal_free` | `list[tuple[float, float]] \| None` | `null` | Velocity ranges used to estimate sigma |
 | `rfi.prefit` | `bool` | `True` |  |
 | `rfi.background` | `Literal['positive', 'symmetric']` | `positive` |  |

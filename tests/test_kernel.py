@@ -104,3 +104,19 @@ def test_helpers():
     assert next_fast_len(1000) == 1000
     assert next_fast_len(1001) == 1024
     assert default_supersample(5.0, 4.0) >= 2
+
+
+def test_kernel_response_equals_hanning_and_explicit_smoothing():
+    from hiprofile.model import SpectralGrid, profile
+    from hiprofile.model.response import noise_kernel
+
+    v = 1000 + 5.0 * np.arange(300)
+    th = [1500.0, 150.0, 10.0, 0.2, 5.0, 0.3]
+    a = profile(SpectralGrid.from_velocities(v, response="boxcar+hanning"), th)
+    b = profile(SpectralGrid.from_velocities(v, response="boxcar+kernel(0.5, 0.25)"), th)
+    np.testing.assert_allclose(a, b, atol=1e-14)
+    w = [0.1, 0.2, 0.4, 0.2, 0.1]
+    c = profile(SpectralGrid.from_velocities(v, response="boxcar+kernel(0.4, 0.2, 0.1)"), th)
+    d = np.convolve(profile(SpectralGrid.from_velocities(v, response="boxcar"), th), w, mode="same")
+    np.testing.assert_allclose(c[5:-5], d[5:-5], atol=1e-12)
+    np.testing.assert_allclose(noise_kernel("kernel(0.6, 0.2)+hanning"), [0.05, 0.25, 0.4, 0.25, 0.05])

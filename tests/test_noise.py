@@ -54,3 +54,41 @@ def test_hanning_plus_white_whitens_real_like_noise(rng):
         chi2[spec] = float(np.sum(nm.whiten(y) ** 2) / n)
     assert chi2["hanning"] > 3.0
     assert 0.6 < chi2["hanning+white"] < 1.7  # 5-95 % range for 400 channels: 0.8-1.6
+
+
+def _smoothed_noise(rng, n, kernel):
+    k = np.asarray(kernel, float) / np.sum(kernel)
+    y = np.convolve(rng.normal(size=n + k.size - 1), k, mode="valid")
+    return y / np.sqrt(np.sum(k**2))
+
+
+def test_estimated_correlation_recovers_smoothing_kernels(rng):
+    from hiprofile.likelihood.noise import estimate_correlation, kernel_correlation
+
+    gauss = np.exp(-0.5 * (np.arange(-3, 4) / 0.8) ** 2)
+    for kernel in ([1.0], [0.25, 0.5, 0.25], gauss, np.convolve([0.5, 0.5], [0.25, 0.5, 0.25])):
+        true = np.pad(kernel_correlation(np.asarray(kernel) / np.sum(kernel)), (0, 8))[:4]
+        good = rng.uniform(size=20000) > 0.05  # masked channels leave gaps
+        est = np.pad(estimate_correlation(_smoothed_noise(rng, 20000, kernel), good), (0, 8))[:4]
+        np.testing.assert_allclose(est, true, atol=0.03)
+
+
+def test_estimated_correlation_is_positive_definite(rng):
+    from hiprofile.likelihood.noise import correlation_spectrum, estimate_correlation, make_positive
+
+    for _ in range(20):
+        y = _smoothed_noise(rng, 120, [0.25, 0.5, 0.25])
+        rho = estimate_correlation(y, rng.uniform(size=120) > 0.2)
+        assert correlation_spectrum(rho).min() >= 0.01 - 1e-9
+    rho = make_positive(np.array([1.0, 0.9]))  # not positive definite on its own
+    assert correlation_spectrum(rho).min() >= 0.02 - 1e-9
+
+
+def test_auto_correlation_follows_the_response_kernel():
+    from hiprofile.config import Config
+    from hiprofile.inference.fit import _correlation
+
+    rho, white = _correlation(Config().updated(model={"response": "boxcar+kernel(0.6, 0.2)"}))
+    np.testing.assert_allclose(rho[:3], [1.0, 0.24 / 0.44, 0.04 / 0.44])
+    assert white
+    assert _correlation(Config()) == ("white", False)

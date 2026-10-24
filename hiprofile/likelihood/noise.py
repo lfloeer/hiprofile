@@ -30,7 +30,7 @@ def kernel_correlation(kernel: np.ndarray, decimate: int = 1) -> np.ndarray:
     return acf / acf[0]
 
 
-def correlation_from_spec(spec: str | list[float]) -> np.ndarray:
+def correlation_from_spec(spec: str | list[float] | np.ndarray) -> np.ndarray:
     if isinstance(spec, (list, tuple, np.ndarray)):
         rho = np.asarray(spec, dtype=float)
         if rho.size == 0 or rho[0] != 1.0:
@@ -96,6 +96,88 @@ def estimate_white_fraction(
     den = (b4 - a4) - ratio * (b1 - a1)
     eps = (ratio * a1 - a4) / den if den != 0 else 1.0
     return float(np.clip(eps, WHITE_FLOOR, 1.0))
+
+
+def correlation_spectrum(rho: np.ndarray, n_freq: int = 512) -> np.ndarray:
+    """S(omega) = 1 + 2 sum_k rho_k cos(k omega) on [0, pi]: the noise power spectrum (unit variance)."""
+    w = np.linspace(0.0, np.pi, n_freq)
+    k = np.arange(1, rho.size)
+    return 1.0 + 2.0 * np.cos(np.outer(w, k)) @ rho[1:]
+
+
+def make_positive(rho: np.ndarray, floor: float = 0.02) -> np.ndarray:
+    """Mix in the least white noise that keeps the power spectrum >= ``floor``.
+
+    A Toeplitz covariance is positive definite (for every length and every
+    subset of channels, i.e. also with masks) if its power spectrum is
+    positive; ``floor`` also bounds the condition number, which keeps the
+    whitening from amplifying frequencies the correlation model says are
+    empty (the failure of exact Hanning on real data).
+    """
+    rho = np.asarray(rho, float).copy()
+    rho[0] = 1.0
+    s_min = float(correlation_spectrum(rho).min())
+    if s_min >= floor:
+        return rho
+    eps = (floor - s_min) / (1.0 - s_min)
+    return with_white(rho, eps)
+
+
+def _raw_acf(resid: np.ndarray, good: np.ndarray, max_lag: int) -> tuple[np.ndarray, np.ndarray]:
+    """Sample correlation rho_0..rho_max_lag over pairs of good channels and the pair counts."""
+    r = np.where(good, np.asarray(resid, float), np.nan)
+    med = np.nanmedian(r)
+    mad = MAD_TO_STD * np.nanmedian(np.abs(r - med))
+    r = np.where(np.abs(r - med) < 5.0 * mad, r - med, np.nan)  # clip what the mask missed
+    ok = np.isfinite(r)
+    c0 = float(np.mean(r[ok] ** 2))
+    rho, counts = [1.0], [int(ok.sum())]
+    for k in range(1, max_lag + 1):
+        pair = ok[:-k] & ok[k:]
+        n = int(pair.sum())
+        if n < 20:
+            break
+        rho.append(float(np.mean(r[:-k][pair] * r[k:][pair]) / c0))
+        counts.append(n)
+    return np.array(rho), np.array(counts)
+
+
+def estimate_correlation(
+    resid: np.ndarray, good: np.ndarray, max_lag: int = 6, floor: float = 0.01
+) -> np.ndarray:
+    """Noise correlation rho_0..rho_m from residuals (model already subtracted).
+
+    The noise is modelled as white noise smoothed by an unknown short
+    symmetric kernel h (taps -q..q, q = max_lag // 2), which is what
+    spectrometer windows, Hanning smoothing and regridding do. h is fitted
+    so that rho = h * h / |h|^2 matches the sample correlation of the
+    residuals over pairs of good channels (masks leave gaps), weighted by the
+    pair counts. Unlike a truncated sample correlation this is positive
+    definite by construction and needs no choice of the last lag;
+    :func:`make_positive` then adds the white floor that bounds the
+    condition number.
+    """
+    from scipy import optimize
+
+    raw, counts = _raw_acf(resid, good, max_lag)
+    lags = raw.size - 1
+    if lags == 0:
+        return np.array([1.0])
+    q = max(lags // 2, 1)
+    wts = np.sqrt(counts[1:])
+
+    def model(half: np.ndarray) -> np.ndarray:
+        h = np.r_[half[:0:-1], half]  # symmetric taps -q..q
+        acf = np.correlate(h, h, mode="full")[h.size - 1 :]
+        acf = np.pad(acf, (0, max(0, lags + 1 - acf.size)))[: lags + 1]
+        return acf / acf[0]
+
+    start = np.r_[1.0, np.zeros(q)]
+    res = optimize.least_squares(lambda x: (model(x)[1:] - raw[1:]) * wts, start, method="lm")
+    rho = model(res.x)
+    keep = np.flatnonzero(np.abs(rho) > 1e-4)
+    rho = rho[: int(keep[-1]) + 1] if keep.size else np.array([1.0])
+    return make_positive(rho, floor)
 
 
 def with_white(rho: np.ndarray, eps: float) -> np.ndarray:
@@ -224,13 +306,17 @@ def build_noise(
     flux: np.ndarray,
     good: np.ndarray,
     sigma: np.ndarray | None,
-    correlation: str | list[float] = "white",
+    correlation: str | list[float] | np.ndarray = "white",
     signal_free: np.ndarray | None = None,
+    estimate_white: bool = False,
 ) -> NoiseModel:
     """Noise model; a correlation spec ending in ``+white`` (e.g. ``hanning+white``)
-    adds a white component whose fraction is estimated from the data."""
-    estimate_white = isinstance(correlation, str) and correlation.endswith("+white")
-    rho = correlation_from_spec(correlation[: -len("+white")] if estimate_white else correlation)
+    or ``estimate_white`` adds a white component whose fraction is estimated
+    from the data."""
+    if isinstance(correlation, str) and correlation.endswith("+white"):
+        estimate_white = True
+        correlation = correlation[: -len("+white")]
+    rho = correlation_from_spec(correlation)
     if estimate_white and rho.size > 1:
         rho = with_white(rho, estimate_white_fraction(flux, good, rho, signal_free))
     idx = np.flatnonzero(good)

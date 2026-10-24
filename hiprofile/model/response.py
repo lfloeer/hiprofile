@@ -18,8 +18,17 @@ The response is given as a string of ``+``-joined terms:
     Tukey lag window with taper fraction r in [0, 1] up to the Nyquist
     frequency omega_N = pi / dv (correlator spectrometers). r = 1 is the Hann
     lag window, r = 0 a sharp cut at omega_N.
+``kernel(w_0, w_1, ..., w_q)``
+    Any symmetric channel-domain smoothing with taps
+    [w_q, ..., w_1, w_0, w_1, ..., w_q] (normalised to sum 1), e.g. after
+    regridding; H = sum_j w_|j| cos(j omega dv). Exact for the same reason as
+    ``hanning``, which equals ``kernel(0.5, 0.25)``.
 
 Example: ``"boxcar+hanning"`` for an FFT spectrometer with Hanning smoothing.
+
+Smoothing in the channel domain (``hanning``, ``kernel``) also correlates the
+noise; :func:`noise_kernel` returns the combined kernel, from which the noise
+model derives the channel correlation when ``noise.correlation`` is ``auto``.
 """
 
 from __future__ import annotations
@@ -29,11 +38,42 @@ import re
 import numpy as np
 
 _TERM = re.compile(r"^\s*(none|boxcar|hanning|tukey)\s*(?:\(\s*([0-9.eE+-]+)\s*\))?\s*$")
+_KERNEL = re.compile(r"^\s*kernel\s*\(([^()]*)\)\s*$")
 
 
-def parse_response(spec: str) -> list[tuple[str, float | None]]:
-    terms: list[tuple[str, float | None]] = []
-    for raw in spec.split("+"):
+def _split_terms(spec: str) -> list[str]:
+    """Split at '+' outside parentheses (kernel weights may carry exponents like 1e+0)."""
+    out, depth, cur = [], 0, ""
+    for ch in spec:
+        depth += (ch == "(") - (ch == ")")
+        if ch == "+" and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    out.append(cur)
+    return out
+
+
+def _kernel_taps(half: tuple[float, ...]) -> np.ndarray:
+    w = np.asarray(half, float)
+    taps = np.r_[w[:0:-1], w]
+    return taps / taps.sum()
+
+
+def parse_response(spec: str) -> list[tuple[str, float | tuple[float, ...] | None]]:
+    terms: list[tuple[str, float | tuple[float, ...] | None]] = []
+    for raw in _split_terms(spec):
+        mk = _KERNEL.match(raw.lower())
+        if mk:
+            try:
+                half = tuple(float(x) for x in mk.group(1).split(","))
+            except ValueError as exc:
+                raise ValueError(f"kernel weights must be numbers in {raw!r}") from exc
+            if not half or any(x < 0 for x in half) or sum(half) <= 0:
+                raise ValueError(f"kernel needs non-negative weights w_0, w_1, ... in {raw!r}")
+            terms.append(("kernel", half))
+            continue
         m = _TERM.match(raw.lower())
         if not m:
             raise ValueError(f"unknown response term {raw!r} in {spec!r}")
@@ -61,8 +101,13 @@ def transfer_function(spec: str, omega: np.ndarray, dv: float) -> np.ndarray:
             h = h * np.sinc(omega * dv / (2.0 * np.pi))
         elif name == "hanning":
             h = h * (0.5 + 0.5 * np.cos(omega * dv))
+        elif name == "kernel":
+            assert isinstance(arg, tuple)
+            taps = _kernel_taps(arg)
+            q = len(arg) - 1
+            h = h * (taps[q] + 2.0 * sum(taps[q + j] * np.cos(j * omega * dv) for j in range(1, q + 1)))
         elif name == "tukey":
-            assert arg is not None
+            assert isinstance(arg, float)
             w_n = np.pi / dv
             t = omega / w_n
             taper = np.ones_like(t)
@@ -78,12 +123,15 @@ def transfer_function(spec: str, omega: np.ndarray, dv: float) -> np.ndarray:
 def noise_kernel(spec: str) -> np.ndarray:
     """Channel-domain smoothing kernel that the response applies to white noise.
 
-    Only ``hanning`` correlates the noise between channels in this model (the
-    boxcar/tukey terms describe how the *signal* is sampled and are assumed to
-    leave the per-channel noise white).
+    Only ``hanning`` and ``kernel`` correlate the noise between channels in
+    this model (the boxcar/tukey terms describe how the *signal* is sampled and
+    are assumed to leave the per-channel noise white).
     """
     k = np.array([1.0])
-    for name, _ in parse_response(spec):
+    for name, arg in parse_response(spec):
         if name == "hanning":
             k = np.convolve(k, [0.25, 0.5, 0.25])
+        elif name == "kernel":
+            assert isinstance(arg, tuple)
+            k = np.convolve(k, _kernel_taps(arg))
     return k

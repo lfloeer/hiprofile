@@ -168,3 +168,18 @@ def test_outlier_mask_keeps_long_runs():
         44,
         45,
     }
+
+
+def test_estimated_noise_correlation_in_the_fit(grid, rng):
+    """Noise smoothed by a kernel the fit does not know: noise.correlation = estimate measures it."""
+    k = np.exp(-0.5 * (np.arange(-3, 4) / 0.8) ** 2)
+    k /= k.sum()
+    noise = np.convolve(rng.normal(size=grid.n_chan + 6), k, mode="valid") / np.sqrt(np.sum(k**2))
+    y = profile(grid, [2000.0, 180.0, 12.0, 0.15, 10.0, 0.25]) + 0.02 * noise
+    spec = Spectrum(grid.velocity, y, id="corr")
+    for prefit in (True, False):
+        res = fit_spectrum(spec, QUICK.updated(noise={"correlation": "estimate"}, rfi={"prefit": prefit}))
+        assert res.status == "ok", res.error
+        assert abs(res.metrics["noise_rho1"] - 0.672) < 0.1
+        assert abs(res.metrics["sigma_rms"] - 0.02) < 0.003
+        assert res.best_n == 1

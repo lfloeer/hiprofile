@@ -128,9 +128,11 @@ class NoiseConfig(_Base):
     )
     correlation: str | list[float] = Field(
         "auto",
-        description="white | hanning | hanning-decimated | [rho_1, rho_2, ...]; a '+white' suffix "
-        "(e.g. hanning+white) adds a white component whose fraction is estimated from the data; "
-        "auto: hanning+white if the response contains hanning",
+        description="auto | estimate | white | hanning | hanning-decimated | [rho_1, rho_2, ...]; a '+white' "
+        "suffix (e.g. hanning+white) adds a white component whose fraction is estimated from the data. "
+        "auto: the correlation of the channel smoothing in model.response (hanning, kernel) plus an "
+        "estimated white part, white without smoothing. estimate: rho_1..rho_m measured on the residuals "
+        "of the robust pre-fit (any smoothing, regridding or spectrometer window)",
     )
     signal_free: list[tuple[float, float]] | None = Field(
         None, description="Velocity ranges used to estimate sigma"

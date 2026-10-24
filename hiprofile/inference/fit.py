@@ -35,9 +35,16 @@ from hiprofile.inference.amplitudes import draw_amplitudes
 from hiprofile.inference.derived import DERIVED, classic_widths, profile_derived
 from hiprofile.inference.priors import ModelPrior, build_prior
 from hiprofile.likelihood.marginal import NAMP, MarginalLikelihood, build_likelihood, default_amp_scale
-from hiprofile.likelihood.noise import NoiseModel, build_noise
+from hiprofile.likelihood.noise import (
+    MAD_TO_STD,
+    NoiseModel,
+    build_noise,
+    estimate_correlation,
+    kernel_correlation,
+)
 from hiprofile.likelihood.rfi import RFIResult, outlier_mask, robust_prefit
 from hiprofile.model.kernel import PROFILE_NPARAM, SpectralGrid
+from hiprofile.model.response import noise_kernel
 from hiprofile.samplers import run as run_sampler
 from hiprofile.samplers.base import SamplerResult, systematic_resample
 from hiprofile.spectrum import Spectrum
@@ -229,11 +236,18 @@ class FitContext:
         )
 
 
-def _correlation(cfg: Config) -> str | list[float]:
+def _correlation(cfg: Config) -> tuple[str | list[float] | np.ndarray, bool]:
+    """(correlation spec, estimate a white part) for the first noise model.
+
+    ``auto`` and ``estimate`` start from the correlation of the channel
+    smoothing in the response; ``estimate`` replaces it after the pre-fit
+    (:func:`estimate_noise`).
+    """
     corr = cfg.noise.correlation
-    if corr == "auto":
-        return "hanning+white" if "hanning" in cfg.model.response.lower() else "white"
-    return corr
+    if corr in ("auto", "estimate"):
+        k = noise_kernel(cfg.model.response)
+        return (kernel_correlation(k), True) if k.size > 1 else ("white", False)
+    return corr, False
 
 
 def prepare(spectrum: Spectrum, config: Config, seed: int) -> FitContext:
@@ -262,7 +276,8 @@ def prepare(spectrum: Spectrum, config: Config, seed: int) -> FitContext:
         signal_free = np.zeros(spec.n_chan, bool)
         for lo, hi in cfg.noise.signal_free:
             signal_free |= (spec.velocity >= lo) & (spec.velocity <= hi)
-    noise = build_noise(spec.flux, good, use_sigma, _correlation(cfg), signal_free)
+    corr, white = _correlation(cfg)
+    noise = build_noise(spec.flux, good, use_sigma, corr, signal_free, estimate_white=white)
     rms = float(np.median(noise.sigma))
     amp = (
         default_amp_scale(spec.flux, good, rms, grid.dv)
@@ -283,7 +298,8 @@ def prepare(spectrum: Spectrum, config: Config, seed: int) -> FitContext:
     )
 
 
-def apply_rfi(ctx: FitContext) -> None:
+def run_prefit(ctx: FitContext, n_iter: int) -> RFIResult:
+    """Robust one-component fit with the outlier mixture (RFI pre-stage)."""
     cfg = ctx.config.rfi
     # The pre-stage line model must not be narrower than a few channels: a
     # bright spike fitted as a "line" would hide its own centre from the mask.
@@ -304,9 +320,15 @@ def apply_rfi(ctx: FitContext) -> None:
         ctx.baseline_scale,
         ctx.rng,
         background=cfg.background,
-        n_iter=cfg.n_iter,
+        n_iter=n_iter,
         k_min=ctx.config.model.k_min,
     )
+    return res
+
+
+def apply_rfi(ctx: FitContext) -> None:
+    cfg = ctx.config.rfi
+    res = run_prefit(ctx, cfg.n_iter)
     ctx.rfi = res
     bad = outlier_mask(res.q, cfg.threshold, cfg.close_holes, cfg.max_width_channels)
     if not bad.any():
@@ -453,6 +475,25 @@ def seed_components(ctx: FitContext, n: int, out: FitResult, n_seeds: int) -> np
         if np.all(np.isfinite(u)):
             seeds.append(np.clip(u, 1e-4, 1 - 1e-4))
     return np.array(seeds) if seeds else None
+
+
+def estimate_noise(ctx: FitContext) -> None:
+    """Replace the noise model by one with the correlation measured on the pre-fit residuals.
+
+    Uses the robust model of the RFI pre-stage (or runs a one-iteration
+    pre-fit) and the channels it left unmasked. sigma is the robust rms of the
+    residuals unless the spectrum provides one.
+    """
+    res = ctx.rfi if ctx.rfi is not None else run_prefit(ctx, 1)
+    resid = ctx.spectrum.flux - res.model
+    rho = estimate_correlation(resid, ctx.good)
+    idx = np.flatnonzero(ctx.good)
+    if ctx.spectrum.sigma is not None and ctx.config.noise.sigma in ("auto", "input"):
+        sig = np.asarray(ctx.spectrum.sigma, float)[idx]
+    else:
+        r = resid[idx]
+        sig = np.full(idx.size, MAD_TO_STD * float(np.median(np.abs(r - np.median(r)))))
+    ctx.noise = NoiseModel(sigma=sig, good_index=idx, rho=rho)
 
 
 def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
@@ -647,6 +688,8 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
         "baseline_scale": ctx.baseline_scale,
         "n_good": int(ctx.noise.n),
         "supersample": ctx.grid.supersample,
+        "noise_rho": ctx.noise.rho.tolist(),
+        "noise_rho1": float(ctx.noise.rho[1]) if ctx.noise.rho.size > 1 else 0.0,
     }
     if ctx.rfi is not None:
         m["rfi_fraction"] = float(np.mean(ctx.rfi.q > cfg.rfi.threshold))
@@ -742,6 +785,8 @@ def fit_spectrum(spectrum: Spectrum, config: Config | None = None, seed: int | N
         out.flux = ctx.spectrum.flux
         if cfg.rfi.prefit and cfg.model.n_max >= 1:
             apply_rfi(ctx)
+        if cfg.noise.correlation == "estimate":
+            estimate_noise(ctx)
         out.mask = ~ctx.good
         sig = np.full(ctx.spectrum.n_chan, np.nan)
         sig[ctx.noise.good_index] = ctx.noise.sigma
