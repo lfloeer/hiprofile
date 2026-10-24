@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install
-        run: uv pip install --system -e ".[dev]"
+        run: uv pip install -e ".[dev]"
       - name: Lint
         run: |
           ruff check hiprofile tests benchmarks
@@ -41,8 +41,8 @@ jobs:
       - name: Install FFTW and build the legacy code
         run: |
           sudo apt-get update && sudo apt-get install -y libfftw3-dev
-          uv pip install --system cython numpy setuptools pytest scipy
-          uv pip install --system -e .
+          uv pip install cython numpy setuptools pytest scipy
+          uv pip install -e .
           cd legacy && python setup.py build_ext --inplace
       - name: Legacy code reproduces the golden files
         run: cd legacy && python make_reference.py --check
