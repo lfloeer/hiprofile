@@ -111,7 +111,15 @@ class Bounds1D:
         if self.mix_weight <= 0:
             return self._base_ppf(u)
         c, xs = self._inverse_table()
-        return np.interp(u, c, xs)
+        u = np.asarray(u, dtype=float)
+        x = np.interp(u, c, xs)
+        # two Newton steps on the exact mixture CDF
+        for _ in range(2):
+            h = 1e-7 * np.maximum(np.abs(x), 1.0)
+            dens = (self.cdf(x + h) - self.cdf(x - h)) / (2 * h)
+            step = np.where(dens > 1e-12, (self.cdf(x) - u) / np.maximum(dens, 1e-12), 0.0)
+            x = np.clip(x - step, self.low, self.high)
+        return x
 
     def inverse(self, x: np.ndarray) -> np.ndarray:
         return self.cdf(x)

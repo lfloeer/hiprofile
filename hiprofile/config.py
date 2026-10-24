@@ -70,9 +70,11 @@ class Priors(_Base):
         description="Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s)",
     )
     alpha: Range = Field(
-        default_factory=lambda: Range(kind="normal", mean=0.0, std=0.25, low=-1.0, high=1.0),
-        description="Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: robust std 0.14, "
-        "15 % with |alpha| > 0.3)",
+        default_factory=lambda: Range(
+            kind="normal", mean=0.0, std=0.25, low=-1.0, high=1.0, uniform_weight=0.05, uniform_high=1.0
+        ),
+        description="Asymmetry: normal(0, 0.25) on [-1, 1] plus 5 % uniform (THINGS: robust std 0.14, "
+        "3 of 34 strongly disturbed systems with |alpha| > 0.6)",
     )
     amplitude_scale: float | Literal["auto"] = Field(
         "auto",

@@ -35,7 +35,7 @@ def test_default_shapes_follow_things(rng):
     t = p(rng.uniform(size=(200000, 4)))
     dv, sig, a = t[:, 1], t[:, 2], t[:, 3]
     assert abs(np.median(sig) - 12.6) < 0.3 and sig.min() >= 4.0 and sig.max() <= 60.0
-    assert abs(np.std(a) - 0.25) < 0.01 and np.all(np.abs(a) <= 1)
+    assert abs(np.median(np.abs(a)) - 0.17) < 0.01 and np.all(np.abs(a) <= 1)  # normal(0, .25) + 5 % uniform
     assert 0.0 <= dv.min() and dv.max() <= 800.0
     assert abs(np.mean(dv < 60) - (0.1 + 0.9 * 0.114)) < 0.01  # uniform part + log-normal tail
     np.testing.assert_allclose(p.inverse(t[:1000]), p.inverse(p(p.inverse(t[:1000]))), atol=1e-6)

@@ -49,6 +49,7 @@ hiprofile plot results --flagged         # all flagged spectra
 
 ```python
 from hiprofile.io import read_result
+
 res = read_result("results/spectra/sim000042.h5")
 post = res.posteriors[1]
 print(res.p_detect, post.summary()["W50_1"])
