@@ -562,6 +562,52 @@ def w20_bias_figure(root: Path, name: str = "w20_bias.png") -> Path:
     return _save(fig, name)
 
 
+def w20_classic_figure(root: Path, name: str = "w20_bias_classic.png") -> Path:
+    """Low-S/N W20 error of the posterior median and the classical methods (benchmarks/w20_bias.py)."""
+    import json
+
+    rows = [(root / "default", "unsmoothed channels")]
+    if (root / "boxcar_hanning" / "default" / "cells.json").exists():
+        rows.append((root / "boxcar_hanning" / "default", "Hanning-smoothed channels"))
+    curves = [
+        ("", style.SERIES[0], "-", "posterior median"),
+        ("naive_truewin_", style.SERIES[1], "-", "naive, window around the truth"),
+        ("naive_fitwin_", style.SERIES[1], "--", "naive, window around the posterior"),
+        ("springob_truewin_", style.SERIES[2], "-", "Springob, window around the truth"),
+        ("springob_fitwin_", style.SERIES[2], "--", "Springob, window around the posterior"),
+    ]
+    tables = [(json.loads((d / "cells.json").read_text()), label) for d, label in rows]
+    snrs = sorted({c["snr"] for c in tables[0][0]})
+    fig, grid = plt.subplots(len(tables), len(snrs), figsize=(4.3 * len(snrs), 3.7 * len(tables)),
+                             sharex=True, sharey=True, squeeze=False)  # fmt: skip
+    for row, (table, label) in zip(grid, tables, strict=True):
+        for ax, snr in zip(row, snrs, strict=True):
+            cells = sorted((c for c in table if c["snr"] == snr), key=lambda c: c["delta_v"])
+            x = np.array([c["delta_v"] for c in cells])
+            for pre, color, ls, lab in curves:
+                y = np.array([c[f"{pre}W20_all"] for c in cells])
+                e = np.array([c[f"{pre}W20_all_err"] for c in cells])
+                ax.plot(x, y, ls, color=color, lw=2, marker="o", ms=4, label=lab)
+                ax.fill_between(x, y - e, y + e, color=color, alpha=0.12, lw=0)
+            ax.axhline(0, color=style.INK_2, lw=0.8)
+            ax.set_xscale("log")
+            ax.set_xticks(x, [f"{d:.0f}" for d in x])
+            ax.minorticks_off()
+            comp = [c["completeness"] for c in cells]
+            ax.set_title(f"{label}, S/N {snr:.0f} (detected {min(comp):.0%}–{max(comp):.0%})",
+                         loc="left", fontsize=8.5)  # fmt: skip
+        row[0].set_ylabel("median W20 − truth [km/s]")
+    for ax in grid[-1]:
+        ax.set_xlabel("true Δv [km/s]")
+    grid[0, 0].set_ylim(-250, 250)
+    grid[0, -1].legend(fontsize=7.5, loc="lower left")
+    fig.suptitle(
+        "Low-S/N W20 bias over all spectra: posterior median against the classical methods (100 per cell)",
+        x=0.01, ha="left", fontsize=11, y=1.01,
+    )  # fmt: skip
+    return _save(fig, name)
+
+
 def validation(root: Path) -> None:
     root = Path(root)
     if (root / "validate_sbc" / "summary.json").exists():
@@ -583,6 +629,7 @@ if __name__ == "__main__":
         validation(Path(sys.argv[2]))
     elif what == "w20" and len(sys.argv) > 2:
         w20_bias_figure(Path(sys.argv[2]))
+        w20_classic_figure(Path(sys.argv[2]))
     elif what == "bias" and len(sys.argv) > 2:
         bias_figure(Path(sys.argv[2]), *sys.argv[3:4])
     else:
