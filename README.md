@@ -62,6 +62,16 @@ simulator draws from the same priors. Details in [docs/priors.md](docs/priors.md
 
 ![Default priors against the THINGS fits](docs/img/priors_things.png)
 
+## Validation
+
+1000 spectra simulated from the priors and fitted with the defaults
+([docs/validation.md](docs/validation.md)): rank statistics and interval
+coverages are calibrated, the baseline order is recovered in 93 % of the
+cases, and the posterior medians of W50, W20 and v_sys scatter half to a
+third as much as the classical measurements on the same data.
+
+![Line widths: Bayesian fit against the classical measurement](docs/img/bayes_vs_classic.png)
+
 ## Development
 
 ```bash

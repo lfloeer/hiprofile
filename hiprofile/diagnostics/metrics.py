@@ -70,15 +70,31 @@ def residual_acf(resid_white: np.ndarray, lags: tuple[int, ...] = (1, 2, 3)) -> 
     return np.array([np.sum(r[:-lag] * r[lag:]) / denom * np.sqrt(n) for lag in lags])
 
 
-def edge_mass(values: np.ndarray, weights: np.ndarray, low: float, high: float, n_bins: int = 20) -> float:
-    """Largest posterior mass in the outermost bin at a finite prior edge."""
+def edge_mass(
+    values: np.ndarray, weights: np.ndarray, low: float, high: float, fraction: float = 0.5, n_bins: int = 20
+) -> float:
+    """Largest posterior mass next to a finite prior bound.
+
+    "Next to" is within `fraction` of the posterior's own 16-84 % width, but at
+    most 1/n_bins of the prior range: a narrow object well inside a wide range
+    is not at an edge, a flat (prior-like) posterior is not either, while a
+    posterior cut off by the bound (mean within about 1.5 sigma of it) puts
+    more than 20 % of its mass there.
+    """
     w = weights / weights.sum()
-    width = (high - low) / n_bins if np.isfinite(low) and np.isfinite(high) else None
-    out = 0.0
-    if width is None:
+    order = np.argsort(values)
+    c = np.cumsum(w[order])
+    p16, p84 = np.interp([0.16, 0.84], c, values[order])
+    width = fraction * (p84 - p16)
+    if np.isfinite(low) and np.isfinite(high):
+        width = min(width, (high - low) / n_bins)
+    if width <= 0:
         return 0.0
-    out = max(out, float(np.sum(w[values <= low + width])))
-    out = max(out, float(np.sum(w[values >= high - width])))
+    out = 0.0
+    if np.isfinite(low):
+        out = max(out, float(np.sum(w[values <= low + width])))
+    if np.isfinite(high):
+        out = max(out, float(np.sum(w[values >= high - width])))
     return out
 
 
