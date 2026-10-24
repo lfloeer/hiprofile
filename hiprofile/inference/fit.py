@@ -36,10 +36,10 @@ from hiprofile.inference.derived import DERIVED, classic_widths, profile_derived
 from hiprofile.inference.priors import ModelPrior, build_prior
 from hiprofile.likelihood.marginal import NAMP, MarginalLikelihood, build_likelihood, default_amp_scale
 from hiprofile.likelihood.noise import (
-    MAD_TO_STD,
     NoiseModel,
     build_noise,
     estimate_correlation,
+    estimate_sigma,
     kernel_correlation,
 )
 from hiprofile.likelihood.rfi import RFIResult, outlier_mask, robust_prefit
@@ -481,8 +481,10 @@ def estimate_noise(ctx: FitContext) -> None:
     """Replace the noise model by one with the correlation measured on the pre-fit residuals.
 
     Uses the robust model of the RFI pre-stage (or runs a one-iteration
-    pre-fit) and the channels it left unmasked. sigma is the robust rms of the
-    residuals unless the spectrum provides one.
+    pre-fit) and the channels it left unmasked. sigma comes, unless the
+    spectrum provides one, from first differences corrected with the new
+    correlation, like the correlation itself insensitive to the baseline
+    ripple and line residues that the main fit models separately.
     """
     res = ctx.rfi if ctx.rfi is not None else run_prefit(ctx, 1)
     resid = ctx.spectrum.flux - res.model
@@ -491,8 +493,7 @@ def estimate_noise(ctx: FitContext) -> None:
     if ctx.spectrum.sigma is not None and ctx.config.noise.sigma in ("auto", "input"):
         sig = np.asarray(ctx.spectrum.sigma, float)[idx]
     else:
-        r = resid[idx]
-        sig = np.full(idx.size, MAD_TO_STD * float(np.median(np.abs(r - np.median(r)))))
+        sig = np.full(idx.size, estimate_sigma(resid, ctx.good, rho))
     ctx.noise = NoiseModel(sigma=sig, good_index=idx, rho=rho)
 
 
