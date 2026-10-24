@@ -79,6 +79,11 @@ class Posterior:
     log_l: np.ndarray
     derived: dict[str, np.ndarray]  # "<name>_<i>" -> (m,)
     trace: dict[str, np.ndarray] = field(default_factory=dict)
+    k_samples: np.ndarray | None = None  # baseline order of each sample (K-marginalised posterior)
+
+    @property
+    def k_max(self) -> int:
+        return int(self.k_samples.max()) if self.k_samples is not None and self.k_samples.size else self.k
 
     def summary(self) -> dict[str, float]:
         out: dict[str, float] = {}
@@ -500,9 +505,11 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
         out.evidences.append(ev)
     log.debug("N=%d done in %.2fs", n, time.perf_counter() - t0)
 
-    # 5) posterior at the best K for this N
-    k_best = max(ks, key=lambda k: next(e.log_z for e in out.evidences if e.n == n and e.k == k))
-    out.posteriors[n] = make_posterior(ctx, n, k_best, likes[k_best], prior, results[k_best])
+    # 5) posterior marginalised over K: mixture of the per-K posteriors with P(K | N, y)
+    lz_k = np.array([next(e.log_z for e in out.evidences if e.n == n and e.k == k) for k in ks])
+    p_k = np.exp(lz_k - logsumexp(lz_k))
+    parts = [(k, likes[k], results[k], float(pk)) for k, pk in zip(ks, p_k, strict=True) if pk > 1e-3]
+    out.posteriors[n] = make_posterior(ctx, n, parts, prior)
 
 
 def _thin(a: np.ndarray, n: int = 1000) -> np.ndarray:
@@ -511,25 +518,9 @@ def _thin(a: np.ndarray, n: int = 1000) -> np.ndarray:
     return a[np.linspace(0, a.size - 1, n).astype(int)]
 
 
-def make_posterior(
-    ctx: FitContext, n: int, k: int, like: MarginalLikelihood, prior: ModelPrior, res: SamplerResult
-) -> Posterior:
-    max_keep = ctx.config.output.n_posterior
-    if res.backend.endswith("+reweight"):
-        theta, lw, ll = res.samples, res.log_weights - logsumexp(res.log_weights), res.log_l
-        if theta.shape[0] > max_keep:
-            theta, lw, ll = _compact(res, max_keep, ctx.rng)
-    else:
-        theta, lw, ll = _compact(res, max_keep, ctx.rng)
-    draws = draw_amplitudes(like, theta, ctx.rng)
-    w = np.exp(lw) * draws.accept
-    if w.sum() <= 0:
-        w = np.exp(lw)
-    w = w / w.sum()
-    beta = draws.beta
-    ok = np.all(np.isfinite(beta), axis=1)
-    w = np.where(ok, w, 0.0)
-    w = w / w.sum() if w.sum() > 0 else np.full(w.size, 1.0 / w.size)
+def _component_derived(
+    ctx: FitContext, like: MarginalLikelihood, theta: np.ndarray, beta: np.ndarray, ok: np.ndarray
+) -> dict[str, np.ndarray]:
     derived: dict[str, np.ndarray] = {}
     col = 0
     ip = 0
@@ -545,17 +536,58 @@ def make_posterior(
         col += na
     if ip > 1:
         derived["S_total"] = np.sum([derived[f"S_{i}"] for i in range(1, ip + 1)], axis=0)
+    return derived
+
+
+def make_posterior(
+    ctx: FitContext,
+    n: int,
+    parts: list[tuple[int, MarginalLikelihood, SamplerResult, float]],
+    prior: ModelPrior,
+) -> Posterior:
+    """Posterior marginalised over the baseline order.
+
+    ``parts`` holds (K, likelihood, sampler result, P(K | N, y)). Each K
+    contributes about P(K) * n_posterior samples; the baseline coefficients are
+    zero-padded to the largest K so that one design matrix serves all samples.
+    """
+    n_post = ctx.config.output.n_posterior
+    k_max = max(k for k, *_ in parts)
+    n_amp = parts[0][1].n_amp
+    width = n_amp + k_max + 1
+    thetas, lls, ws, betas, kss, ders = [], [], [], [], [], []
+    for k, like, res, pk in parts:
+        keep = max(50, round(n_post * pk))
+        theta, lw, ll = _compact(res, keep, ctx.rng)
+        draws = draw_amplitudes(like, theta, ctx.rng)
+        beta = draws.beta
+        ok = np.all(np.isfinite(beta), axis=1)
+        w = np.exp(lw) * draws.accept * ok
+        w = w / w.sum() if w.sum() > 0 else np.exp(lw) / np.exp(lw).sum()
+        padded = np.zeros((theta.shape[0], width))
+        padded[:, : beta.shape[1]] = np.nan_to_num(beta, nan=0.0)
+        thetas.append(theta)
+        lls.append(ll)
+        ws.append(pk * w)
+        betas.append(padded)
+        kss.append(np.full(theta.shape[0], k))
+        ders.append(_component_derived(ctx, like, theta, beta, ok))
+    w = np.concatenate(ws)
+    k_best = max(parts, key=lambda t: t[3])[0]
+    best_res = next(r for k, _, r, _ in parts if k == k_best)
+    theta = np.vstack(thetas)
     return Posterior(
         n=n,
-        k=k,
+        k=k_best,
         names=prior.names,
         theta=theta,
         u=prior.inverse(theta),
-        weights=w,
-        beta=np.nan_to_num(beta, nan=0.0),
-        log_l=ll,
-        derived=derived,
-        trace={key: _thin(np.asarray(val)) for key, val in res.trace.items()},
+        weights=w / w.sum(),
+        beta=np.vstack(betas),
+        log_l=np.concatenate(lls),
+        derived={key: np.concatenate([d[key] for d in ders]) for key in ders[0]},
+        trace={key: _thin(np.asarray(val)) for key, val in best_res.trace.items()},
+        k_samples=np.concatenate(kss),
     )
 
 
@@ -610,7 +642,7 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
     n_post = max(out.best_n, 1)
     if cfg.model.n_max >= 1 and n_post in out.posteriors:
         post = out.posteriors[n_post]
-        like = ctx.likelihood(n_post, post.k)
+        like = ctx.likelihood(n_post, post.k_max)
         full, comps, base, _idx = posterior_models(ctx, post, like)
         out.model_band = np.percentile(full, [2.5, 16, 50, 84, 97.5], axis=0)
         out.components_median = np.median(comps, axis=1)
@@ -647,6 +679,9 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
         mw, sep = dm.multimodality(post.u, post.weights, ctx.rng)
         m["multimodal_weight"], m["multimodal_separation"] = mw, sep
         ev = next(e for e in out.evidences if e.n == n_post and e.k == post.k)
+        m["p_best_k"] = (
+            float(np.sum(post.weights[post.k_samples == post.k])) if post.k_samples is not None else 1.0
+        )
         m["negative_fraction"] = ev.negative_fraction
         m["sampler_budget"] = any(e.budget_exhausted for e in out.evidences)
         m["logz_err"] = ev.log_z_err

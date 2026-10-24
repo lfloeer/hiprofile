@@ -84,6 +84,8 @@ def write_result(res: FitResult, path: str | Path) -> Path:
             h = pg.create_group(f"N{n}")
             h.attrs["names"] = _json(post.names)
             h.attrs["k"] = post.k
+            if post.k_samples is not None:
+                h.create_dataset("k_samples", data=np.asarray(post.k_samples, np.int16), compression="gzip")
             # theta, weights and log_l in double precision; u, beta and derived
             # quantities in single precision (they are reproducible from theta)
             for key in ("theta", "weights", "log_l", "u", "beta"):
@@ -171,6 +173,7 @@ def read_result(path: str | Path) -> FitResult:
                 log_l=h["log_l"][()],
                 derived={k: v[()].astype(float) for k, v in h["derived"].items()},
                 trace={k: v[()] for k, v in h["trace"].items()},
+                k_samples=h["k_samples"][()].astype(int) if "k_samples" in h else None,
             )
     return res
 
