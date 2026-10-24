@@ -279,6 +279,15 @@ def sbc_figure(stage_dir: Path) -> Path:
     return _save(fig, "sbc.png")
 
 
+def _log_snr_axis(ax) -> None:
+    from matplotlib.ticker import FixedLocator, NullLocator, ScalarFormatter
+
+    ax.set_xscale("log")
+    ax.xaxis.set_major_locator(FixedLocator([2, 3, 5, 10, 20, 50, 100]))
+    ax.xaxis.set_minor_locator(NullLocator())
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+
+
 def classic_figure(run_dir: Path, name: str = "bayes_vs_classic.png") -> Path:
     """Error of posterior median vs. classical W50/W20 against the true S/N."""
     truth, rows = _load(run_dir)
@@ -309,7 +318,7 @@ def classic_figure(run_dir: Path, name: str = "bayes_vs_classic.png") -> Path:
             ax.plot(mid, med, "-o", color=color, lw=2, ms=4, label=lab)
             ax.fill_between(mid, q16, q84, color=color, alpha=0.15, lw=0)
         ax.axhline(0, color=style.INK_2, lw=0.8)
-        ax.set_xscale("log")
+        _log_snr_axis(ax)
         ax.set_xlabel("true integrated S/N")
         ax.set_ylabel(f"{q} estimate − truth [km/s]")
         lim = np.nanpercentile(np.abs(_col(rows, ids, f"classic_{q}") - t), 95)
@@ -341,7 +350,7 @@ def detection_figure(stage_dir: Path) -> Path:
         rel = np.array(run["reliability"], float)
         ok = rel[:, 1] > 0
         axes[1].plot(rel[ok, 0], rel[ok, 2], "-o", color=color, lw=2, ms=5, label=nice)
-    axes[0].set_xscale("log")
+    _log_snr_axis(axes[0])
     axes[0].set_xlabel("true integrated S/N")
     axes[0].set_ylabel("completeness (P(detect) > 0.5)")
     axes[0].set_ylim(-0.03, 1.03)
