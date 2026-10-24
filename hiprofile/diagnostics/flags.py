@@ -18,6 +18,7 @@ FLAG_NAMES = (
     "logz_mismatch",
     "negative_amplitudes",
     "rfi",
+    "sampler_budget",
     "failed",
 )
 
@@ -44,6 +45,7 @@ def compute_flags(
         "logz_mismatch": get("logz_check_sigma", 0.0) > cfg.logz_sigma,
         "negative_amplitudes": get("negative_fraction", 0.0) > cfg.negative_fraction,
         "rfi": get("rfi_fraction", 0.0) > rfi_fraction_max,
+        "sampler_budget": bool(metrics.get("sampler_budget", False)),
         "failed": bool(metrics.get("failed", False)),
     }
     return {k: bool(v) for k, v in flags.items()}

@@ -62,6 +62,7 @@ class ModelEvidence:
     negative_fraction: float = 0.0
     runtime: float = 0.0
     n_like: int = 0
+    budget_exhausted: bool = False
     log_z_check: float = float("nan")
     log_z_check_err: float = float("nan")
 
@@ -491,6 +492,7 @@ def fit_n(ctx: FitContext, n: int, out: FitResult) -> None:
             negative_fraction=negf,
             runtime=r.runtime,
             n_like=r.n_like,
+            budget_exhausted=bool(r.stats.get("budget_exhausted", False)),
         )
         if check is not None and k == k_star:
             ev.log_z_check = check[0] + corr
@@ -646,6 +648,7 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
         m["multimodal_weight"], m["multimodal_separation"] = mw, sep
         ev = next(e for e in out.evidences if e.n == n_post and e.k == post.k)
         m["negative_fraction"] = ev.negative_fraction
+        m["sampler_budget"] = any(e.budget_exhausted for e in out.evidences)
         m["logz_err"] = ev.log_z_err
         if np.isfinite(ev.log_z_check):
             m["logz_check_sigma"] = abs(ev.log_z - ev.log_z_check) / max(

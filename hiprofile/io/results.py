@@ -151,6 +151,9 @@ def read_result(path: str | Path) -> FitResult:
         if "n" in g:
             cols = {}
             for fld in dataclasses.fields(ModelEvidence):
+                if fld.name not in g:  # written by an older version
+                    cols[fld.name] = [fld.default] * len(g["n"])
+                    continue
                 v = g[fld.name][()]
                 cols[fld.name] = [x.decode() for x in v] if v.dtype.kind == "S" else v.tolist()
             res.evidences = [ModelEvidence(**{k: cols[k][i] for k in cols}) for i in range(len(cols["n"]))]

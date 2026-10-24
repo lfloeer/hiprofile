@@ -27,7 +27,7 @@ def run_nautilus(
     # One network is enough in <= 10 dimensions and cuts the training overhead,
     # which dominates for this cheap likelihood.
     options.setdefault("n_networks", 1)
-    run_opts = {"f_live": 0.01, "n_eff": 4000, "verbose": False}
+    run_opts = {"f_live": 0.01, "n_eff": 4000, "verbose": False, "timeout": 600.0, "n_like_max": 1_000_000}
     for key in ("f_live", "n_eff", "n_like_max", "timeout", "discard_exploration"):
         if key in options:
             run_opts[key] = options.pop(key)
@@ -45,6 +45,7 @@ def run_nautilus(
         sampler.run(**run_opts)
         points, log_w, log_l = sampler.posterior()
     n_eff = float(sampler.n_eff)
+    budget = like.n_calls >= run_opts["n_like_max"] or t.elapsed >= run_opts["timeout"]
     return SamplerResult(
         samples=np.asarray(points),
         log_weights=np.asarray(log_w),
@@ -55,7 +56,7 @@ def run_nautilus(
         backend="nautilus",
         runtime=t.elapsed,
         n_like=like.n_calls,
-        stats={"n_eff": n_eff, "n_live": n_live},
+        stats={"n_eff": n_eff, "n_live": n_live, "budget_exhausted": bool(budget)},
         trace={"log_l": np.sort(np.asarray(log_l))},
     )
 
@@ -73,6 +74,7 @@ def run_dynesty(
 
     like = CountingLikelihood(loglike)
     dlogz = options.pop("dlogz", 0.1)
+    maxcall = options.pop("maxcall", 1_000_000)
     with Timer() as t, warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         sampler = dynesty.NestedSampler(
@@ -83,7 +85,7 @@ def run_dynesty(
             rstate=np.random.default_rng(seed),
             **options,
         )
-        sampler.run_nested(dlogz=dlogz, print_progress=False)
+        sampler.run_nested(dlogz=dlogz, maxcall=maxcall, print_progress=False)
         res = sampler.results
     return SamplerResult(
         samples=np.asarray(res.samples),
@@ -94,7 +96,12 @@ def run_dynesty(
         backend="dynesty",
         runtime=t.elapsed,
         n_like=like.n_calls,
-        stats={"n_live": n_live, "niter": int(res.niter), "eff": float(res.eff)},
+        stats={
+            "n_live": n_live,
+            "niter": int(res.niter),
+            "eff": float(res.eff),
+            "budget_exhausted": like.n_calls >= maxcall,
+        },
         trace={"log_l": np.asarray(res.logl), "log_x": np.asarray(res.logvol), "log_z": np.asarray(res.logz)},
     )
 
@@ -114,7 +121,12 @@ def run_ultranest(
     like = CountingLikelihood(loglike)
     np.random.seed(seed % (2**32))  # noqa: NPY002 - UltraNest uses the global NumPy RNG
     names = [f"p{i}" for i in range(ndim)]
-    run_opts = {"show_status": False, "viz_callback": False, "min_num_live_points": n_live}
+    run_opts = {
+        "show_status": False,
+        "viz_callback": False,
+        "min_num_live_points": n_live,
+        "max_ncalls": 1_000_000,
+    }
     run_opts.update(options)
     with Timer() as t, tempfile.TemporaryDirectory() as tmp:
         sampler = ultranest.ReactiveNestedSampler(
@@ -140,6 +152,10 @@ def run_ultranest(
         backend="ultranest",
         runtime=t.elapsed,
         n_like=like.n_calls,
-        stats={"ess": float(result.get("ess", np.nan)), "n_live": n_live},
+        stats={
+            "ess": float(result.get("ess", np.nan)),
+            "n_live": n_live,
+            "budget_exhausted": like.n_calls >= run_opts["max_ncalls"],
+        },
         trace={"log_l": np.asarray(ws["logl"])},
     )

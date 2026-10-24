@@ -70,6 +70,7 @@ crossings.
 | `logz_check_sigma` (check mode) | `logz_mismatch` | > `logz_sigma` (3) |
 | `negative_fraction` | `negative_amplitudes` | > `negative_fraction` (0.5) |
 | `rfi_fraction` | `rfi` | > `rfi.flag_fraction` (0.05) |
+| `sampler_budget` | `sampler_budget` | a sampler stopped at its time / call limit (nautilus: 600 s or 10⁶ calls; options in `sampler.options`) |
 | – | `failed` | the fit raised an error |
 
 Profile-specific flags are cleared when the most probable model is N = 0.
