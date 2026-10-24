@@ -138,6 +138,13 @@ class RFIConfig(_Base):
     action: Literal["mask", "inflate"] = "mask"
     n_iter: int = Field(8, ge=1)
     flag_fraction: float = Field(0.05, gt=0, le=1)
+    min_sigma_channels: float = Field(
+        2.0,
+        gt=0,
+        description="Smallest Delta v_rand (in channels) of the line model in the pre-stage, so that a "
+        "spike of one or two channels cannot be absorbed as a line",
+    )
+    close_holes: bool = Field(True, description="Also mask a single channel between two masked ones")
 
 
 class SamplerConfig(_Base):
@@ -164,6 +171,9 @@ class DiagnosticsConfig(_Base):
     edge_mass: float = 0.2
     min_ess: float = 500.0
     logz_sigma: float = 3.0
+    min_w50_channels: float = Field(
+        2.0, description="Flag `unresolved` when a component's W50 is narrower than this many channels"
+    )
     min_constraint: float = Field(
         0.3,
         description="Flag `prior_dominated` when the posterior 16-84 % width of delta_v is wider than "

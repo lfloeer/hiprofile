@@ -74,6 +74,7 @@ crossings.
 | `logz_check_sigma` (check mode) | `logz_mismatch` | > `logz_sigma` (3) |
 | `negative_fraction` | `negative_amplitudes` | > `negative_fraction` (0.5) |
 | `constraint_<par>` (1 − posterior/prior 16–84 % width) | `prior_dominated` | `constraint_delta_v` < `min_constraint` (0.3): the width is not measured |
+| `w50_min_channels` (narrowest component) | `unresolved` | < `min_w50_channels` (2): an RFI-like component narrower than the channel response |
 | `rfi_fraction` | `rfi` | > `rfi.flag_fraction` (0.05) |
 | `sampler_budget` | `sampler_budget` | a sampler stopped at its time / call limit (nautilus: 600 s or 10⁶ calls; options in `sampler.options`) |
 | – | `failed` | the fit raised an error |

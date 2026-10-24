@@ -285,7 +285,15 @@ def prepare(spectrum: Spectrum, config: Config, seed: int) -> FitContext:
 
 def apply_rfi(ctx: FitContext) -> None:
     cfg = ctx.config.rfi
-    prior = build_prior(("profile",), ctx.config.priors, ctx.spectrum.velocity)
+    # The pre-stage line model must not be narrower than a few channels: a
+    # bright spike fitted as a "line" would hide its own centre from the mask.
+    pr = ctx.config.priors
+    sig = pr.delta_v_rand
+    floor = cfg.min_sigma_channels * ctx.grid.dv
+    high = sig.high if sig.high is not None else 60.0
+    low = max(sig.low if sig.low is not None else 4.0, min(floor, 0.9 * high))
+    pre_priors = pr.model_copy(update={"delta_v_rand": sig.model_copy(update={"low": low})})
+    prior = build_prior(("profile",), pre_priors, ctx.spectrum.velocity)
     res = robust_prefit(
         ctx.spectrum.flux,
         ctx.grid,
@@ -301,6 +309,10 @@ def apply_rfi(ctx: FitContext) -> None:
     )
     ctx.rfi = res
     bad = res.q > cfg.threshold
+    if cfg.close_holes and bad.size > 2:
+        hole = np.zeros_like(bad)
+        hole[1:-1] = bad[:-2] & bad[2:]
+        bad |= hole
     if not bad.any():
         return
     if cfg.action == "mask":
@@ -588,6 +600,10 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
             (y - out.baseline_median[gi]), line[gi], ctx.noise.sigma, width, ctx.grid.dv
         )
         m["ess"] = dm.kish_ess(post.weights)
+        s50 = post.summary()
+        widths = [s50[f"W50_{i}"] for i in range(1, n_post + 1) if f"W50_{i}" in s50]
+        if widths:
+            m["w50_min_channels"] = float(min(widths) / ctx.grid.dv)
         prior = ctx.prior(n_post)
         edge_vals = []
         bounds = prior.edge_bounds()
@@ -611,7 +627,6 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
             m["logz_check_sigma"] = abs(ev.log_z - ev.log_z_check) / max(
                 math.hypot(ev.log_z_err, ev.log_z_check_err), 1e-3
             )
-        s50 = post.summary()
         if "v_sys_1" in s50 and "W20_1" in s50:
             # Classical measurement in a window around the line, as a by-eye
             # window would be chosen: +-(W20/2 + 25 % + 2 channels)
@@ -633,6 +648,7 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
             "negative_amplitudes",
             "wiggle",
             "prior_dominated",
+            "unresolved",
         ):
             out.flags[key] = False
 

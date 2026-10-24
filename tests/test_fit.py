@@ -5,6 +5,7 @@ from hiprofile import Spectrum
 from hiprofile.config import Config
 from hiprofile.inference.fit import ModelEvidence, fit_spectrum, model_probabilities, spectrum_seed
 from hiprofile.io.results import read_result, write_result
+from hiprofile.model import profile
 
 QUICK = Config().updated(sampler={"mode": "quick"}, model={"k_min": 0, "k_max": 1, "n_max": 1})
 
@@ -90,3 +91,18 @@ def test_full_mode(line_spectrum):
     q = fit_spectrum(spec, QUICK)
     for a, b in zip(res.evidences, q.evidences, strict=True):
         assert abs(a.log_z - b.log_z) < 1.0
+
+
+def test_rfi_burst_is_fully_masked_and_not_fitted_as_a_line(grid, rng):
+    """A three-channel burst must be masked completely, not fitted as a narrow second line."""
+    truth = np.array([2000.0, 180.0, 12.0, 0.15, 4.0, 0.25])
+    y = profile(grid, truth) + 0.02 * rng.normal(size=grid.n_chan)
+    burst = [120, 121, 300, 301, 302, 380]
+    y[burst] += np.array([0.3, 0.5, 0.4, 0.9, 0.4, 0.3])
+    spec = Spectrum(grid.velocity, y, sigma=np.full(grid.n_chan, 0.02), id="burst")
+    res = fit_spectrum(spec, QUICK.updated(model={"n_max": 2}))
+    assert res.status == "ok", res.error
+    assert set(np.flatnonzero(res.mask)) >= set(burst)
+    assert res.best_n == 1
+    assert not res.flags["unresolved"]
+    assert abs(res.posteriors[1].summary()["v_ctr_1"] - truth[0]) < 20

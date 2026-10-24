@@ -20,6 +20,7 @@ FLAG_NAMES = (
     "rfi",
     "sampler_budget",
     "prior_dominated",
+    "unresolved",
     "failed",
 )
 
@@ -48,6 +49,7 @@ def compute_flags(
         "rfi": get("rfi_fraction", 0.0) > rfi_fraction_max,
         "sampler_budget": bool(metrics.get("sampler_budget", False)),
         "prior_dominated": get("constraint_delta_v", 1.0) < cfg.min_constraint,
+        "unresolved": get("w50_min_channels", np.inf) < cfg.min_w50_channels,
         "failed": bool(metrics.get("failed", False)),
     }
     return {k: bool(v) for k, v in flags.items()}
