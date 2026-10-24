@@ -36,7 +36,7 @@ chosen:
 | detection | `hiprofile validate --stage detection --n 200 --seed 21` | 200, fitted twice |
 | misspecification | `hiprofile validate --stage misspec --n 100 --seed 31` | 5 × 100 |
 | conditional bias | `python benchmarks/bias_study.py --n 20 --priors default\|flat`, and `--response boxcar+hanning` | 3 × 500 |
-| low-S/N bias causes | `python benchmarks/w20_bias.py --n 100` | 1500, fitted three times |
+| low-S/N bias causes | `python benchmarks/w20_bias.py --n 100`, and `--variants default --response boxcar+hanning` | 1500, fitted three times; 1500 Hanning |
 | correlated noise | `python benchmarks/correlated_noise.py --n 300 --n-noise 150` | 450, fitted four times |
 | real data | `python benchmarks/alfalfa_study.py` | 10 ALFALFA sources |
 
@@ -223,17 +223,25 @@ the per-cell scatter):
 | unsmoothed | 8–40 | 10 (5) | 31 (7) | 136 (7) | 5 (7) | 103 (13) | 135 (7) |
 | unsmoothed | 15–40 | 4 (4) | 12 (5) | 9 (4) | 2 (5) | 82 (11) | 10 (6) |
 | Hanning | 5 | 19 (23) | 23 (49) | 167 (19) | 26 (37) | 94 (43) | 155 (16) |
-| Hanning | 8–40 | 5 (5) | 9 (7) | 6 (5) | 4 (8) | 63 (10) | 10 (8) |
+| Hanning | 8–40 | 5 (5) | 9 (7) | 6 (5) ¹ | 4 (8) | 63 (10) | 10 (8) ¹ |
+
+¹ From 20 spectra per cell; with 100 spectra the Springob widths of
+400 km/s lines at S/N 8 are −89 km/s (W50) and −81 km/s (W20) off in the
+median (see below), so this entry holds from S/N 15 only.
 
 * **From S/N 8 upwards** the posterior median with the default priors is
   unbiased to within 11 km/s in W50 and 5 km/s in W20 for every width, on
   either kind of channel.
 * **Springob et al. (2005)** is as good as the fit for W50 on Hanning-smoothed
-  spectra from S/N 8 (bias ≤ 6 km/s, the same scatter), and its W20
-  extension is biased by at most 10 km/s there. On unsmoothed channels and
-  at S/N 5 it fails for wide lines (−70 to −170 km/s): the per-channel S/N
-  of a 400 km/s line at integrated S/N 8 is about 1, and the first noise dip
-  below 15 % of the horn ends the flank fit inside the profile.
+  spectra from S/N 15 (bias ≤ 3 km/s, the same scatter), and at S/N 8 for
+  lines up to Δv = 100 km/s. For wider lines at S/N 8 the 20 spectra per
+  cell of this study are too few: with 100 (next section) the Springob W50
+  of 400 km/s lines is 89 km/s too narrow in the median, by more than
+  50 km/s in 64 % of the spectra, where the fit is off by −10 km/s. On
+  unsmoothed channels and at S/N 5 it fails for wide lines (−70 to
+  −170 km/s). The per-channel S/N of a 400 km/s line at integrated S/N 8
+  is about 1, and the first noise dip below 15 % of the horn ends the flank
+  fit inside the profile.
 * **The naive threshold crossing** is fine for W50 but not for W20: noise
   peaks above 20 % of the peak channel widen it by up to 100 km/s for wide
   lines, still +46 km/s at S/N 15 with Hanning smoothing.
@@ -257,7 +265,7 @@ the per-cell scatter):
 ### Where the low-S/N bias comes from
 
 `benchmarks/w20_bias.py` refits the cells at S/N 3, 5 and 8 with 100
-spectra each (unsmoothed channels, no baseline in the data) three times:
+spectra each (unsmoothed channels unless stated otherwise, no baseline in the data) three times:
 with the default configuration, with only a constant baseline (K = 0), and
 with a Δv prior uniform on 0–800 km/s. Medians are taken over all spectra
 (the N = 1 posterior exists for every spectrum), over the detected and over
@@ -319,11 +327,50 @@ true width at S/N ≤ 5 (Tully–Fisher samples selected by width, for
 example) should cut at S/N ≈ 8, where the bias is below 6 km/s for every
 width, or fit the width distribution hierarchically.
 
+### The classical methods at low S/N
+
+The same 1500 spectra, and a second set with Hanning smoothing (line and
+noise smoothed alike, fitted with `model.response: boxcar+hanning`), are
+measured with both classical methods: once in the window the pipeline uses,
+around the posterior v_sys and W20, and once in a window of the same size
+around the true values with a constant baseline from outside it, the best
+case for an observer who knows where the line is.
+
+![Low-S/N W20 bias of the posterior median and the classical methods](img/w20_bias_classic.png)
+
+| W20 error, all spectra [km/s] | Bayes | naive, true window | naive, fit window | Springob, true window | Springob, fit window |
+|---|---|---|---|---|---|
+| 20 km/s, S/N 5, unsmoothed | +48 | +12 | +67 | −4 | +9 |
+| 400 km/s, S/N 5, unsmoothed | −48 | +102 | +46 | −127 | −188 |
+| 400 km/s, S/N 8, unsmoothed | −5 | +107 | +91 | −136 | −139 |
+| 20 km/s, S/N 5, Hanning | +32 | +8 | +38 | 0 | +7 |
+| 400 km/s, S/N 5, Hanning | −41 | +83 | +28 | −138 | −183 |
+| 400 km/s, S/N 8, Hanning | −5 | +84 | +76 | −89 | −81 |
+
+Springob gives no value for 5–45 % of the spectra (flank not fittable);
+those are left out of its medians.
+
+* **Neither classical method shrinks toward a prior, but both have biases
+  of their own that do not go away with S/N** for wide lines at S/N ≤ 8:
+  the naive W20 grows with the width (+80 to +107 km/s at 400 km/s: noise
+  peaks keep the 20 % crossing at the window edge), the Springob W20 shrinks
+  (−90 to −140 km/s: noise dips end the flank fit early). Hanning smoothing
+  reduces the Springob failures but does not remove them.
+* **The pipeline window passes the prior on.** Measured around the
+  posterior, both classical methods inherit its pull at S/N 3: the window
+  of a prior-dominated fit is too wide for a narrow line (naive +210 km/s
+  instead of +15) and too narrow for a wide one.
+* **Where the classical methods win** is the narrowest lines at S/N ≤ 5 in
+  a window around the truth: Springob's W20 of 20 km/s lines is unbiased
+  where the posterior median is 30–50 km/s too wide. An observer can only
+  place that window, however, when the line is visible, which at S/N 3 it
+  mostly is not.
+
 No choice of prior removes the conditional bias at low S/N, because there
 is no information on the width there; the default priors keep it smallest
 for the population they were calibrated on. What the fit adds over a good
-classical method is therefore not a better W50 for bright, smoothed lines,
-but the W20, the low-S/N and unsmoothed cases, calibrated uncertainties,
+classical method is therefore not a better W50 for bright (S/N ≳ 15),
+smoothed lines, but the W20, the low-S/N and unsmoothed cases, calibrated uncertainties,
 detection probabilities, the separation of blended components and the
 marginalisation over the baseline.
 
