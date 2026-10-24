@@ -4,6 +4,7 @@
     python docs/make_figures.py gallery           # fits of simulated spectra
     python docs/make_figures.py validation DIR    # SBC / detection / classical comparison from a
                                                   # `hiprofile validate --out DIR` run
+    python docs/make_figures.py bias DIR          # conditional bias from benchmarks/bias_study.py
 
 All figures go to docs/img/.
 """
@@ -292,11 +293,11 @@ def sbc_figure(stage_dir: Path) -> Path:
     return _save(fig, "sbc.png")
 
 
-def _log_snr_axis(ax) -> None:
+def _log_snr_axis(ax, ticks=(2, 3, 5, 10, 20, 50, 100)) -> None:
     from matplotlib.ticker import FixedLocator, NullLocator, ScalarFormatter
 
     ax.set_xscale("log")
-    ax.xaxis.set_major_locator(FixedLocator([2, 3, 5, 10, 20, 50, 100]))
+    ax.xaxis.set_major_locator(FixedLocator(list(ticks)))
     ax.xaxis.set_minor_locator(NullLocator())
     ax.xaxis.set_major_formatter(ScalarFormatter())
 
@@ -432,6 +433,75 @@ def misspec_figure(stage_dir: Path) -> Path:
     return _save(fig, "misspec_flags.png")
 
 
+def bias_figure(root: Path, name: str = "bias_study.png") -> Path:
+    """Conditional bias of W50 against S/N for fixed true widths (benchmarks/bias_study.py)."""
+    import json
+
+    sets = [
+        (p, json.loads((root / f"bias_{p}" / "bias_table.json").read_text())) for p in ("default", "flat")
+    ]
+    widths = sorted({c["delta_v"] for _, t in sets[0:1] for c in t})
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.8))
+    for ax, (_, table), title in zip(
+        axes[:2], sets, ("default priors (THINGS)", "flat priors (log-uniform widths)"), strict=True
+    ):
+        for i, dv in enumerate(widths):
+            cells = sorted((c for c in table if c["delta_v"] == dv), key=lambda c: c["snr"])
+            snr = [c["snr"] for c in cells]
+            w50 = cells[0]["delta_v"] + 2.35 * 12.0  # approximate true W50 for the legend
+            ax.plot(
+                snr,
+                [c["bayes_W50_bias"] for c in cells],
+                "-o",
+                color=style.SERIES[i],
+                lw=2,
+                ms=4,
+                label=f"Δv = {dv:.0f} km/s (W50 ≈ {w50:.0f})",
+            )
+            ax.fill_between(
+                snr,
+                [c["bayes_W50_bias"] - c["bayes_W50_scatter"] for c in cells],
+                [c["bayes_W50_bias"] + c["bayes_W50_scatter"] for c in cells],
+                color=style.SERIES[i],
+                alpha=0.08,
+                lw=0,
+            )
+        ax.axhline(0, color=style.INK_2, lw=0.8)
+        _log_snr_axis(ax, (3, 5, 8, 15, 40))
+        ax.set_xlabel("true integrated S/N")
+        ax.set_ylabel("median W50 − truth [km/s]")
+        ax.set_title(f"posterior median, {title}", loc="left", fontsize=9)
+    ax = axes[2]
+    for i, dv in enumerate(widths):
+        cells = sorted((c for c in sets[0][1] if c["delta_v"] == dv), key=lambda c: c["snr"])
+        ax.plot(
+            [c["snr"] for c in cells],
+            [c["classic_W50_bias"] for c in cells],
+            "-o",
+            color=style.SERIES[i],
+            lw=2,
+            ms=4,
+        )
+    ax.axhline(0, color=style.INK_2, lw=0.8)
+    _log_snr_axis(ax, (3, 5, 8, 15, 40))
+    ax.set_xlabel("true integrated S/N")
+    ax.set_ylabel("classical W50 − truth [km/s]")
+    ax.set_title("classical W50 on the same spectra", loc="left", fontsize=9)
+    lo = min(ax.get_ylim()[0] for ax in axes)
+    hi = max(ax.get_ylim()[1] for ax in axes)
+    for ax in axes:
+        ax.set_ylim(lo, hi)
+    axes[0].legend(fontsize=8, loc="lower right")
+    fig.suptitle(
+        "Conditional bias of W50 for fixed true profiles (median ± robust scatter per cell)",
+        x=0.01,
+        ha="left",
+        fontsize=11,
+        y=1.03,
+    )
+    return _save(fig, name)
+
+
 def validation(root: Path) -> None:
     root = Path(root)
     if (root / "validate_sbc" / "summary.json").exists():
@@ -451,5 +521,7 @@ if __name__ == "__main__":
         gallery()
     elif what == "validation" and len(sys.argv) > 2:
         validation(Path(sys.argv[2]))
+    elif what == "bias" and len(sys.argv) > 2:
+        bias_figure(Path(sys.argv[2]))
     else:
         raise SystemExit(__doc__)

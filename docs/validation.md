@@ -22,23 +22,22 @@ intervals must cover the truth at their nominal rate.
 
 | parameter | rank p-value | 68 % coverage | 95 % coverage |
 |---|---|---|---|
-| v_ctr | 0.98 | 0.68 | 0.94 |
-| Δv | 0.45 | 0.66 | 0.92 |
-| Δv_rand | 0.79 | 0.68 | 0.93 |
-| α | 0.63 | 0.64 | 0.94 |
-| S | 0.16 | 0.65 | 0.93 |
-| f | 0.07 | 0.68 | 0.92 |
-| W50 | 0.27 | 0.69 | 0.92 |
-| W20 | 0.99 | 0.67 | 0.91 |
+| v_ctr | 0.98 | 0.69 | 0.96 |
+| Δv | 0.45 | 0.68 | 0.94 |
+| Δv_rand | 0.79 | 0.68 | 0.95 |
+| α | 0.63 | 0.67 | 0.96 |
+| S | 0.16 | 0.67 | 0.95 |
+| f | 0.07 | 0.70 | 0.94 |
+| W50 | 0.27 | 0.70 | 0.94 |
+| W20 | 0.99 | 0.69 | 0.94 |
 
 ![SBC: rank histograms, interval coverage and baseline-order calibration](img/sbc.png)
 
-All rank histograms are flat (no U shape, slope or peak; all p > 0.05). The
-68 % coverages lie inside the ±2σ band for 1000 simulations (0.65–0.71); the
-95 % coverages are one to two points below the nominal value, i.e. the SMC
-posteriors are slightly light-tailed. The 27.6 % of simulations that are
-not detected (faint draws of the half-normal flux prior) take part in the
-rank statistics like every other simulation.
+All rank histograms are flat (no U shape, slope or peak; all p > 0.05), and
+the 68 % and 95 % coverages lie inside the ±2σ bands for 1000 simulations
+(0.65–0.71 and 0.94–0.96). The 27.6 % of simulations that are not detected
+(faint draws of the half-normal flux prior) take part in the rank
+statistics like every other simulation.
 
 **Baseline order.** The most probable K is the true one in 93 % of the
 simulations and P(K_true | y) averages 0.88; the reliability curve (right

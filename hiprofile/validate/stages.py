@@ -26,6 +26,7 @@ import numpy as np
 from scipy import stats
 
 from hiprofile.config import Config
+from hiprofile.inference.fit import weighted_quantile
 from hiprofile.io.catalog import collect_rows, rows_to_table
 from hiprofile.io.results import read_result, result_path
 from hiprofile.io.spectra import SpectrumSource, list_sources, write_spectrum
@@ -261,7 +262,10 @@ def sbc_ranks(
             less = np.sum(draws < tv)
             ties = np.sum(draws == tv)
             ranks[k].append(int(less + rng.integers(0, ties + 1)))
-            q = np.quantile(draws, [0.025, 0.16, 0.84, 0.975])
+            # intervals from the full weighted posterior: the 2.5 / 97.5 % quantiles of
+            # 99 draws sit inside the true ones and would under-report the coverage
+            ok = np.isfinite(cols[k])
+            q = weighted_quantile(cols[k][ok], post.weights[ok], [0.025, 0.16, 0.84, 0.975])
             cover[k]["68"].append(q[1] <= tv <= q[2])
             cover[k]["95"].append(q[0] <= tv <= q[3])
     out: dict[str, Any] = {"ranks": {}, "rank_pvalue": {}, "coverage68": {}, "coverage95": {}}
