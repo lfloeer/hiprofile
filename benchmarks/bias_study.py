@@ -45,7 +45,12 @@ PRIOR_SETS = {
 
 
 def simulate(
-    out: Path, n: int, seed: int, response: str = "boxcar"
+    out: Path,
+    n: int,
+    seed: int,
+    response: str = "boxcar",
+    delta_v: tuple[float, ...] = DELTA_V,
+    snrs: tuple[float, ...] = SNR,
 ) -> tuple[list[SpectrumSource], list[dict]]:
     rng = np.random.default_rng(seed)
     v = 1000.0 + 5.0 * np.arange(512)
@@ -54,8 +59,8 @@ def simulate(
     sdir = out / "sims"
     sdir.mkdir(parents=True, exist_ok=True)
     sources, truth = [], []
-    for dv in DELTA_V:
-        for snr in SNR:
+    for dv in delta_v:
+        for snr in snrs:
             for i in range(n):
                 vc = rng.uniform(1800, 2400)
                 w_eff = dv + 2.35 * SIGMA_RAND
