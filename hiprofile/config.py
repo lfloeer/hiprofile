@@ -123,8 +123,9 @@ class NoiseConfig(_Base):
     )
     correlation: str | list[float] = Field(
         "auto",
-        description="white | hanning | hanning-decimated | [rho_1, rho_2, ...]; "
-        "auto: hanning if the response contains hanning",
+        description="white | hanning | hanning-decimated | [rho_1, rho_2, ...]; a '+white' suffix "
+        "(e.g. hanning+white) adds a white component whose fraction is estimated from the data; "
+        "auto: hanning+white if the response contains hanning",
     )
     signal_free: list[tuple[float, float]] | None = Field(
         None, description="Velocity ranges used to estimate sigma"

@@ -26,3 +26,31 @@ def test_sigma_estimate_hanning(rng):
     assert abs(s / 0.3 - 1) < 0.03
     nm = build_noise(y, np.ones(y.size, bool), None, "hanning")
     assert nm.bandwidth == 2
+
+
+def test_white_fraction_is_recovered(rng):
+    from hiprofile.likelihood.noise import estimate_white_fraction
+
+    rho = correlation_from_spec("hanning")
+    good = np.ones(20000, bool)
+    eps_white = rng.normal(size=20002)
+    hann = np.convolve(eps_white, [0.25, 0.5, 0.25], mode="valid") / np.sqrt(0.375)
+    for eps in (0.0, 0.05, 0.3, 1.0):
+        y = np.sqrt(1 - eps) * hann + np.sqrt(eps) * rng.normal(size=hann.size)
+        est = estimate_white_fraction(y, good, rho)
+        assert abs(est - max(eps, 0.005)) < 0.01 + 0.1 * eps, (eps, est)
+
+
+def test_hanning_plus_white_whitens_real_like_noise(rng):
+    """Hanning plus 3 % white noise: exact Hanning whitening explodes (chi2/n ~ 1e4), hanning+white not."""
+    n = 400
+    e = rng.normal(size=n + 2)
+    y = np.sqrt(0.97) * np.convolve(e, [0.25, 0.5, 0.25], mode="valid") / np.sqrt(0.375)
+    y += np.sqrt(0.03) * rng.normal(size=n)
+    good = np.ones(n, bool)
+    chi2 = {}
+    for spec in ("hanning", "hanning+white"):
+        nm = build_noise(y, good, None, spec)
+        chi2[spec] = float(np.sum(nm.whiten(y) ** 2) / n)
+    assert chi2["hanning"] > 3.0
+    assert 0.6 < chi2["hanning+white"] < 1.7  # 5-95 % range for 400 channels: 0.8-1.6

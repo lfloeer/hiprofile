@@ -190,3 +190,56 @@ them with the default (THINGS) priors and with flat priors (log-uniform
 No choice of prior removes the conditional bias at low S/N, because there is
 no information on the width there; the default priors minimise it for the
 galaxy population they were calibrated on and are kept.
+
+## Real data: low-S/N ALFALFA sources
+
+`python benchmarks/alfalfa_study.py --out DIR --figure docs/img/alfalfa_study.png`
+
+Ten sources from the ALFALFA α.40 catalogue (Haynes et al. 2011), drawn at
+random: six with HIcode 1 (S/N 6.5–9) and four with HIcode 2 (S/N 5–6.5,
+detections confirmed by an optical redshift). The spectra come from NED
+(baseline subtracted, Hanning smoothed, 5.2 km/s channels) and are fitted
+in a ±1000 km/s window with the default configuration and
+`model.response: boxcar+hanning`; widths and fluxes are converted to the
+cz scale of the catalogue.
+
+![hiprofile fits of ten low-S/N ALFALFA spectra against the catalogue](img/alfalfa_study.png)
+
+| AGC | code | S/N | W50 ALFALFA | W50 hiprofile (16–84 %) | S ALFALFA | S hiprofile | note |
+|---|---|---|---|---|---|---|---|
+| 238702 | 1 | 7.1 | 139 ± 8 | 168 (144–195) | 0.92 ± 0.07 | 1.07 (0.93–1.21) | second component = window-edge artefact |
+| 258145 | 1 | 6.9 | 210 ± 59 | 200 (194–229) | 0.85 ± 0.07 | 0.73 (0.61–0.87) | second component on a 3 mJy bump 700 km/s away |
+| 102780 | 1 | 7.6 | 190 ± 5 | 187 (179–193) | 1.04 ± 0.07 | 1.07 (0.94–1.20) | |
+| 219208 | 1 | 7.4 | 369 ± 18 | 391 (359–423) | 1.45 ± 0.11 | 1.25 (1.03–1.51) | |
+| 258284 | 1 | 8.5 | 476 ± 32 | 510 (477–538) | 2.12 ± 0.13 | 1.97 (1.70–2.24) | |
+| 257950 | 1 | 7.3 | 49 ± 6 | 62 (51–83) | 0.51 ± 0.05 | 0.61 (0.51–0.73) | |
+| 232843 | 2 | 5.2 | 111 ± 11 | 359 (78–427) | 0.62 ± 0.08 | 1.26 (0.97–1.48) | bimodal: one horn or the full profile |
+| 732650 | 2 | 6.2 | 63 ± 41 | 209 (197–220) | 0.38 ± 0.03 | 1.21 (1.11–1.32) | neighbour AGC 231950 in the beam |
+| 260144 | 2 | 5.8 | 136 ± 50 | 353 (252–438) | 0.66 ± 0.06 | 1.11 (0.85–1.36) | neighbour AGC 260955 in the beam |
+| 203516 | 2 | 6.0 | 81 ± 8 | 75 (63–90) | 0.60 ± 0.07 | 0.63 (0.53–0.74) | |
+
+W50 in km/s, S in Jy km/s. The systemic velocities agree within 1.4σ of the
+posterior errors (4–79 km/s) for all sources but the confused AGC 732650.
+
+* **HIcode 1:** all six widths and fluxes agree with the catalogue within
+  the combined errors. In two spectra hiprofile prefers N = 2, but the
+  catalogue source is one of the components and is measured correctly; the
+  extra component sits on the rising edge of the extracted window or on a
+  broad 3 mJy bump that is not in the catalogue.
+* **HIcode 2:** one of four agrees. Two of the three others are confused: a
+  catalogued neighbour 2.9′ and 3.8′ away (inside the 3.5′ Arecibo beam)
+  overlaps in velocity, and the single-spectrum fit measures the blend,
+  which the ALFALFA team separated using the maps. In the third
+  (AGC 232843, S/N 5.2) the catalogue measured the bright horn only; the
+  posterior is bimodal between that and a 360 km/s profile that includes
+  the weaker emission on the far side, and its 16–84 % range (78–427 km/s)
+  covers both.
+
+The first run of this study found every fit flagged with χ²_red up to 10⁴:
+real Hanning-smoothed spectra are not exactly Hanning, and the exact
+Hanning covariance has zero variance at the Nyquist frequency, where the
+data have a little. Whitening amplified that component by orders of
+magnitude. Since then a `hanning` response uses `hanning+white` noise, with
+the white fraction estimated per spectrum from fourth and first differences
+(0.5–4 % in these spectra, half of them at the 0.5 % floor); see
+[Configuration](configuration.md).

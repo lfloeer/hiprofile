@@ -45,6 +45,65 @@ def correlation_from_spec(spec: str | list[float]) -> np.ndarray:
     raise ValueError(f"unknown noise correlation {spec!r}")
 
 
+WHITE_FLOOR = 0.005
+
+
+def _filtered_variance(f: np.ndarray, rho: np.ndarray) -> float:
+    """var(sum_j f_j y_{i+j}) / sigma^2 for correlation rho."""
+    out = 0.0
+    for a in range(f.size):
+        for b in range(f.size):
+            lag = abs(a - b)
+            out += f[a] * f[b] * (rho[lag] if lag < rho.size else 0.0)
+    return float(out)
+
+
+def estimate_white_fraction(
+    flux: np.ndarray, good: np.ndarray, rho: np.ndarray, signal_free: np.ndarray | None = None
+) -> float:
+    """White-noise fraction eps of the mixture rho_eps = (1 - eps) rho + eps delta.
+
+    Real Hanning-smoothed spectra are never exactly Hanning: the model has
+    zero power at the Nyquist frequency, the data (re-gridding, quantisation,
+    the spectrometer's own window) do not, and whitening with the exact
+    kernel blows that component up by orders of magnitude. The ratio of the
+    variances of fourth and first differences (robust MAD estimates) is
+    linear-fractional in eps and solved for it; fourth differences pick out
+    the Nyquist band, where the two components differ most, and suppress
+    smooth signal. eps is kept >= WHITE_FLOOR so that the covariance stays
+    well conditioned.
+    """
+    use = good.copy()
+    if signal_free is not None:
+        use &= signal_free
+    y = np.where(use, flux, np.nan)
+    f1 = np.array([-1.0, 1.0])
+    f4 = np.array([1.0, -4.0, 6.0, -4.0, 1.0])
+    d1 = np.convolve(y, f1, mode="valid")
+    d4 = np.convolve(y, f4, mode="valid")
+    d1, d4 = d1[np.isfinite(d1)], d4[np.isfinite(d4)]
+    if d4.size < 16:
+        return WHITE_FLOOR
+    v1 = (MAD_TO_STD * np.median(np.abs(d1 - np.median(d1)))) ** 2
+    v4 = (MAD_TO_STD * np.median(np.abs(d4 - np.median(d4)))) ** 2
+    if v1 <= 0:
+        return WHITE_FLOOR
+    white = np.array([1.0])
+    a1, b1 = _filtered_variance(f1, rho), _filtered_variance(f1, white)
+    a4, b4 = _filtered_variance(f4, rho), _filtered_variance(f4, white)
+    ratio = v4 / v1
+    # ratio ((1-e) a1 + e b1) = (1-e) a4 + e b4
+    den = (b4 - a4) - ratio * (b1 - a1)
+    eps = (ratio * a1 - a4) / den if den != 0 else 1.0
+    return float(np.clip(eps, WHITE_FLOOR, 1.0))
+
+
+def with_white(rho: np.ndarray, eps: float) -> np.ndarray:
+    out = (1.0 - eps) * np.asarray(rho, float)
+    out[0] = 1.0
+    return out
+
+
 def estimate_sigma(
     flux: np.ndarray, good: np.ndarray, rho: np.ndarray, signal_free: np.ndarray | None = None
 ) -> float:
@@ -168,7 +227,12 @@ def build_noise(
     correlation: str | list[float] = "white",
     signal_free: np.ndarray | None = None,
 ) -> NoiseModel:
-    rho = correlation_from_spec(correlation)
+    """Noise model; a correlation spec ending in ``+white`` (e.g. ``hanning+white``)
+    adds a white component whose fraction is estimated from the data."""
+    estimate_white = isinstance(correlation, str) and correlation.endswith("+white")
+    rho = correlation_from_spec(correlation[: -len("+white")] if estimate_white else correlation)
+    if estimate_white and rho.size > 1:
+        rho = with_white(rho, estimate_white_fraction(flux, good, rho, signal_free))
     idx = np.flatnonzero(good)
     if sigma is None:
         s = estimate_sigma(flux, good, rho, signal_free)

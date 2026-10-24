@@ -232,7 +232,7 @@ class FitContext:
 def _correlation(cfg: Config) -> str | list[float]:
     corr = cfg.noise.correlation
     if corr == "auto":
-        return "hanning" if "hanning" in cfg.model.response.lower() else "white"
+        return "hanning+white" if "hanning" in cfg.model.response.lower() else "white"
     return corr
 
 
