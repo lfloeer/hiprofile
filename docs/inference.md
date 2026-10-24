@@ -82,13 +82,20 @@ compared by evidence with a flat prior.
    probabilities $q_j$ (stored and plotted).
 2. **Main fit**: channels with $q_j$ above `rfi.threshold` are masked
    (`action: mask`) or their $\sigma$ inflated by $1/\sqrt{1-q_j}$
-   (`action: inflate`). Many outliers set the `rfi` flag.
+   (`action: inflate`). A single channel between two outliers is masked
+   with them. Many outliers set the `rfi` flag.
 3. **Extension**: `model.n_rfi` adds narrow Gaussian components (width
    `priors.rfi_sigma_channels`, 0.3–1 channel by default) to every model.
 
-The pre-stage can explain narrow weak lines or single horns as outliers;
+Two guards keep the pre-stage from eating signal. Its line model is not
+allowed to be narrower than `rfi.min_sigma_channels` (2) channels, so a
+bright spike cannot be absorbed as a "line" and hide its own centre from the
+mask. And a run of more than `rfi.max_width_channels` (3) outlier channels
+(gaps of up to two channels included) is not RFI but signal the
+one-component pre-stage cannot explain, typically a second line, and stays
+in the fit; broader RFI needs a larger value or `model.n_rfi`.
 `hiprofile validate --stage detection` measures the completeness with and
-without it.
+without the pre-stage.
 
 ## Model comparison
 
@@ -120,6 +127,16 @@ its evidence lies more than `sampler.gate_margin` (5) nats below a model with
 fewer components, the sampler is skipped and the quick evidence kept
 (`method = quick-gated`). Otherwise the sampler runs once on the K-marginal
 likelihood (`method = marginal`).
+
+A second, fainter line is a needle in the prior volume: random starts and
+prior-drawn particles rarely place a component on it. Two warm starts take
+care of that without touching the evidence. For N ≥ 2 the quick stage also
+optimises the N − 1 solution with a new component on each of the strongest
+features of the N − 1 residual (matched filters of 2 and 6 channels,
+`sampler.n_seeds`). The SMC then draws `sampler.init_fraction` (25 %) of its
+particles from the quick stage's importance proposal and the rest from the
+prior; the initial importance weights prior/q₀ of this defensive mixture
+keep ln Z exact and are bounded by 1/(1 − 0.25).
 
 Model probabilities use a Poisson prior on N (mean `poisson_rate`) and the
 flat prior on K; the detection probability is $P(N\ge 1\mid y)$. Several
