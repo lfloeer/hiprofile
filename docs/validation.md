@@ -8,7 +8,8 @@ misspecification, bias and ALFALFA stages were made at commit 2724f8a (the
 Δv prior); later commits only add the Springob et al. (2005) widths, which
 `benchmarks/add_springob.py` computed from the stored spectra and
 baselines (the naive values are reproduced exactly), and the Hanning bias
-run. The correlated-noise study is from 61a2b05 with the earlier
+run. The low-S/N bias decomposition (`benchmarks/w20_bias.py`) ran at
+b0f5c72, the same fitting code. The correlated-noise study is from 61a2b05 with the earlier
 log-normal Δv prior; it tests the noise model, which the prior does not
 touch.
 
@@ -35,6 +36,7 @@ chosen:
 | detection | `hiprofile validate --stage detection --n 200 --seed 21` | 200, fitted twice |
 | misspecification | `hiprofile validate --stage misspec --n 100 --seed 31` | 5 × 100 |
 | conditional bias | `python benchmarks/bias_study.py --n 20 --priors default\|flat`, and `--response boxcar+hanning` | 3 × 500 |
+| low-S/N bias causes | `python benchmarks/w20_bias.py --n 100` | 1500, fitted three times |
 | correlated noise | `python benchmarks/correlated_noise.py --n 300 --n-noise 150` | 450, fitted four times |
 | real data | `python benchmarks/alfalfa_study.py` | 10 ALFALFA sources |
 
@@ -251,6 +253,54 @@ the per-cell scatter):
   `prior_dominated` flag marks up to half of the fits at S/N 5 (the
   400 km/s lines); the width of a line at S/N ≤ 5 is largely a statement of
   the prior, not a measurement.
+
+### Where the low-S/N bias comes from
+
+`benchmarks/w20_bias.py` refits the cells at S/N 3, 5 and 8 with 100
+spectra each (unsmoothed channels, no baseline in the data) three times:
+with the default configuration, with only a constant baseline (K = 0), and
+with a Δv prior uniform on 0–800 km/s. Medians are taken over all spectra
+(the N = 1 posterior exists for every spectrum), over the detected and over
+the undetected ones, with bootstrap errors.
+
+![Low-S/N W20 bias against the true width](img/w20_bias.png)
+
+| Δv, S/N | detected | all | detected | undetected | K = 0 only, all | uniform Δv prior, all |
+|---|---|---|---|---|---|---|
+| 400 km/s, 3 | 12 % | −163 ± 9 | −102 ± 14 | −168 ± 9 | −166 ± 12 | +84 ± 9 |
+| 400 km/s, 5 | 70 % | −48 ± 9 | −28 ± 7 | −92 ± 19 | −48 ± 10 | +44 ± 14 |
+| 400 km/s, 8 | 100 % | −5 ± 2 | −5 ± 2 | – | −6 ± 2 | +2 ± 2 |
+| 200 km/s, 5 | 82 % | +6 ± 3 | +7 ± 4 | +6 ± 6 | +5 ± 3 | +64 ± 12 |
+| 20 km/s, 5 | 61 % | +48 ± 9 | +22 ± 5 | +134 ± 23 | +47 ± 8 | +62 ± 27 |
+
+W20 error in km/s (true W20 431 km/s for Δv = 400, 50 km/s for Δv = 20).
+
+* **Not small numbers.** With 100 spectra per cell the negative W20 bias
+  of wide lines at S/N 5 is −48 ± 9 km/s (−28 ± 7 for the detected ones;
+  the 20-spectrum study gave −20).
+* **Not a detection effect.** The detected spectra are *less* biased than
+  the undetected ones: detection picks the spectra whose noise made the
+  line brighter and broader. Selection pushes widths up for every width,
+  which is why narrow lines are too wide and wide lines less too narrow
+  among the detected.
+* **Not the baseline.** Fitting with a constant baseline only changes
+  nothing (K > 0 is the most probable order in at most 1 % of the fits).
+* **It is the prior.** With a Δv prior uniform on 0–800 km/s the sign flips
+  (+44 km/s for the 400 km/s lines at S/N 5, and narrow lines become several
+  hundred km/s too wide at S/N 3). At low S/N the posterior median moves
+  from the truth toward the prior's typical W20 (196 km/s for the default
+  priors): wide lines come out narrower, narrow lines wider, and lines near
+  Δv ≈ 200 km/s are unbiased (figure: the dash-dotted line is the limit of
+  a fit that has learned nothing). The default prior makes 400 km/s
+  rotation rare (P(Δv > 400 km/s) = 7 %), and with a per-channel S/N of
+  about 1 the data cannot overrule that.
+
+This is the conditional bias that comes with a calibrated posterior: over
+the population the prior describes, the errors average out (SBC), for one
+kind of galaxy they do not. Uses that need widths unbiased for a fixed
+true width at S/N ≤ 5 (Tully–Fisher samples selected by width, for
+example) should cut at S/N ≈ 8, where the bias is below 6 km/s for every
+width, or fit the width distribution hierarchically.
 
 No choice of prior removes the conditional bias at low S/N, because there
 is no information on the width there; the default priors keep it smallest
