@@ -17,25 +17,26 @@ bias study.
 Every simulation is drawn from the fit priors: the five shape parameters,
 the flux (half-normal with the default `amplitude_scale`), and a Chebyshev
 baseline of order K ~ U{0, …, 3} with coefficients from the baseline prior;
-white noise with σ = 0.01 Jy on 512 channels of 5 km/s. The fit uses the same
+white noise with σ = 0.01 Jy on 512 channels of 5 km/s. The solid-body
+fraction comes from its default prior Beta(1, 3). The fit uses the same
 priors with the order marginalised (`k_min = 0`, `k_max = 3`). The rank of
 the truth among 99 posterior draws must then be uniform, and the posterior
 intervals must cover the truth at their nominal rate.
 
 | parameter | rank p-value | 68 % coverage | 95 % coverage |
 |---|---|---|---|
-| v_ctr | 0.55 | 0.68 | 0.96 |
-| Δv | 0.78 | 0.68 | 0.94 |
-| Δv_rand | 0.71 | 0.69 | 0.95 |
-| α | 0.74 | 0.67 | 0.95 |
-| S | 0.30 | 0.67 | 0.95 |
-| f | 0.31 | 0.70 | 0.94 |
-| W50 | 0.84 | 0.69 | 0.94 |
-| W20 | 0.54 | 0.69 | 0.94 |
+| v_ctr | 0.77 | 0.69 | 0.96 |
+| Δv | 0.52 | 0.68 | 0.94 |
+| Δv_rand | 0.43 | 0.69 | 0.94 |
+| α | 0.22 | 0.66 | 0.95 |
+| S | 0.63 | 0.67 | 0.95 |
+| f | 0.31 | 0.70 | 0.95 |
+| W50 | 0.88 | 0.70 | 0.95 |
+| W20 | 0.99 | 0.67 | 0.94 |
 
 ![SBC: rank histograms, interval coverage and baseline-order calibration](img/sbc.png)
 
-All rank histograms are flat (no U shape, slope or peak; all p > 0.3), and
+All rank histograms are flat (no U shape, slope or peak; all p > 0.2), and
 the 68 % and 95 % coverages lie inside the ±2σ bands for 1000 simulations
 (0.65–0.71 and 0.94–0.96). The simulations that are not detected (faint
 draws of the half-normal flux prior, about a quarter) take part in the
@@ -50,27 +51,27 @@ probable K) is one-sided:
 ```
   266      2      0      0
    14    229      0      0
-    6     14    220      0
-    2      6     25    216
+    5     13    222      0
+    2      6     26    215
 ```
 
 A true K = 3 whose highest coefficients happen to be small is read as K = 2
-(25 of 249), which is the right answer for terms the data cannot see; the
+(26 of 249), which is the right answer for terms the data cannot see; the
 reverse, a spurious high order, almost never happens.
 
-**Flags.** 12.7 % of the fits carry a flag: `prior_edge` 7.2 % (Δv_rand at
-its 4 km/s bound or f at 0/1 for faint, narrow lines), `prior_dominated`
-3.1 %, `wiggle` 2.2 %, `ppp` 0.9 %, `multimodal` 0.8 %. The simulations
+**Flags.** 11.1 % of the fits carry a flag: `prior_edge` 5.7 % (Δv_rand at
+its 4 km/s bound for faint, narrow lines), `prior_dominated` 3.1 %,
+`wiggle` 2.1 %, `multimodal` 1.1 %, `ppp` 1.0 %. The simulations
 include the faint end of the flux prior, where the width is not measurable.
 
 The same simulations measured against the truth (detected ones, N = 1):
 
 | quantity | Bayes bias | Bayes scatter | classical bias | classical scatter |
 |---|---|---|---|---|
-| W50 [km/s] | 0.4 | 10.6 | −0.9 | 19.3 |
-| W20 [km/s] | 0.3 | 12.6 | 22.7 | 33.0 |
-| S [Jy km/s] | −0.01 | 0.36 | 0.03 | 0.39 |
-| v_sys [km/s] | −0.2 | 4.7 | 0.1 | 8.2 |
+| W50 [km/s] | 0.4 | 9.8 | 0.2 | 18.6 |
+| W20 [km/s] | 0.4 | 11.6 | 26.0 | 35.1 |
+| S [Jy km/s] | 0.00 | 0.36 | 0.03 | 0.40 |
+| v_sys [km/s] | −0.2 | 4.6 | 0.1 | 8.2 |
 
 ![Line widths: Bayesian fit against the classical measurement](img/bayes_vs_classic.png)
 
@@ -87,6 +88,9 @@ centre):
 ## Stage 2: detection and confusion
 
 `hiprofile validate --stage detection --n 200 --seed 21 --jobs 4`
+
+(Stages 2 and 3 ran before the solid-body prior changed from uniform to
+Beta(1, 3); they test detection and flags, which hardly depend on it.)
 
 200 spectra with N = 0, 1, 2 (probabilities 0.4, 0.4, 0.2), integrated
 S/N 2–40 per component, a first-order baseline and single-channel RFI
@@ -168,21 +172,24 @@ prior*. For a given galaxy the posterior median is still pulled towards
 typical values when the data are weak. The bias study fixes the true profile
 on a grid of widths (Δv = 20–400 km/s, Δv_rand = 12 km/s, α = 0.1,
 f = 0.25) and integrated S/N (3–40), simulates 20 spectra per cell and fits
-them with the default (THINGS) priors and with flat priors (log-uniform
-Δv and Δv_rand, uniform α and f).
+them with the default (THINGS) priors, f ~ Beta(1, 3) included, and with
+flat priors (log-uniform Δv and Δv_rand, uniform α and f).
 
 ![Conditional bias of W50 for fixed true profiles](img/bias_study.png)
 
-* From S/N 8 upwards both prior sets are unbiased to within a few km/s
-  (default priors: |bias| ≤ 7 km/s in every cell), while the classical W50
-  of wide profiles is biased by up to +37 km/s.
-* At S/N 5 the default priors pull a 430 km/s line down by 45 km/s and a
-  48 km/s line up by 17 km/s; the flat priors pull the wide line down by
+* From S/N 8 upwards both prior sets are unbiased to within about 10 km/s
+  (default priors: |bias| ≤ 10 km/s in every cell, ≤ 5 km/s from S/N 15),
+  while the classical W50 of wide profiles is biased by up to +37 km/s.
+* At S/N 5 the default priors pull a 430 km/s line down by 20 km/s and a
+  48 km/s line up by 18 km/s; the flat priors pull the wide line down by
   130 km/s. A flat prior is therefore *not* the unbiased choice: the
   log-uniform width prior puts most of its mass at small widths, and the
   faint wings of a wide line are lost in the noise and the baseline whatever
-  the prior. With the THINGS priors the shrinkage is smaller everywhere
-  except for the narrowest lines.
+  the prior. With the THINGS priors the shrinkage is as small or smaller
+  everywhere except for the narrowest lines. The Beta(1, 3) prior on f
+  halved the pull on the 430 km/s line (−45 km/s with a uniform f), because
+  a dome-shaped solid-body profile no longer competes with the faint
+  double horn.
 * These cells carry the `prior_dominated` flag in up to half of the fits
   (constraint on Δv below 0.3): the width of a line at S/N ≤ 5 is a
   statement of the prior, not a measurement.

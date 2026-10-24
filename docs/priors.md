@@ -63,8 +63,8 @@ boundary, and `prior_dominated` marks fits whose Δv posterior is not much
 narrower than the prior (the width is then a prior statement, not a
 measurement). The bias study in [Validation](validation.md#conditional-bias-default-against-flat-priors)
 measures the pull for fixed true profiles: from S/N 8 upwards the posterior
-median of W50 is unbiased to within a few km/s; at S/N 5 a 430 km/s line is
-pulled down by 45 km/s with these priors and by 130 km/s with flat
+median of W50 is unbiased to within about 10 km/s; at S/N 5 a 430 km/s line
+is pulled down by 20 km/s with these priors and by 130 km/s with flat
 (log-uniform) priors, so the THINGS priors are kept as defaults.
 
 ![Conditional bias of W50 for default and flat priors](img/bias_study.png)
