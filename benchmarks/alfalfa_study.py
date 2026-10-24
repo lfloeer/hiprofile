@@ -134,7 +134,8 @@ def compare(out: Path, sample: list[dict[str, str]]) -> list[dict[str, float | s
             "W50_cat_err": float(r["errW50"]),
             "S_cat": float(r["HIflux"]),
             "S_cat_err": float(r["errflux"]),
-            "W50_classic": res.classic.get("W50", np.nan) * zf,
+            "W50_classic": (res.classic.get("W50") or np.nan) * zf,
+            "W50_springob": (res.classic.get("W50_springob") or np.nan) * zf,
         }
         for key in ("W50", "S"):
             row[key], row[f"{key}_p16"], row[f"{key}_p84"] = (
@@ -259,14 +260,16 @@ def main() -> None:
     )
     table = compare(out, sample)
     (out / "comparison.json").write_text(json.dumps(table, indent=1, default=float))
-    head = ("AGC", "code", "S/N", "N", "W50 ALFALFA", "W50 hiprofile", "classic", "S ALFALFA", "S hiprofile",
+    head = ("AGC", "code", "S/N", "N", "W50 ALFALFA", "W50 hiprofile", "naive", "Springob", "S ALFALFA",
+            "S hiprofile",
             "cz ALF", "cz hip", "flags")  # fmt: skip
     print(" | ".join(head))
     for r in table:
         print(
             f"{r['agc']:>7} {r['code']:>4} {r['snr']:4.1f} {r['best_n']:>2} | "
             f"{r['W50_cat']:5.0f} ± {r['W50_cat_err']:<3.0f} "
-            f"{r['W50']:6.0f} [{r['W50_p16']:4.0f}, {r['W50_p84']:4.0f}] {r['W50_classic']:7.0f} | "
+            f"{r['W50']:6.0f} [{r['W50_p16']:4.0f}, {r['W50_p84']:4.0f}] "
+            f"{r['W50_classic']:7.0f} {r['W50_springob']:7.0f} | "
             f"{r['S_cat']:4.2f} ± {r['S_cat_err']:4.2f} "
             f"{r['S']:5.2f} [{r['S_p16']:4.2f}, {r['S_p84']:4.2f}] | "
             f"{r['cz_cat']:6.0f} {r['cz']:6.0f} ± {r['cz_err']:<3.0f} | {r['flags']}"

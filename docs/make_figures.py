@@ -4,7 +4,7 @@
     python docs/make_figures.py gallery           # fits of simulated spectra
     python docs/make_figures.py validation DIR    # SBC / detection / classical comparison from a
                                                   # `hiprofile validate --out DIR` run
-    python docs/make_figures.py bias DIR          # conditional bias from benchmarks/bias_study.py
+    python docs/make_figures.py bias DIR [RESPONSE]  # conditional bias from benchmarks/bias_study.py
 
 All figures go to docs/img/.
 """
@@ -315,7 +315,8 @@ def classic_figure(run_dir: Path, name: str = "bayes_vs_classic.png") -> Path:
         t = np.asarray(truth[f"{q}_1"])[sel]
         for key, color, lab in (
             (f"{q}_1", style.SERIES[0], "hiprofile posterior median"),
-            (f"classic_{q}", style.SERIES[1], f"classical {q} on the data"),
+            (f"classic_{q}", style.SERIES[1], f"naive {q} (threshold crossing)"),
+            (f"classic_{q}_springob", style.SERIES[2], f"Springob et al. (2005) {q}"),
         ):
             err = _col(rows, ids, key) - t
             ok = detected & np.isfinite(err)
@@ -340,7 +341,7 @@ def classic_figure(run_dir: Path, name: str = "bayes_vs_classic.png") -> Path:
         ax.set_title(f"{q}: median and 16–84 % range per S/N bin", loc="left", fontsize=9)
     axes[0].legend(loc="lower right")
     fig.suptitle(
-        "Line widths: Bayesian fit vs. classical measurement (detected simulations with N = 1)",
+        "Line widths: Bayesian fit vs. classical measurements (detected simulations with N = 1)",
         x=0.01,
         ha="left",
         fontsize=11,
@@ -433,78 +434,72 @@ def misspec_figure(stage_dir: Path) -> Path:
     return _save(fig, "misspec_flags.png")
 
 
-def _median_err(c, q: str = "W50") -> float:
+def _median_err(c, q: str = "W50", est: str = "bayes") -> float:
     """Standard error of a median from the robust scatter and the number of detections."""
     n = max(c["n"] * c["completeness"], 1.0)
-    return 1.2533 * c[f"bayes_{q}_scatter"] / np.sqrt(n)
+    return 1.2533 * c[f"{est}_{q}_scatter"] / np.sqrt(n)
 
 
-def bias_figure(root: Path, name: str = "bias_study.png") -> Path:
-    """Conditional bias of W50 and W20 against S/N for fixed true widths (benchmarks/bias_study.py)."""
+BIAS_LIM = 60.0  # km/s; cells beyond are drawn as triangles at the edge
+
+
+def bias_figure(root: Path, response: str = "", name: str | None = None) -> Path:
+    """Conditional bias of W50 and W20 against S/N for fixed true widths (benchmarks/bias_study.py).
+
+    Columns: posterior median with the default priors (and with flat priors when
+    that run exists), the naive classical measurement and the Springob et al.
+    (2005) edge fits on the same spectra.
+    """
     import json
 
-    sets = [
-        (p, json.loads((root / f"bias_{p}" / "bias_table.json").read_text())) for p in ("default", "flat")
+    suffix = "_" + response.replace("+", "_") if response else ""
+
+    def table(priors: str):
+        path = root / f"bias_{priors}{suffix}" / "bias_table.json"
+        return json.loads(path.read_text()) if path.exists() else None
+
+    default, flat = table("default"), table("flat")
+    cols = [(default, "bayes", "posterior median, default priors")]
+    if flat is not None:
+        cols.append((flat, "bayes", "posterior median, flat priors"))
+    cols += [
+        (default, "classic", "naive threshold crossing"),
+        (default, "springob", "Springob et al. (2005)"),
     ]
-    widths = sorted({c["delta_v"] for _, t in sets[0:1] for c in t})
-    fig, grid = plt.subplots(2, 3, figsize=(13, 7.4), sharex=True)
+    widths = sorted({c["delta_v"] for c in default})
+    fig, grid = plt.subplots(2, len(cols), figsize=(3.4 * len(cols), 7.4), sharex=True, sharey=True)
     for row, q in zip(grid, ("W50", "W20"), strict=True):
-        for ax, (_, table), title in zip(
-            row[:2], sets, ("default priors", "flat priors (log-uniform widths)"), strict=True
-        ):
+        for ax, (tab, est, title) in zip(row, cols, strict=True):
             for i, dv in enumerate(widths):
-                cells = sorted((c for c in table if c["delta_v"] == dv), key=lambda c: c["snr"])
-                snr = [c["snr"] for c in cells]
-                ax.plot(
-                    snr,
-                    [c[f"bayes_{q}_bias"] for c in cells],
-                    "-o",
-                    color=style.SERIES[i],
-                    lw=2,
-                    ms=4,
-                    label=f"Δv = {dv:.0f} km/s",
-                )
-                ax.fill_between(
-                    snr,
-                    [c[f"bayes_{q}_bias"] - _median_err(c, q) for c in cells],
-                    [c[f"bayes_{q}_bias"] + _median_err(c, q) for c in cells],
-                    color=style.SERIES[i],
-                    alpha=0.15,
-                    lw=0,
-                )
-            ax.set_ylabel(f"median {q} − truth [km/s]")
-            ax.set_title(f"{q}, posterior median, {title}", loc="left", fontsize=9)
-        ax = row[2]
-        for i, dv in enumerate(widths):
-            cells = sorted((c for c in sets[0][1] if c["delta_v"] == dv), key=lambda c: c["snr"])
-            ax.plot(
-                [c["snr"] for c in cells], [c[f"classic_{q}_bias"] for c in cells], "-o",
-                color=style.SERIES[i], lw=2, ms=4,
-            )  # fmt: skip
-        ax.set_ylabel(f"classical {q} − truth [km/s]")
-        ax.set_title(f"{q}, classical measurement on the same spectra", loc="left", fontsize=9)
-        lim = max(
-            abs(c[key])
-            for _, t in sets
-            for c in t
-            for key in (f"bayes_{q}_bias", f"classic_{q}_bias")
-            if np.isfinite(c[key])
-        )
-        for ax in row:
+                cells = sorted((c for c in tab if c["delta_v"] == dv), key=lambda c: c["snr"])
+                snr = np.array([c["snr"] for c in cells])
+                b = np.array([c[f"{est}_{q}_bias"] for c in cells])
+                bc = np.clip(b, -BIAS_LIM, BIAS_LIM)
+                ax.plot(snr, bc, "-", color=style.SERIES[i], lw=2, label=f"Δv = {dv:.0f} km/s")
+                inside = np.abs(b) <= BIAS_LIM
+                ax.plot(snr[inside], b[inside], "o", color=style.SERIES[i], ms=4)
+                for x, y in zip(snr[~inside & np.isfinite(b)], b[~inside & np.isfinite(b)], strict=True):
+                    ax.plot(x, np.sign(y) * BIAS_LIM, "^" if y > 0 else "v", color=style.SERIES[i], ms=7)
+                e = np.array([_median_err(c, q, est) for c in cells])
+                ax.fill_between(snr, bc - e, bc + e, color=style.SERIES[i], alpha=0.15, lw=0)
             ax.axhline(0, color=style.INK_2, lw=0.8)
-            ax.set_ylim(-1.1 * lim, 1.1 * lim)
+            ax.set_ylim(-1.08 * BIAS_LIM, 1.08 * BIAS_LIM)
+            ax.set_title(f"{q}, {title}", loc="left", fontsize=8.5)
+        row[0].set_ylabel(f"median {q} − truth [km/s]")
     for ax in grid[1]:
         _log_snr_axis(ax, (3, 5, 8, 15, 40))
         ax.set_xlabel("true integrated S/N")
     grid[0, 0].legend(fontsize=8, loc="lower right")
+    channel = "Hanning-smoothed channels" if "hanning" in response else "boxcar channels"
     fig.suptitle(
-        "Conditional bias for fixed true profiles (median of 20 spectra per cell, band: its uncertainty)",
+        f"Conditional bias for fixed true profiles, {channel} (median of 20 spectra per cell, "
+        f"band: its uncertainty; triangles: beyond ±{BIAS_LIM:.0f} km/s)",
         x=0.01,
         ha="left",
         fontsize=11,
         y=1.0,
     )
-    return _save(fig, name)
+    return _save(fig, name or f"bias_study{suffix}.png")
 
 
 def validation(root: Path) -> None:
@@ -527,6 +522,6 @@ if __name__ == "__main__":
     elif what == "validation" and len(sys.argv) > 2:
         validation(Path(sys.argv[2]))
     elif what == "bias" and len(sys.argv) > 2:
-        bias_figure(Path(sys.argv[2]))
+        bias_figure(Path(sys.argv[2]), *sys.argv[3:4])
     else:
         raise SystemExit(__doc__)

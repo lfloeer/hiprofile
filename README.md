@@ -42,8 +42,10 @@ Chebyshev baseline order K, P(detect), quality metrics and flags;
   posterior marginalised over K.
 * **Validation** (`hiprofile simulate`, `hiprofile validate`): simulation-based
   calibration, detection/confusion statistics, misspecified profiles,
-  baselines and RFI, injection into real spectra; always compared with the
-  classical W50/W20.
+  baselines and RFI, injection into real spectra; always compared with two
+  classical width measurements on the same data (naive threshold crossing
+  and the edge fits of Springob et al. 2005), which the catalogue also
+  reports.
 * **Survey runs**: process pool (`--jobs`), SLURM arrays (`--chunk i/n`),
   atomic per-spectrum files, `--resume`, per-spectrum seeds.
 
@@ -57,24 +59,31 @@ Documentation: `docs/` (`mkdocs serve`): [model](docs/model.md),
 
 ## Priors
 
-Defaults calibrated on the 34 THINGS fits of Stewart et al. (2014); the
+Defaults calibrated on the 34 THINGS fits of Stewart et al. (2014) and,
+for the rotation width Δv, on the ALFALFA α.100 W50 distribution; the
 simulator draws from the same priors. Details in [docs/priors.md](docs/priors.md).
 
 ![Default priors against the THINGS fits](docs/img/priors_things.png)
 
 ## Validation
 
-From one run of `benchmarks/validate_all.sh` ([docs/validation.md](docs/validation.md)):
+From `benchmarks/validate_all.sh` ([docs/validation.md](docs/validation.md)):
 1000 spectra simulated from the priors are calibrated (rank statistics and
 interval coverages) and the baseline order is recovered in 93 % of the
-cases; the posterior medians of W50, W20 and v_sys scatter half to a third
-as much as the classical measurements on the same data. With the RFI
-pre-stage no line-free spectrum with RFI spikes is detected; deliberately
-wrong models (standing-wave baselines, unmasked RFI) are flagged in
-99–100 % of the cases; and ten low-S/N ALFALFA sources agree with the
-catalogue except where a neighbour shares the beam.
+cases. The posterior medians of W50, W20 and v_sys are unbiased and scatter
+half as much as either classical measurement on the same unsmoothed
+spectra. On Hanning-smoothed spectra above S/N 8 the Springob et al. (2005)
+W50 is as good as the posterior median; the fit still gives the better W20
+(the naive one is up to 60–100 km/s too wide for broad lines), keeps
+working for wide lines at S/N 5 and on unsmoothed channels, where the edge
+fits break down, and adds calibrated uncertainties, detection
+probabilities and blended components. With the RFI pre-stage no line-free
+spectrum with RFI spikes is detected; deliberately wrong models
+(standing-wave baselines, unmasked RFI) are flagged in 98–100 % of the
+cases; and ten low-S/N ALFALFA sources agree with the catalogue except
+where a neighbour shares the beam.
 
-![Line widths: Bayesian fit against the classical measurement](docs/img/bayes_vs_classic.png)
+![Line widths: Bayesian fit against the two classical measurements](docs/img/bayes_vs_classic.png)
 
 ## Development
 

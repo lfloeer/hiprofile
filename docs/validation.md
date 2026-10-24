@@ -1,20 +1,40 @@
 # Validation
 
-Everything on this page comes from one run of `benchmarks/validate_all.sh`
-on a 4-core machine with the default configuration (full mode, SMC sampler,
-N ≤ 2, K ≤ 3, RFI pre-stage, f ~ Beta(1, 3)), 5 km/s channels unless stated
-otherwise. Each `summary.json` records the commit: 61a2b05 for the SBC and
-the correlated-noise study, 0f993e5 for detection, misspecification, bias
-and ALFALFA. The two differ only in the automatic flux-prior scale and the
-RFI run limit, which the SBC and the correlated-noise study do not use (both
-fix the flux scale and fit without the RFI pre-stage).
+Everything on this page comes from runs of `benchmarks/validate_all.sh` on
+a 4-core machine with the default configuration (full mode, SMC sampler,
+N ≤ 2, K ≤ 3, RFI pre-stage, Δv ~ Gamma(2.3, 83 km/s), f ~ Beta(1, 3)),
+5 km/s channels unless stated otherwise. The fits of the SBC, detection,
+misspecification, bias and ALFALFA stages were made at commit 2724f8a (the
+Δv prior); later commits only add the Springob et al. (2005) widths, which
+`benchmarks/add_springob.py` computed from the stored spectra and
+baselines (the naive values are reproduced exactly), and the Hanning bias
+run. The correlated-noise study is from 61a2b05 with the earlier
+log-normal Δv prior; it tests the noise model, which the prior does not
+touch.
+
+**Classical references.** Every stage measures the widths in two classical
+ways on the same baseline-subtracted spectra, in a window of ±(W20/2 + 25 %
++ 2 channels) around the posterior v_sys, as a by-eye window would be
+chosen:
+
+* *naive*: outermost channels above 50 % / 20 % of the peak channel,
+  interpolated linearly to the next channel outward;
+* *Springob et al. (2005)* W_F50, as used for the ALFALFA catalogue widths:
+  per horn, a straight line fitted to the flank between the first channels
+  below 85 % and 15 % of (horn − rms), read at 50 %; for Hanning-smoothed
+  spectra minus their instrumental correction 2 Δv_chan λ(S/N). Read at
+  20 % of the same lines it gives a W20, which is our extension of the
+  method (λ is calibrated for W_F50 only). Where a flank cannot be fitted
+  (fit rising away from the horn, crossing outside the window) it gives no
+  value; that happens for 14 % of the detected SBC lines, nearly all at
+  S/N < 8.
 
 | stage | command | spectra |
 |---|---|---|
 | SBC | `hiprofile validate --stage sbc --n 1000 --seed 11` | 1000 |
 | detection | `hiprofile validate --stage detection --n 200 --seed 21` | 200, fitted twice |
 | misspecification | `hiprofile validate --stage misspec --n 100 --seed 31` | 5 × 100 |
-| conditional bias | `python benchmarks/bias_study.py --n 20 --priors default\|flat` | 2 × 500 |
+| conditional bias | `python benchmarks/bias_study.py --n 20 --priors default\|flat`, and `--response boxcar+hanning` | 3 × 500 |
 | correlated noise | `python benchmarks/correlated_noise.py --n 300 --n-noise 150` | 450, fitted four times |
 | real data | `python benchmarks/alfalfa_study.py` | 10 ALFALFA sources |
 
@@ -30,20 +50,25 @@ rate.
 
 | parameter | rank p-value | 68 % coverage | 95 % coverage |
 |---|---|---|---|
-| v_ctr | 0.91 | 0.69 | 0.96 |
-| Δv | 0.86 | 0.68 | 0.94 |
-| Δv_rand | 0.39 | 0.69 | 0.95 |
-| α | 0.48 | 0.66 | 0.95 |
-| S | 0.58 | 0.67 | 0.95 |
-| f | 0.70 | 0.70 | 0.94 |
-| W50 | 0.59 | 0.70 | 0.95 |
-| W20 | 0.23 | 0.67 | 0.95 |
+| v_ctr | 0.79 | 0.68 | 0.96 |
+| Δv | 0.54 | 0.69 | 0.94 |
+| Δv_rand | 0.03 | 0.69 | 0.95 |
+| α | 0.18 | 0.67 | 0.95 |
+| S | 0.21 | 0.68 | 0.95 |
+| f | 0.48 | 0.70 | 0.94 |
+| W50 | 0.10 | 0.70 | 0.94 |
+| W20 | 0.96 | 0.68 | 0.93 |
 
 ![SBC: rank histograms, interval coverage and baseline-order calibration](img/sbc.png)
 
-All rank histograms are flat (p > 0.2), and the coverages lie inside the
-±2σ bands for 1000 simulations (0.65–0.71 and 0.94–0.96). The faint draws
-of the flux prior that are not detected take part like every other
+The 68 % coverages lie inside the ±2σ band for 1000 simulations
+(0.65–0.71), the 95 % coverages inside theirs (0.936–0.964) except W20 at
+0.932. Seven of eight rank histograms are flat (p ≥ 0.1); the Δv_rand
+histogram has p = 0.03 (counts 82, 97, 88, 130, 100, 116, 88, 95, 98, 106
+in ten bins), one high bin without a slope or U shape. With eight tests, one
+p below 0.05 turns up by chance in a third of all runs. With
+the previous log-normal Δv prior the same test gave p = 0.39. The faint
+draws of the flux prior that are not detected take part like every other
 simulation.
 
 **Baseline order.** The most probable K is the true one in 93 % of the
@@ -55,7 +80,7 @@ most probable K) is one-sided:
   266      2      0      0
    14    229      0      0
     5     13    222      0
-    2      6     26    215
+    2      6     25    216
 ```
 
 A true K = 3 whose highest coefficients happen to be small is read as K = 2,
@@ -63,25 +88,30 @@ the right answer for terms the data cannot see. This calibration holds when
 the baseline prior matches the baselines; Stage 3 shows what happens when
 it does not.
 
-**Flags.** 11.4 % of the fits carry a flag: `prior_edge` 5.2 % (Δv_rand at
+**Flags.** 12.1 % of the fits carry a flag: `prior_edge` 5.5 % (Δv_rand at
 its 4 km/s bound for faint, narrow lines), `prior_dominated` 3.4 %,
 `wiggle` 2.1 %, `multimodal` 1.3 %, `ppp` 1.1 %.
 
-The same simulations measured against the truth (detected, N = 1):
+The same simulations measured against the truth (726 detected, N = 1;
+median error and robust scatter):
 
-| quantity | Bayes bias | Bayes scatter | classical bias | classical scatter |
-|---|---|---|---|---|
-| W50 [km/s] | 0.3 | 10.0 | 0.2 | 18.2 |
-| W20 [km/s] | 0.5 | 11.9 | 26.2 | 35.5 |
-| S [Jy km/s] | −0.01 | 0.35 | 0.03 | 0.40 |
-| v_sys [km/s] | −0.2 | 4.6 | 0.1 | 8.2 |
+| quantity | Bayes | naive | Springob |
+|---|---|---|---|
+| W50 [km/s] | 0.4 ± 10.6 | 0.3 ± 22.2 | −7.5 ± 22.6 (624 measured) |
+| W20 [km/s] | 0.4 ± 12.6 | 27.7 ± 35.5 | −10.1 ± 32.8 |
+| S [Jy km/s] | 0.01 ± 0.36 | 0.04 ± 0.39 | – |
+| v_sys [km/s] | 0.0 ± 4.8 | 0.1 ± 9.0 | 0.4 ± 9.3 |
 
-![Line widths: Bayesian fit against the classical measurement](img/bayes_vs_classic.png)
+![Line widths: Bayesian fit against the two classical measurements](img/bayes_vs_classic.png)
 
-The posterior medians are unbiased, and their scatter is half (W50, v_sys)
-to a third (W20) of that of the classical measurement on the same data. The
-classical W20 is biased high at low S/N because noise peaks raise the 20 %
-crossing points.
+The posterior medians are unbiased with half the scatter of either
+classical width. Each classical method fails in its own way at low S/N:
+noise peaks above the 20 % threshold make the naive W20 too wide, and in
+these unsmoothed 5 km/s channels a noise dip next to a horn ends the
+Springob flank search early, so its widths come out too narrow below
+S/N ≈ 15. Above S/N ≈ 25 all three agree (figure). The SBC population is
+drawn from the prior with unsmoothed channels; for Hanning-smoothed
+spectra, where Springob's method is at home, see the bias study below.
 
 Example posterior (corner plot of a low-S/N spectrum with a bimodal centre):
 
@@ -99,7 +129,7 @@ automatic flux-prior scale.
 | | with RFI pre-stage | without |
 |---|---|---|
 | false positives, P(detect) > 0.5 / 0.9 | 0 of 77 / 0 | 83 % / 83 % |
-| completeness S/N 3–5 / 5–8 / ≥ 8 | 0.47 / 0.94 / 1.00 | 0.84 / 1.00 / 1.00 |
+| completeness S/N 3–5 / 5–8 / ≥ 8 | 0.55 / 0.94 / 1.00 | 0.90 / 1.00 / 1.00 |
 | flagged | 4.5 % | 87 % |
 
 Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
@@ -112,7 +142,7 @@ Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
 
 * **N = 0 and N = 1** are separated cleanly: no false positive at any
   threshold, and no single line split into two. Without the pre-stage the
-  RFI spikes are fitted as lines (83 % false positives, 60 % flagged
+  RFI spikes are fitted as lines (83 % false positives, 62 % flagged
   `unresolved`); its higher "completeness" is the same effect.
 * **The completeness** at S/N 3–5 is that of the SBC, which has no RFI, so
   the pre-stage costs none.
@@ -120,8 +150,9 @@ Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
   by more than their width, 15 are fitted as N = 2. Pairs with a second
   component below S/N 6 (21 of 40) are mostly fitted as N = 1: a second line
   at S/N 3 is not detectable on its own either.
-* Widths of the detected single lines: W50 bias 0.8 km/s, scatter 10.1
-  (classical 11.8), W20 bias 1.1 (classical 24.8).
+* Widths of the detected single lines (bias ± scatter, km/s): W50
+  0.2 ± 8.5 (naive −1.9 ± 11.9, Springob −1.0 ± 13.8), W20 0.4 ± 9.4
+  (naive 26.3 ± 35.3, Springob 0.6 ± 12.8).
 
 ## Stage 3: misspecification
 
@@ -136,30 +167,33 @@ scale.
 
 ![Flag rates on misspecified spectra](img/misspec_flags.png)
 
-| set | flagged | W50 bias / scatter [km/s] | 68 % coverage of W50 |
-|---|---|---|---|
-| clean | 6 % | 0.8 / 4.7 | 0.74 |
-| template | 5 % | −0.5 / 6.6 | 0.68 |
-| sine baseline | 99 % | −0.1 / 21.8 | 0.34 |
-| RFI unmasked | 100 % | −90 / 111 | 0.18 |
-| baseline prior 50 × too wide | 10 % | −0.2 / 6.0 | 0.67 |
+| set | flagged | W50 bias / scatter [km/s] | 68 % coverage of W50 | W50 scatter naive / Springob | W20 bias / scatter: Bayes, naive, Springob |
+|---|---|---|---|---|---|
+| clean | 6 % | 0.6 / 4.7 | 0.75 | 11.4 / 8.3 | 1.2 / 4.4, 14.5 / 23.7, 3.5 / 6.8 |
+| template | 4 % | −1.5 / 6.9 | 0.69 | 9.4 / 11.4 | −0.4 / 7.7, 8.1 / 20.7, −1.1 / 12.7 |
+| sine baseline | 98 % | −1.2 / 27.6 | 0.30 | 26.3 / 27.7 | −1.4 / 27.0, 6.4 / 58.7, −0.6 / 37.1 |
+| RFI unmasked | 100 % | −103 / 113 | 0.20 | 106 / 67 | −105 / 129, −132 / 144, −35 / 69 |
+| baseline prior 50 × too wide | 9 % | 0.5 / 4.8 | 0.71 | 13.3 / 8.0 | 0.2 / 7.0, 26.1 / 38.2, 1.1 / 13.5 |
 
 * The model describes the galaxy-like templates well enough that the widths
-  stay unbiased and calibrated.
+  stay unbiased and calibrated, with less scatter than either classical
+  method, which see the same profiles.
 * When the model is wrong the posteriors are overconfident, as any
   posterior of a wrong model is, but the flags catch it: `ppp` and
   `residual_acf` mark almost every sine-baseline fit; `ppp`, `prior_edge`,
-  `unresolved` and `wiggle` mark the RFI fits.
+  `unresolved` and `wiggle` mark the RFI fits. Unmasked RFI hurts the
+  Springob widths least, because a spike rarely lies on a flank; it is
+  still the flagged fits that tell the user something is wrong.
 * **A wrong baseline prior** leaves the line parameters unbiased and
   calibrated, but not the baseline order: the most probable K is right in
-  41 % of the spectra, nearly always too low (22 of 28 true K = 3 are fitted
+  42 % of the spectra, nearly always too low (22 of 28 true K = 3 are fitted
   as K = 0). Coefficients of 0.2 σ per channel are barely visible, and with
   a prior 50 times too wide the Occam factor wins. The `p_k` columns of the
   catalogue are calibrated only with a fitting `priors.baseline_scale`, for
   example from signal-free neighbour spectra
   (`hiprofile.likelihood.baseline.baseline_prior_from_spectra`).
 
-## Conditional bias: default against flat priors
+## Conditional bias: priors and classical methods
 
 The SBC shows that the posteriors are calibrated *on average over the
 prior*. For a given galaxy the posterior median is still pulled towards
@@ -167,26 +201,64 @@ typical values when the data are weak. The bias study fixes the true
 profile on a grid of widths (Δv = 20–400 km/s, Δv_rand = 12 km/s, α = 0.1,
 f = 0.25) and integrated S/N (3–40), simulates 20 spectra per cell and fits
 them with the default priors and with flat priors (log-uniform Δv and
-Δv_rand, uniform α and f).
+Δv_rand, uniform α and f). A third run repeats the default-prior case with
+Hanning-smoothed spectra (the line and white noise smoothed alike, so the
+integrated S/N is unchanged and the channel rms drops to 0.61 of it), fitted
+with `model.response: boxcar+hanning`; that is how ALFALFA and most
+single-dish spectra are delivered, and where Springob's correction applies.
+Medians are over the spectra the fit detects (P(detect) > 0.5).
 
-![Conditional bias of W50 for fixed true profiles](img/bias_study.png)
+![Conditional bias for fixed true profiles, unsmoothed channels](img/bias_study.png)
 
-* From S/N 8 upwards the default priors are unbiased to within 11 km/s,
-  within 5 km/s from S/N 15, while the classical W50 of wide profiles is
-  biased by up to +37 km/s.
-* At S/N 5 the default priors pull a 430 km/s line down by 22 km/s and a
-  48 km/s line up by 17 km/s; the flat priors pull the wide line down by
-  137 km/s and a 230 km/s line by 42 km/s. A flat prior is therefore *not*
-  the unbiased choice: the log-uniform width prior puts most of its mass
-  at small widths, and the faint wings of a wide line are lost in the noise
-  and the baseline whatever the prior.
-* These cells carry the `prior_dominated` flag in up to 40 % of the fits:
-  the width of a line at S/N ≤ 5 is a statement of the prior, not a
-  measurement.
+![Conditional bias for fixed true profiles, Hanning-smoothed channels](img/bias_study_boxcar_hanning.png)
+
+Largest |median error| over the widths, in km/s (in brackets: median of
+the per-cell scatter):
+
+| channels | S/N | W50 Bayes | W50 naive | W50 Springob | W20 Bayes | W20 naive | W20 Springob |
+|---|---|---|---|---|---|---|---|
+| unsmoothed | 5 | 31 (29) | 36 (53) | 141 (27) | 29 (31) | 69 (36) | 153 (39) |
+| unsmoothed | 8–40 | 10 (5) | 31 (7) | 136 (7) | 5 (7) | 103 (13) | 135 (7) |
+| unsmoothed | 15–40 | 4 (4) | 12 (5) | 9 (4) | 2 (5) | 82 (11) | 10 (6) |
+| Hanning | 5 | 19 (23) | 23 (49) | 167 (19) | 26 (37) | 94 (43) | 155 (16) |
+| Hanning | 8–40 | 5 (5) | 9 (7) | 6 (5) | 4 (8) | 63 (10) | 10 (8) |
+
+* **From S/N 8 upwards** the posterior median with the default priors is
+  unbiased to within 11 km/s in W50 and 5 km/s in W20 for every width, on
+  either kind of channel.
+* **Springob et al. (2005)** is as good as the fit for W50 on Hanning-smoothed
+  spectra from S/N 8 (bias ≤ 6 km/s, the same scatter), and its W20
+  extension is biased by at most 10 km/s there. On unsmoothed channels and
+  at S/N 5 it fails for wide lines (−70 to −170 km/s): the per-channel S/N
+  of a 400 km/s line at integrated S/N 8 is about 1, and the first noise dip
+  below 15 % of the horn ends the flank fit inside the profile.
+* **The naive threshold crossing** is fine for W50 but not for W20: noise
+  peaks above 20 % of the peak channel widen it by up to 100 km/s for wide
+  lines, still +46 km/s at S/N 15 with Hanning smoothing.
+* **At S/N 5** the default priors pull a 400 km/s line down by 31 km/s and
+  20–100 km/s lines up by up to 20 km/s (unsmoothed; 16 and 19 km/s with
+  Hanning). The flat priors pull the wide line down by 137 km/s and a
+  200 km/s line by 42 km/s. A flat prior is therefore *not* the unbiased
+  choice: the log-uniform width prior puts most of its mass at small
+  widths, and the faint wings of a wide line are lost in the noise and the
+  baseline whatever the prior.
+* **Selection.** At S/N 5 only about half of the 20 km/s lines are
+  detected (45 %, 60 % with Hanning), and those that are are the ones whose
+  noise made them look brighter and wider: their W20 is 23–29 km/s too wide,
+  and the 68 % interval of W20 covers the truth in 11 % (42 % with Hanning)
+  of them. This is a property of the detected subsample, not of the
+  posterior: over all simulations the SBC coverages hold. The
+  `prior_dominated` flag marks up to half of the fits at S/N 5 (the
+  400 km/s lines); the width of a line at S/N ≤ 5 is largely a statement of
+  the prior, not a measurement.
 
 No choice of prior removes the conditional bias at low S/N, because there
 is no information on the width there; the default priors keep it smallest
-for the population they were calibrated on.
+for the population they were calibrated on. What the fit adds over a good
+classical method is therefore not a better W50 for bright, smoothed lines,
+but the W20, the low-S/N and unsmoothed cases, calibrated uncertainties,
+detection probabilities, the separation of blended components and the
+marginalisation over the baseline.
 
 ## Correlated noise
 
@@ -247,37 +319,43 @@ scale of the catalogue.
 
 ![hiprofile fits of ten low-S/N ALFALFA spectra against the catalogue](img/alfalfa_study.png)
 
-| AGC | code | S/N | W50 ALFALFA | W50 hiprofile (16–84 %) | S ALFALFA | S hiprofile | note |
-|---|---|---|---|---|---|---|---|
-| 238702 | 1 | 7.1 | 139 ± 8 | 160 (139–186) | 0.92 ± 0.07 | 1.04 (0.90–1.19) | second component = window-edge artefact |
-| 258145 | 1 | 6.9 | 210 ± 59 | 215 (192–240) | 0.85 ± 0.07 | 0.77 (0.63–0.90) | second component on a 3 mJy bump 700 km/s away |
-| 102780 | 1 | 7.6 | 190 ± 5 | 186 (179–193) | 1.04 ± 0.07 | 1.07 (0.94–1.20) | |
-| 219208 | 1 | 7.4 | 369 ± 18 | 386 (358–413) | 1.45 ± 0.11 | 1.26 (1.01–1.47) | |
-| 258284 | 1 | 8.5 | 476 ± 32 | 509 (478–533) | 2.12 ± 0.13 | 1.96 (1.71–2.25) | |
-| 257950 | 1 | 7.3 | 49 ± 6 | 60 (49–80) | 0.51 ± 0.05 | 0.61 (0.51–0.72) | |
-| 232843 | 2 | 5.2 | 111 ± 11 | 389 (74–426) | 0.62 ± 0.08 | 1.24 (0.98–1.47) | bimodal: one horn or the full profile |
-| 732650 | 2 | 6.2 | 63 ± 41 | 209 (199–219) | 0.38 ± 0.03 | 1.21 (1.11–1.32) | neighbour AGC 231950 in the beam |
-| 260144 | 2 | 5.8 | 136 ± 50 | 322 (206–407) | 0.66 ± 0.06 | 1.02 (0.79–1.29) | neighbour AGC 260955 in the beam |
-| 203516 | 2 | 6.0 | 81 ± 8 | 74 (62–88) | 0.60 ± 0.07 | 0.64 (0.53–0.73) | |
+| AGC | code | S/N | W50 ALFALFA | W50 hiprofile (16–84 %) | naive | Springob | S ALFALFA | S hiprofile | note |
+|---|---|---|---|---|---|---|---|---|---|
+| 238702 | 1 | 7.1 | 139 ± 8 | 167 (143–208) | 214 | 163 | 0.92 ± 0.07 | 1.02 (0.70–1.22) | second component = window-edge artefact |
+| 258145 | 1 | 6.9 | 210 ± 59 | 210 (187–233) | – ¹ | – ¹ | 0.85 ± 0.07 | 0.75 (0.62–0.89) | second component on a 3 mJy bump 700 km/s away |
+| 102780 | 1 | 7.6 | 190 ± 5 | 186 (179–193) | 190 | 194 | 1.04 ± 0.07 | 1.07 (0.93–1.21) | |
+| 219208 | 1 | 7.4 | 369 ± 18 | 387 (357–410) | 352 | 389 | 1.45 ± 0.11 | 1.25 (1.01–1.47) | |
+| 258284 | 1 | 8.5 | 476 ± 32 | 506 (478–531) | 514 | 441 | 2.12 ± 0.13 | 1.95 (1.70–2.23) | |
+| 257950 | 1 | 7.3 | 49 ± 6 | 63 (50–88) | 50 | 54 | 0.51 ± 0.05 | 0.63 (0.52–0.76) | |
+| 232843 | 2 | 5.2 | 111 ± 11 | 399 (86–427) | 407 | 418 | 0.62 ± 0.08 | 1.23 (0.96–1.47) | bimodal: one horn or the full profile |
+| 732650 | 2 | 6.2 | 63 ± 41 | 210 (199–219) | 204 | – | 0.38 ± 0.03 | 1.21 (1.11–1.32) | neighbour AGC 231950 in the beam |
+| 260144 | 2 | 5.8 | 136 ± 50 | 308 (211–392) | 193 | 135 | 0.66 ± 0.06 | 1.01 (0.78–1.26) | neighbour AGC 260955 in the beam |
+| 203516 | 2 | 6.0 | 81 ± 8 | 74 (62–89) | 73 | 79 | 0.60 ± 0.07 | 0.64 (0.54–0.75) | |
 
-W50 in km/s, S in Jy km/s. The systemic velocities agree within 1.6σ of
-the posterior errors (3–81 km/s) for all sources but the confused
-AGC 732650.
+W50 in km/s, S in Jy km/s; naive and Springob measured by hiprofile on the
+same spectra, in the window around the posterior. ¹ The classical window
+is centred on the first fitted component, here the bump, not the catalogue
+source. The systemic velocities agree within 1.7σ of the posterior errors
+(3–78 km/s) for all sources but the confused AGC 732650.
 
 * **HIcode 1:** all six widths and fluxes agree with the catalogue within
   the combined errors. In two spectra hiprofile prefers N = 2, but the
   catalogue source is one of the components and is measured correctly; the
   extra component sits on the rising edge of the extracted window or on a
-  broad 3 mJy bump that is not in the catalogue.
+  broad 3 mJy bump that is not in the catalogue. The automated Springob
+  widths reproduce the catalogue's (which were measured the same way,
+  interactively) to 4–35 km/s, about as well as the posterior medians do.
 * **HIcode 2:** one of four agrees. Two are confused: a catalogued
   neighbour 2.9′ and 3.8′ away (inside the 3.5′ Arecibo beam) overlaps in
   velocity, and the single-spectrum fit measures the blend, which the
-  ALFALFA team separated with the maps. In the third (AGC 232843, S/N 5.2)
-  the catalogue measured the bright horn only; the posterior is bimodal
-  between that and a 390 km/s profile with the weaker emission on the far
-  side, and its 16–84 % range covers both.
-* **Solid-body fraction:** the f medians are 0.07–0.26, apart from the two
-  blends of two galaxies (0.46, 0.52), whose summed profiles are genuinely
+  ALFALFA team separated with the maps; in AGC 260144 the Springob edge
+  fit happens to pick the catalogue galaxy's flanks (135 km/s) and the
+  posterior is broad (211–392 km/s) and flagged `prior_dominated`. In the
+  third (AGC 232843, S/N 5.2) the catalogue measured the bright horn only;
+  the posterior is bimodal between that and a 400 km/s profile with the
+  weaker emission on the far side, and its 16–84 % range covers both.
+* **Solid-body fraction:** the f medians are 0.08–0.27, apart from the two
+  blends of two galaxies (0.45, 0.52), whose summed profiles are genuinely
   dome-shaped.
 * **Noise:** the automatic Hanning + white model gives ρ₁ = 0.64–0.66. With
   an exact Hanning model every fit was flagged with χ²_red up to 10⁴: real

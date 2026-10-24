@@ -60,14 +60,17 @@ def simulate(
                 vc = rng.uniform(1800, 2400)
                 w_eff = dv + 2.35 * SIGMA_RAND
                 s = snr * NOISE * 5.0 * np.sqrt(w_eff / 5.0)
-                if hanning:  # Hanning-smoothed white noise, unit variance
+                if hanning:
+                    # white noise smoothed like the line: the integrated S/N stays that of the raw
+                    # spectrum, the channel rms drops to sqrt(0.375) of it
                     eps = rng.standard_normal(v.size + 2)
-                    noise = np.convolve(eps, [0.25, 0.5, 0.25], "valid") / np.sqrt(0.375)
+                    noise = np.convolve(eps, [0.25, 0.5, 0.25], "valid")
                 else:
                     noise = rng.standard_normal(v.size)
                 y = profile(grid, [vc, dv, SIGMA_RAND, ALPHA, s, F]) + NOISE * noise
                 sid = f"dv{int(dv):03d}_snr{snr:04.1f}_{i:03d}"
-                spec = Spectrum(v, y, sigma=np.full(v.size, NOISE), id=sid)
+                rms = NOISE * (np.sqrt(0.375) if hanning else 1.0)
+                spec = Spectrum(v, y, sigma=np.full(v.size, rms), id=sid)
                 p = sdir / f"{sid}.h5"
                 write_spectrum(spec, p)
                 sources.append(SpectrumSource(str(p), sid))
