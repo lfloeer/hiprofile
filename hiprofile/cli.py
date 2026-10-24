@@ -73,8 +73,8 @@ def cmd_fit(args: argparse.Namespace) -> int:
     sources = list_sources(args.spectra)
     if len(sources) > 1 and cfg.priors.amplitude_scale == "auto":
         log.warning(
-            "priors.amplitude_scale is 'auto' (10 x the noise of the band-integrated flux per spectrum); "
-            "fix it for comparable evidences and detection probabilities across the survey"
+            "priors.amplitude_scale is 'auto' (set per spectrum from its noise and flux); "
+            "fix it for evidences that are comparable across the survey"
         )
     chunk = parse_chunk(args.chunk)
     log.info(

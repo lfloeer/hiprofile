@@ -454,17 +454,22 @@ class MarginalLikelihood:
 def default_amp_scale(
     flux: np.ndarray, good: np.ndarray, sigma_rms: float, dv: float, factor: float = 10.0
 ) -> float:
-    """Scale of the half-normal prior on the integrated flux S: ``factor`` times
-    the noise of the flux integrated over the whole band.
+    """Scale of the half-normal prior on the integrated flux S of each component.
 
-    It depends on the noise and the band only, not on the signal, so that
-    evidences and detection probabilities of spectra with the same noise are
-    comparable. A source brighter than a few times the scale is still found;
-    only its evidence pays a penalty, which matters nowhere near the detection
-    threshold. Fix ``priors.amplitude_scale`` for a survey.
+    The larger of ``factor`` times the noise of the flux integrated over the
+    whole band and twice the positive flux in the band. Near the detection
+    threshold the first term wins, so the prior is the same for every
+    spectrum of a given noise and the evidences are comparable. For a bright
+    source the second term keeps the prior flat over the source's flux: a
+    half-normal narrower than S penalises S by exp(-S^2 / 2 scale^2), and
+    splitting the source into two components halves that exponent, which
+    turned a single bright spiral into a pair. Fix ``priors.amplitude_scale``
+    for a survey when evidences must be comparable across all fluxes.
     """
     n = int(np.sum(good))
-    return factor * sigma_rms * dv * math.sqrt(n)
+    band_noise = sigma_rms * dv * math.sqrt(n)
+    total = float(np.sum(np.where(good, flux, 0.0)) * dv)
+    return max(factor * band_noise, 2.0 * total)
 
 
 def build_likelihood(
