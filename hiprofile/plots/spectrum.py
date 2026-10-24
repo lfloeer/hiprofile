@@ -19,9 +19,15 @@ def _safe(name: str) -> str:
 
 def plot_spectrum(res: FitResult, path: str | Path | None = None):
     v, y = res.velocity, res.flux
-    fig, (ax, axr) = plt.subplots(
-        2, 1, figsize=(8, 5), sharex=True, gridspec_kw={"height_ratios": [3, 1], "hspace": 0.06}
-    )
+    show_q = bool(res.rfi_q.size and np.any(res.rfi_q > 0.05))
+    if show_q:
+        fig, (ax, axr, axq) = plt.subplots(
+            3, 1, figsize=(8, 5.8), sharex=True, gridspec_kw={"height_ratios": [3, 1, 0.6], "hspace": 0.08}
+        )
+    else:
+        fig, (ax, axr) = plt.subplots(
+            2, 1, figsize=(8, 5), sharex=True, gridspec_kw={"height_ratios": [3, 1], "hspace": 0.06}
+        )
     good = ~res.mask
     ax.step(v, np.where(good, y, np.nan), where="mid", color=style.INK, lw=0.8, label="data")
     if res.mask.any():
@@ -48,14 +54,15 @@ def plot_spectrum(res: FitResult, path: str | Path | None = None):
         axr.axhline(0, color=style.MUTED, lw=0.8)
         for lev in (-3, 3):
             axr.axhline(lev, color=style.MUTED, lw=0.6, ls=":")
-    if res.rfi_q.size and np.any(res.rfi_q > 0.05):
-        ax2 = axr.twinx()
-        ax2.fill_between(v, 0, res.rfi_q, step="mid", color=style.SERIES[6], alpha=0.35, lw=0)
-        ax2.set_ylim(0, 1)
-        ax2.set_ylabel("q (outlier)", color=style.INK_2)
-        ax2.grid(False)
+    if show_q:
+        # outlier probability of the RFI pre-stage in its own panel (no second y axis)
+        axq.fill_between(v, 0, res.rfi_q, step="mid", color=style.SERIES[6], alpha=0.6, lw=0)
+        axq.set_ylim(0, 1)
+        axq.set_ylabel("q (RFI)")
+        axq.set_xlabel("velocity [km/s]")
     axr.set_ylabel("residual / sigma")
-    axr.set_xlabel("velocity [km/s]")
+    if not show_q:
+        axr.set_xlabel("velocity [km/s]")
     ax.set_ylabel("flux density")
     title = f"{res.spectrum_id}   P(detect) = {res.p_detect:.3f}   N = {res.best_n}, K = {res.best_k}"
     flags = [k for k, val in res.flags.items() if val]

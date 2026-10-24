@@ -16,6 +16,7 @@ nav:
   - Overview: index.md
   - Tutorial: tutorial.md
   - Model: model.md
+  - Priors: priors.md
   - Inference: inference.md
   - Outputs and flags: outputs.md
   - Configuration: configuration.md

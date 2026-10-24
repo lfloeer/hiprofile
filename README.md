@@ -10,6 +10,13 @@ uv pip install -e ".[all]"
 hiprofile fit spectra.txt --config examples/survey.yaml --jobs 32 --out results/
 ```
 
+![Fits of simulated spectra: a double-horned spiral, a dwarf, an interacting pair and a faint line with RFI](docs/img/gallery.png)
+
+*Simulated spectra fitted with the default configuration: posterior median
+with 68/95 % bands, components and normalised residuals. Bottom right: a
+faint line next to RFI spikes and a 3-channel RFI burst, which the robust
+pre-stage masks (triangles).*
+
 Per spectrum, `results/spectra/<id>.h5` holds weighted posterior samples
 (including W50, W20, flux and systemic velocity), evidences for every N and
 Chebyshev baseline order K, P(detect), quality metrics and flags;
@@ -45,6 +52,13 @@ Documentation: `docs/` (`mkdocs serve`): [model](docs/model.md),
 [inference](docs/inference.md), [outputs and flags](docs/outputs.md),
 [configuration](docs/configuration.md), [tutorial](docs/tutorial.md),
 [validation](docs/validation.md), [legacy code](docs/legacy.md).
+
+## Priors
+
+Defaults calibrated on the 34 THINGS fits of Stewart et al. (2014); the
+simulator draws from the same priors. Details in [docs/priors.md](docs/priors.md).
+
+![Default priors against the THINGS fits](docs/img/priors_things.png)
 
 ## Development
 

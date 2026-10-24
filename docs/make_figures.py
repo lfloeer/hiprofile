@@ -120,8 +120,20 @@ def _panel(ax, axr, res, title, comps):
     good = ~res.mask
     b = res.model_band
     ax.step(v, np.where(good, y, np.nan), where="mid", color=style.INK, lw=0.6)
+    ylo = float(np.min(np.where(good, y, np.inf)))
+    yhi = float(max(np.max(np.where(good, y, -np.inf)), np.max(res.model_band[4])))
+    pad = 0.08 * (yhi - ylo)
+    ax.set_ylim(ylo - pad, yhi + 2.5 * pad)
     if res.mask.any():
-        ax.plot(v[res.mask], y[res.mask], "x", color=style.SERIES[7], ms=4, mew=1, label="masked (RFI)")
+        # masked channels as markers at the top edge (their values are off scale)
+        ax.plot(
+            v[res.mask],
+            np.full(res.mask.sum(), yhi + 1.6 * pad),
+            "v",
+            color=style.SERIES[7],
+            ms=5,
+            label="masked (RFI pre-stage)",
+        )
     ax.fill_between(v, b[0], b[4], color=style.SERIES[0], alpha=0.18, lw=0, label="95 % band")
     ax.fill_between(v, b[1], b[3], color=style.SERIES[0], alpha=0.35, lw=0, label="68 % band")
     ax.plot(v, b[2], color=style.SERIES[0], lw=1.6, label="posterior median")
@@ -138,10 +150,16 @@ def _panel(ax, axr, res, title, comps):
     if np.any(np.abs(res.baseline_median) > 0):
         ax.plot(v, res.baseline_median, color=style.INK_2, lw=0.9, ls=":", label="baseline")
     post = res.posteriors[max(res.best_n, 1)].summary()
-    w50 = f"W50 = {post['W50_1']:.0f} ± {0.5 * (post['W50_1_p84'] - post['W50_1_p16']):.0f} km/s"
+    parts = []
+    for i in range(1, max(res.best_n, 1) + 1):
+        err = 0.5 * (post[f"W50_{i}_p84"] - post[f"W50_{i}_p16"])
+        parts.append(f"{post[f'W50_{i}']:.0f} ± {err:.0f}")
+    w50 = "W50 = " + " / ".join(parts) + " km/s"
     ax.set_title(f"{title}\nP(detect) = {res.p_detect:.3f}, N = {res.best_n}, {w50}", loc="left", fontsize=9)
     lo = min(c[0] - c[1] for c in comps) - 250
     hi = max(c[0] + c[1] for c in comps) + 250
+    if res.mask.any():  # show the whole band to include the masked channels
+        lo, hi = v[0], v[-1]
     for a in (ax, axr):
         a.set_xlim(lo, hi)
     r = (y - b[2]) / res.sigma
@@ -187,11 +205,229 @@ def gallery() -> Path:
     return _save(fig, "gallery.png")
 
 
+def _load(run_dir: Path):
+    from astropy.table import Table
+
+    from hiprofile.io.catalog import collect_rows
+
+    truth = Table.read(run_dir / "truth.csv")
+    rows = {r["id"]: r for r in collect_rows(sorted((run_dir / "spectra").glob("*.h5")))}
+    return truth, rows
+
+
+def _col(rows, ids, key):
+    return np.array([float(rows.get(i, {}).get(key, np.nan) or np.nan) for i in ids])
+
+
+def sbc_figure(stage_dir: Path) -> Path:
+    import json
+
+    from scipy import stats
+
+    summ = json.loads((stage_dir / "summary.json").read_text())["runs"]["sbc"]
+    names = list(summ["ranks"])
+    labels = {
+        "v_ctr_1": "v_ctr",
+        "delta_v_1": "Δv",
+        "delta_v_rand_1": "Δv_rand",
+        "alpha_1": "α",
+        "S_1": "S",
+        "f_1": "f",
+        "W50_1": "W50",
+        "W20_1": "W20",
+    }
+    fig = plt.figure(figsize=(13, 5.2))
+    gs = fig.add_gridspec(2, 6, width_ratios=[1, 1, 1, 1, 0.15, 1.6], hspace=0.55, wspace=0.35)
+    for k, name in enumerate(names):
+        ax = fig.add_subplot(gs[k // 4, k % 4])
+        h = np.array(summ["ranks"][name])
+        lo, hi = stats.binom.interval(0.99, h.sum(), 1 / h.size)
+        ax.axhspan(lo, hi, color=style.GRID, zorder=0)
+        ax.bar(np.arange(h.size), h, color=style.SERIES[0], width=0.85)
+        ax.axhline(h.sum() / h.size, color=style.INK_2, lw=0.8)
+        ax.set_title(
+            f"{labels.get(name, name)}   p = {summ['rank_pvalue'][name]:.2f}", loc="left", fontsize=9
+        )
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.grid(False)
+    ax = fig.add_subplot(gs[:, 5])
+    y = np.arange(len(names))[::-1]
+    c68 = [summ["coverage68"][n] for n in names]
+    c95 = [summ["coverage95"][n] for n in names]
+    n_sim = summ["n_sbc"]
+    for target, vals, color, lab in (
+        (0.68, c68, style.SERIES[0], "68 % interval"),
+        (0.95, c95, style.SERIES[1], "95 % interval"),
+    ):
+        err = 2 * np.sqrt(target * (1 - target) / n_sim)
+        ax.axvspan(target - err, target + err, color=color, alpha=0.12, lw=0)
+        ax.axvline(target, color=color, lw=0.8)
+        ax.plot(vals, y, "o", color=color, ms=6, label=lab)
+    ax.set_yticks(y, [labels.get(n, n) for n in names])
+    ax.set_xlim(0.55, 1.0)
+    ax.set_xlabel("coverage")
+    ax.legend(loc="lower right")
+    ax.set_title("interval coverage (band: ±2σ for N sims)", loc="left", fontsize=9)
+    fig.suptitle(
+        f"Simulation-based calibration, {n_sim} simulations from the default priors "
+        "(rank histograms, grey: 99 % band of uniform ranks)",
+        x=0.01,
+        ha="left",
+        fontsize=11,
+    )
+    return _save(fig, "sbc.png")
+
+
+def classic_figure(run_dir: Path, name: str = "bayes_vs_classic.png") -> Path:
+    """Error of posterior median vs. classical W50/W20 against the true S/N."""
+    truth, rows = _load(run_dir)
+    sel = np.asarray(truth["n_true"]) == 1
+    ids = np.asarray(truth["id"])[sel]
+    snr = np.asarray(truth["snr_1"])[sel]
+    detected = _col(rows, ids, "p_detect") > 0.5
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), sharey=False)
+    edges = np.geomspace(max(snr[detected].min(), 2), snr.max() * 1.01, 9)
+    for ax, q in zip(axes, ("W50", "W20"), strict=True):
+        t = np.asarray(truth[f"{q}_1"])[sel]
+        for key, color, lab in (
+            (f"{q}_1", style.SERIES[0], "hiprofile posterior median"),
+            (f"classic_{q}", style.SERIES[1], f"classical {q} on the data"),
+        ):
+            err = _col(rows, ids, key) - t
+            ok = detected & np.isfinite(err)
+            ax.scatter(snr[ok], err[ok], s=7, color=color, alpha=0.35, edgecolor="none")
+            mid, med, q16, q84 = [], [], [], []
+            for lo, hi in zip(edges[:-1], edges[1:], strict=True):
+                b = ok & (snr >= lo) & (snr < hi)
+                if b.sum() >= 5:
+                    mid.append(np.sqrt(lo * hi))
+                    p = np.percentile(err[b], [16, 50, 84])
+                    q16.append(p[0])
+                    med.append(p[1])
+                    q84.append(p[2])
+            ax.plot(mid, med, "-o", color=color, lw=2, ms=4, label=lab)
+            ax.fill_between(mid, q16, q84, color=color, alpha=0.15, lw=0)
+        ax.axhline(0, color=style.INK_2, lw=0.8)
+        ax.set_xscale("log")
+        ax.set_xlabel("true integrated S/N")
+        ax.set_ylabel(f"{q} estimate − truth [km/s]")
+        lim = np.nanpercentile(np.abs(_col(rows, ids, f"classic_{q}") - t), 95)
+        ax.set_ylim(-lim, lim)
+        ax.set_title(f"{q}: median and 16–84 % range per S/N bin", loc="left", fontsize=9)
+    axes[0].legend(loc="lower right")
+    fig.suptitle(
+        "Line widths: Bayesian fit vs. classical measurement (detected simulations with N = 1)",
+        x=0.01,
+        ha="left",
+        fontsize=11,
+        y=1.03,
+    )
+    return _save(fig, name)
+
+
+def detection_figure(stage_dir: Path) -> Path:
+    import json
+
+    summ = json.loads((stage_dir / "summary.json").read_text())["runs"]
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.8), gridspec_kw={"width_ratios": [1.2, 1, 0.8]})
+    for (label, run), color in zip(summ.items(), style.SERIES, strict=False):
+        comp = np.array(run["completeness_vs_snr"], float)
+        mids = np.where(
+            np.isfinite(comp[:, 1]), np.sqrt(np.maximum(comp[:, 0], 1) * comp[:, 1]), comp[:, 0] * 1.5
+        )
+        nice = label.replace("_", " ")
+        axes[0].plot(mids, comp[:, 3], "-o", color=color, lw=2, ms=5, label=nice)
+        rel = np.array(run["reliability"], float)
+        ok = rel[:, 1] > 0
+        axes[1].plot(rel[ok, 0], rel[ok, 2], "-o", color=color, lw=2, ms=5, label=nice)
+    axes[0].set_xscale("log")
+    axes[0].set_xlabel("true integrated S/N")
+    axes[0].set_ylabel("completeness (P(detect) > 0.5)")
+    axes[0].set_ylim(-0.03, 1.03)
+    axes[0].legend(loc="lower right")
+    axes[0].set_title("completeness", loc="left", fontsize=10)
+    axes[1].plot([0, 1], [0, 1], color=style.MUTED, lw=0.8)
+    axes[1].set_xlabel("P(detect)")
+    axes[1].set_ylabel("fraction with a true source")
+    axes[1].set_title("reliability of P(detect)", loc="left", fontsize=10)
+    run = summ[next(iter(summ))]
+    conf = np.array(run["confusion"], float)
+    frac = conf / np.maximum(conf.sum(axis=1, keepdims=True), 1)
+    axes[2].imshow(frac, cmap="Blues", vmin=0, vmax=1)
+    for i in range(conf.shape[0]):
+        for j in range(conf.shape[1]):
+            axes[2].text(
+                j,
+                i,
+                f"{int(conf[i, j])}",
+                ha="center",
+                va="center",
+                color=style.SURFACE if frac[i, j] > 0.6 else style.INK,
+                fontsize=10,
+            )
+    axes[2].set_xticks(range(conf.shape[1]))
+    axes[2].set_yticks(range(conf.shape[0]))
+    axes[2].set_xlabel("fitted N")
+    axes[2].set_ylabel("true N")
+    axes[2].grid(False)
+    fpr = run["false_positive_rate"]["0.5"]
+    axes[2].set_title(f"confusion (with RFI pre-stage)\nfalse positives: {fpr:.1%}", loc="left", fontsize=10)
+    fig.suptitle(
+        "Detection: simulations with N = 0, 1, 2, Chebyshev baselines and RFI spikes",
+        x=0.01,
+        ha="left",
+        fontsize=11,
+        y=1.04,
+    )
+    return _save(fig, "detection.png")
+
+
+def misspec_figure(stage_dir: Path) -> Path:
+    import json
+
+    summ = json.loads((stage_dir / "summary.json").read_text())["runs"]
+    labels = list(summ)
+    flags = sorted({f for r in summ.values() for f, v in r["flag_rates"].items() if v > 0.02})
+    fig, ax = plt.subplots(figsize=(11, 3.6))
+    width = 0.8 / len(labels)
+    x = np.arange(len(flags))
+    for i, (lab, color) in enumerate(zip(labels, style.SERIES, strict=False)):
+        vals = [summ[lab]["flag_rates"].get(f, 0.0) for f in flags]
+        ax.bar(
+            x + (i - (len(labels) - 1) / 2) * width,
+            vals,
+            width=width * 0.9,
+            color=color,
+            label=f"{lab.replace('_', ' ')} (any flag: {summ[lab]['flag_rate']:.0%})",
+        )
+    ax.set_xticks(x, [f.replace("_", " ") for f in flags])
+    ax.set_ylabel("fraction of spectra flagged")
+    ax.legend(ncol=2, loc="upper right")
+    ax.set_title(
+        "Flags on deliberately misspecified spectra vs. clean model spectra", loc="left", fontsize=11
+    )
+    return _save(fig, "misspec_flags.png")
+
+
+def validation(root: Path) -> None:
+    root = Path(root)
+    if (root / "validate_sbc" / "summary.json").exists():
+        sbc_figure(root / "validate_sbc")
+        classic_figure(root / "validate_sbc" / "sbc")
+    if (root / "validate_detection" / "summary.json").exists():
+        detection_figure(root / "validate_detection")
+    if (root / "validate_misspec" / "summary.json").exists():
+        misspec_figure(root / "validate_misspec")
+
+
 if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else "priors"
     if what == "priors":
         priors()
     elif what == "gallery":
         gallery()
+    elif what == "validation" and len(sys.argv) > 2:
+        validation(Path(sys.argv[2]))
     else:
         raise SystemExit(__doc__)
