@@ -64,14 +64,15 @@ simulator draws from the same priors. Details in [docs/priors.md](docs/priors.md
 
 ## Validation
 
-1000 spectra simulated from the priors and fitted with the defaults
-([docs/validation.md](docs/validation.md)): rank statistics and interval
-coverages are calibrated, the baseline order is recovered in 93 % of the
-cases, and the posterior medians of W50, W20 and v_sys scatter half to a
-third as much as the classical measurements on the same data.
-With the RFI pre-stage no noise spectrum with RFI spikes reaches
-P(detect) > 0.9, and spectra with deliberately wrong models (standing-wave
-baselines, unmasked RFI) are flagged in 99–100 % of the cases.
+From one run of `benchmarks/validate_all.sh` ([docs/validation.md](docs/validation.md)):
+1000 spectra simulated from the priors are calibrated (rank statistics and
+interval coverages) and the baseline order is recovered in 93 % of the
+cases; the posterior medians of W50, W20 and v_sys scatter half to a third
+as much as the classical measurements on the same data. With the RFI
+pre-stage no line-free spectrum with RFI spikes is detected; deliberately
+wrong models (standing-wave baselines, unmasked RFI) are flagged in
+99–100 % of the cases; and ten low-S/N ALFALFA sources agree with the
+catalogue except where a neighbour shares the beam.
 
 ![Line widths: Bayesian fit against the classical measurement](docs/img/bayes_vs_classic.png)
 
