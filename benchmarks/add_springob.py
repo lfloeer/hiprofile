@@ -43,7 +43,10 @@ def update(path: Path) -> float:
             good=~g["mask"][()],
             hanning="hanning" in response.lower(),
         )
-        diff = max((abs(new[k] - old[k]) for k in old if np.isfinite(old[k])), default=0.0)
+        diff = max(
+            (abs(new[k] - old[k]) for k in ("W50", "W20", "v_sys", "S") if old.get(k) is not None),
+            default=0.0,
+        )
         row.update({f"classic_{k}": (v if np.isfinite(v) else None) for k, v in new.items()})
         f.attrs["classic"] = json.dumps({k: (v if np.isfinite(v) else None) for k, v in new.items()})
         f.attrs["catalog_row"] = json.dumps(row)
