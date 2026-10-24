@@ -39,6 +39,7 @@ def plot_spectrum(res: FitResult, path: str | Path | None = None):
                 comp + res.baseline_median,
                 color=style.SERIES[1 + i % 6],
                 lw=1,
+                ls="--" if len(res.components_median) == 1 else "-",
                 label=f"component {i + 1}",
             )
         sig = np.where(np.isfinite(res.sigma) & (res.sigma > 0), res.sigma, np.nan)
@@ -73,9 +74,11 @@ def _finish(fig, path):
     return fig
 
 
-def _weighted_hist2d(ax, x, y, w, bins=40):
+def _weighted_hist2d(ax, x, y, w, bins=24):
+    from scipy.ndimage import gaussian_filter
+
     h, xe, ye = np.histogram2d(x, y, bins=bins, weights=w)
-    h = h.T
+    h = gaussian_filter(h.T, 1.0)
     order = np.sort(h.ravel())[::-1]
     c = np.cumsum(order) / order.sum()
     levels = sorted({order[np.searchsorted(c, q)] for q in (0.95, 0.68)})
@@ -115,7 +118,7 @@ def plot_corner(res: FitResult, n: int | None = None, path: str | Path | None = 
             if i == j:
                 ax.hist(
                     data[i],
-                    bins=40,
+                    bins=30,
                     range=(lo, hi),
                     weights=w,
                     color=style.SERIES[0],
