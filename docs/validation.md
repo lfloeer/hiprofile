@@ -2,11 +2,13 @@
 
 All stages run with `hiprofile validate` (set-up of each stage in
 `hiprofile/validate/stages.py`); the figures come from
-`python docs/make_figures.py validation <run directory>`. The results below
+`python docs/make_figures.py validation <run directory>` and
+`python docs/make_figures.py bias <bias-study directory>`. The results below
 use the default configuration (full mode, SMC sampler, N ≤ 2, K ≤ 3, RFI
 pre-stage) on a 4-core machine: `--seed 11` for the 1000 SBC simulations,
-`--seed 21` for the 200 detection simulations and `--seed 31` for the 100
-misspecified profiles.
+`--seed 21` for the 200 detection simulations, `--seed 31` for the 4 × 100
+misspecified spectra and `benchmarks/bias_study.py --n 20` (seed 5) for the
+bias study.
 
 ## Stage 1: simulation-based calibration
 
@@ -22,22 +24,22 @@ intervals must cover the truth at their nominal rate.
 
 | parameter | rank p-value | 68 % coverage | 95 % coverage |
 |---|---|---|---|
-| v_ctr | 0.98 | 0.69 | 0.96 |
-| Δv | 0.45 | 0.68 | 0.94 |
-| Δv_rand | 0.79 | 0.68 | 0.95 |
-| α | 0.63 | 0.67 | 0.96 |
-| S | 0.16 | 0.67 | 0.95 |
-| f | 0.07 | 0.70 | 0.94 |
-| W50 | 0.27 | 0.70 | 0.94 |
-| W20 | 0.99 | 0.69 | 0.94 |
+| v_ctr | 0.55 | 0.68 | 0.96 |
+| Δv | 0.78 | 0.68 | 0.94 |
+| Δv_rand | 0.71 | 0.69 | 0.95 |
+| α | 0.74 | 0.67 | 0.95 |
+| S | 0.30 | 0.67 | 0.95 |
+| f | 0.31 | 0.70 | 0.94 |
+| W50 | 0.84 | 0.69 | 0.94 |
+| W20 | 0.54 | 0.69 | 0.94 |
 
 ![SBC: rank histograms, interval coverage and baseline-order calibration](img/sbc.png)
 
-All rank histograms are flat (no U shape, slope or peak; all p > 0.05), and
+All rank histograms are flat (no U shape, slope or peak; all p > 0.3), and
 the 68 % and 95 % coverages lie inside the ±2σ bands for 1000 simulations
-(0.65–0.71 and 0.94–0.96). The 27.6 % of simulations that are not detected
-(faint draws of the half-normal flux prior) take part in the rank
-statistics like every other simulation.
+(0.65–0.71 and 0.94–0.96). The simulations that are not detected (faint
+draws of the half-normal flux prior, about a quarter) take part in the
+rank statistics like every other simulation.
 
 **Baseline order.** The most probable K is the true one in 93 % of the
 simulations and P(K_true | y) averages 0.88; the reliability curve (right
@@ -49,39 +51,142 @@ probable K) is one-sided:
   266      2      0      0
    14    229      0      0
     6     14    220      0
-    2      6     26    215
+    2      6     25    216
 ```
 
 A true K = 3 whose highest coefficients happen to be small is read as K = 2
-(26 of 249), which is the right answer for terms the data cannot see; the
+(25 of 249), which is the right answer for terms the data cannot see; the
 reverse, a spurious high order, almost never happens.
 
-**Flags.** 12 % of the fits carry a flag: `prior_edge` 6.4 % (Δv_rand at
+**Flags.** 12.7 % of the fits carry a flag: `prior_edge` 7.2 % (Δv_rand at
 its 4 km/s bound or f at 0/1 for faint, narrow lines), `prior_dominated`
-3.8 %, `wiggle` 2.1 %, `multimodal` 0.9 %, `ppp` 0.9 %. None of these
-rates is a failure: the simulations include the faint end of the flux prior,
-where the width is not measurable.
+3.1 %, `wiggle` 2.2 %, `ppp` 0.9 %, `multimodal` 0.8 %. The simulations
+include the faint end of the flux prior, where the width is not measurable.
 
 The same simulations measured against the truth (detected ones, N = 1):
 
 | quantity | Bayes bias | Bayes scatter | classical bias | classical scatter |
 |---|---|---|---|---|
-| W50 [km/s] | 0.4 | 10.6 | −0.3 | 19.5 |
-| W20 [km/s] | 0.4 | 13.0 | 23.5 | 33.5 |
-| S [Jy km/s] | 0.000 | 0.36 | 0.03 | 0.39 |
-| v_sys [km/s] | −0.2 | 4.5 | 0.1 | 8.3 |
+| W50 [km/s] | 0.4 | 10.6 | −0.9 | 19.3 |
+| W20 [km/s] | 0.3 | 12.6 | 22.7 | 33.0 |
+| S [Jy km/s] | −0.01 | 0.36 | 0.03 | 0.39 |
+| v_sys [km/s] | −0.2 | 4.7 | 0.1 | 8.2 |
 
 ![Line widths: Bayesian fit against the classical measurement](img/bayes_vs_classic.png)
 
 The posterior medians are unbiased, and their scatter is half (W50, v_sys)
 to a third (W20) of that of the classical measurement on the same data. The
 classical W20 is biased high at low S/N because noise peaks raise the 20 %
-crossing points; the Bayesian W50 is pulled slightly low below S/N ≈ 4,
-where the width prior takes over (`prior_dominated`). See
-[Priors](priors.md) for the conditional bias as a function of true width
-and S/N.
+crossing points.
 
 Example posterior (corner plot of a low-S/N SBC spectrum with a bimodal
 centre):
 
 ![corner plot](img/corner_example.png)
+
+## Stage 2: detection and confusion
+
+`hiprofile validate --stage detection --n 200 --seed 21 --jobs 4`
+
+200 spectra with N = 0, 1, 2 (probabilities 0.4, 0.4, 0.2), integrated
+S/N 2–40 per component, a first-order baseline and single-channel RFI
+spikes (on average 0.005 per channel, i.e. 2–3 per spectrum), fitted twice:
+with and without the RFI pre-stage.
+
+![Detection: completeness, reliability and confusion matrix](img/detection.png)
+
+| | with RFI pre-stage | without |
+|---|---|---|
+| false positives, P(detect) > 0.5 | 1 of 77 (1.3 %) | 83 % |
+| false positives, P(detect) > 0.9 | 0 | 83 % |
+| completeness S/N 3–5 / 5–8 / ≥ 8 | 0.58 / 0.94 / 1.00 | 0.89 / 1.00 / 1.00 |
+| flagged | 8 % | 87 % |
+
+Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
+
+```
+   76      1      0
+   17     66      0
+    2     19     19
+```
+
+* **N = 0 and N = 1** are separated cleanly. The completeness with the
+  pre-stage equals that of the SBC, which has no RFI at all (0.45 at
+  S/N 3–5, 0.93 at 5–8, 1.00 above 8), so the pre-stage costs no
+  completeness. Without it, RFI spikes are fitted as lines: 83 % false
+  positives, 64 % of the fits flagged `unresolved`.
+* **The one false positive** (P(detect) = 0.58) is a 520 km/s wide, shallow
+  "line" that competes with the baseline; it carries the `prior_dominated`
+  and `wiggle` flags.
+* **N = 2.** Of the 19 pairs with both components at S/N > 6 and separated
+  by more than their width, 15 are fitted as N = 2; the four others have
+  P(N = 2) between 0 and 0.43 with evidences within 1–3 nats of N = 1, so
+  the data do not decide them. Pairs with a second component below S/N 6
+  (20 of 40) are mostly fitted as N = 1, as they should be: a second line at
+  S/N 3 is not detectable on its own either.
+
+An earlier version missed bright pairs: the one-component RFI pre-stage
+masked the second line as a run of outliers, and neither the quick stage nor
+the SMC found the narrow two-line mode. The pre-stage now keeps runs longer
+than three channels, and both samplers are warm-started from residual
+features (see [Inference](inference.md#model-comparison)).
+
+## Stage 3: misspecification
+
+`hiprofile validate --stage misspec --n 100 --seed 31 --jobs 4`
+
+Four sets of 100 one-component spectra at S/N 5–80: model profiles
+(`clean`), profiles not generated by the model (`template`: tilted-ring
+galaxies with a rising rotation curve, inclinations of 30–85°, lopsidedness
+up to 30 % and central HI holes, integrated on a fine grid), model profiles on a sinusoidal baseline
+that no Chebyshev polynomial up to K = 3 describes (`sine_baseline`), and
+model profiles with RFI fitted without the pre-stage (`rfi_unmasked`).
+
+![Flag rates on misspecified spectra](img/misspec_flags.png)
+
+| set | flagged | W50 bias / scatter [km/s] | 68 % coverage of W50 |
+|---|---|---|---|
+| clean | 9 % | 0.9 / 4.8 | 0.73 |
+| template | 13 % | 0.5 / 6.8 | 0.72 |
+| sine baseline | 99 % | 0.5 / 27.9 | 0.27 |
+| RFI unmasked | 100 % | −90 / 115 | 0.14 |
+
+The model describes these galaxy-like profiles well enough that the widths stay
+unbiased and calibrated. When the model is wrong (a sine baseline, unmasked
+RFI) the posteriors are overconfident, as any posterior of a wrong model is,
+but the flags catch it: `ppp` and `residual_acf` mark almost every
+sine-baseline fit, `ppp`, `prior_edge`, `unresolved` and `wiggle` mark the
+RFI fits. Flagged fits should not enter a science sample without a look at
+the plot.
+
+## Conditional bias: default against flat priors
+
+`python benchmarks/bias_study.py --out DIR --n 20 --priors default|flat`
+
+The SBC shows that the posteriors are calibrated *on average over the
+prior*. For a given galaxy the posterior median is still pulled towards
+typical values when the data are weak. The bias study fixes the true profile
+on a grid of widths (Δv = 20–400 km/s, Δv_rand = 12 km/s, α = 0.1,
+f = 0.25) and integrated S/N (3–40), simulates 20 spectra per cell and fits
+them with the default (THINGS) priors and with flat priors (log-uniform
+Δv and Δv_rand, uniform α and f).
+
+![Conditional bias of W50 for fixed true profiles](img/bias_study.png)
+
+* From S/N 8 upwards both prior sets are unbiased to within a few km/s
+  (default priors: |bias| ≤ 7 km/s in every cell), while the classical W50
+  of wide profiles is biased by up to +37 km/s.
+* At S/N 5 the default priors pull a 430 km/s line down by 45 km/s and a
+  48 km/s line up by 17 km/s; the flat priors pull the wide line down by
+  130 km/s. A flat prior is therefore *not* the unbiased choice: the
+  log-uniform width prior puts most of its mass at small widths, and the
+  faint wings of a wide line are lost in the noise and the baseline whatever
+  the prior. With the THINGS priors the shrinkage is smaller everywhere
+  except for the narrowest lines.
+* These cells carry the `prior_dominated` flag in up to half of the fits
+  (constraint on Δv below 0.3): the width of a line at S/N ≤ 5 is a
+  statement of the prior, not a measurement.
+
+No choice of prior removes the conditional bias at low S/N, because there is
+no information on the width there; the default priors minimise it for the
+galaxy population they were calibrated on and are kept.

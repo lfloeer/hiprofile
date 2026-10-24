@@ -433,6 +433,12 @@ def misspec_figure(stage_dir: Path) -> Path:
     return _save(fig, "misspec_flags.png")
 
 
+def _median_err(c) -> float:
+    """Standard error of a median from the robust scatter and the number of detections."""
+    n = max(c["n"] * c["completeness"], 1.0)
+    return 1.2533 * c["bayes_W50_scatter"] / np.sqrt(n)
+
+
 def bias_figure(root: Path, name: str = "bias_study.png") -> Path:
     """Conditional bias of W50 against S/N for fixed true widths (benchmarks/bias_study.py)."""
     import json
@@ -460,10 +466,10 @@ def bias_figure(root: Path, name: str = "bias_study.png") -> Path:
             )
             ax.fill_between(
                 snr,
-                [c["bayes_W50_bias"] - c["bayes_W50_scatter"] for c in cells],
-                [c["bayes_W50_bias"] + c["bayes_W50_scatter"] for c in cells],
+                [c["bayes_W50_bias"] - _median_err(c) for c in cells],
+                [c["bayes_W50_bias"] + _median_err(c) for c in cells],
                 color=style.SERIES[i],
-                alpha=0.08,
+                alpha=0.15,
                 lw=0,
             )
         ax.axhline(0, color=style.INK_2, lw=0.8)
@@ -487,13 +493,19 @@ def bias_figure(root: Path, name: str = "bias_study.png") -> Path:
     ax.set_xlabel("true integrated S/N")
     ax.set_ylabel("classical W50 − truth [km/s]")
     ax.set_title("classical W50 on the same spectra", loc="left", fontsize=9)
-    lo = min(ax.get_ylim()[0] for ax in axes)
-    hi = max(ax.get_ylim()[1] for ax in axes)
+    lim = max(
+        abs(c[key])
+        for _, t in sets
+        for c in t
+        for key in ("bayes_W50_bias", "classic_W50_bias")
+        if np.isfinite(c[key])
+    )
+    lo, hi = -1.1 * lim, 1.1 * lim
     for ax in axes:
         ax.set_ylim(lo, hi)
     axes[0].legend(fontsize=8, loc="lower right")
     fig.suptitle(
-        "Conditional bias of W50 for fixed true profiles (median ± robust scatter per cell)",
+        "Conditional bias of W50 for fixed true profiles (median per cell, band: uncertainty of the median)",
         x=0.01,
         ha="left",
         fontsize=11,

@@ -69,6 +69,9 @@ simulator draws from the same priors. Details in [docs/priors.md](docs/priors.md
 coverages are calibrated, the baseline order is recovered in 93 % of the
 cases, and the posterior medians of W50, W20 and v_sys scatter half to a
 third as much as the classical measurements on the same data.
+With the RFI pre-stage no noise spectrum with RFI spikes reaches
+P(detect) > 0.9, and spectra with deliberately wrong models (standing-wave
+baselines, unmasked RFI) are flagged in 99–100 % of the cases.
 
 ![Line widths: Bayesian fit against the classical measurement](docs/img/bayes_vs_classic.png)
 

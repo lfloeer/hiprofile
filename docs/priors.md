@@ -48,8 +48,13 @@ range (very disturbed or very narrow profiles) are pulled towards typical
 values; the `prior_edge` flag marks posteriors that pile up at a prior
 boundary, and `prior_dominated` marks fits whose Δv posterior is not much
 narrower than the prior (the width is then a prior statement, not a
-measurement). See [Validation](validation.md) for the measured bias as a
-function of true width and S/N.
+measurement). The bias study in [Validation](validation.md#conditional-bias-default-against-flat-priors)
+measures the pull for fixed true profiles: from S/N 8 upwards the posterior
+median of W50 is unbiased to within a few km/s; at S/N 5 a 430 km/s line is
+pulled down by 45 km/s with these priors and by 130 km/s with flat
+(log-uniform) priors, so the THINGS priors are kept as defaults.
+
+![Conditional bias of W50 for default and flat priors](img/bias_study.png)
 
 References: Stewart, Blyth & de Blok (2014), A&A 567, A61 (arXiv:1405.1838);
 Ianjamasimanana et al. (2012), arXiv:1207.5041; Oman (2022), arXiv:2108.08856;
