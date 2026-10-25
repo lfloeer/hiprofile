@@ -49,7 +49,8 @@ The validated configuration, the code version and the seed are written into ever
 | `sampler.likelihood_backend` | `Literal['numpy', 'jax']` | `numpy` |  |
 | `diagnostics.ppp_min` | `float` | `0.01` |  |
 | `diagnostics.wiggle_max` | `float` | `0.1` |  |
-| `diagnostics.acf_sigma` | `float` | `4.0` |  |
+| `diagnostics.structure_p` | `float` | `0.001` | Flag `residual_structure` when the whitened residuals have more power at low frequencies (0 < f <= structure_fmax) than the noise model allows at this p-value |
+| `diagnostics.structure_fmax` | `float` | `0.1` | Upper frequency of the residual-structure test [cycles per channel] |
 | `diagnostics.edge_mass` | `float` | `0.2` |  |
 | `diagnostics.min_ess` | `float` | `500.0` |  |
 | `diagnostics.logz_sigma` | `float` | `3.0` |  |

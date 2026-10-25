@@ -113,6 +113,9 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
         m["ppp"] = dm.posterior_predictive_p(y, full[:, gi], ctx.noise, ctx.rng)
         m["residual_acf"] = dm.residual_acf(rw).tolist()
         m["residual_acf_max"] = float(np.max(np.abs(m["residual_acf"])))
+        m["residual_lowfreq_lnp"], m["residual_lowfreq_ratio"] = dm.residual_lowfreq(
+            rw, cfg.diagnostics.structure_fmax
+        )
         line = out.components_median[:n_post].sum(axis=0)
         width = float(np.median(post.theta[:, 1])) + 2.35 * float(np.median(post.theta[:, 2]))
         m["wiggle_J"], m["wiggle_snr"] = dm.wiggle_fraction(

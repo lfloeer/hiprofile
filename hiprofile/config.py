@@ -202,7 +202,14 @@ class SamplerConfig(_Base):
 class DiagnosticsConfig(_Base):
     ppp_min: float = 0.01
     wiggle_max: float = 0.1
-    acf_sigma: float = 4.0
+    structure_p: float = Field(
+        1e-3,
+        description="Flag `residual_structure` when the whitened residuals have more power at low "
+        "frequencies (0 < f <= structure_fmax) than the noise model allows at this p-value",
+    )
+    structure_fmax: float = Field(
+        0.1, description="Upper frequency of the residual-structure test [cycles per channel]"
+    )
     edge_mass: float = 0.2
     min_ess: float = 500.0
     logz_sigma: float = 3.0
