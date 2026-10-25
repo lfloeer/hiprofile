@@ -87,15 +87,17 @@ def convert(raw: Path, dest: Path, cz: float, half_window: float = 1000.0, v_min
 
     Column 3 is the baseline-subtracted flux everywhere; column 4, the subtracted
     baseline, reads '*****' where it overflows its format, which does not mark bad
-    data. Blanked channels carry a flux of exactly 0 and are written as NaN, which
-    the fit masks. ``v_min`` cuts channels below that velocity (Galactic HI near 0 km/s).
+    data. Blanked channels (flux exactly 0) and fluxes overflowing their own
+    column are written as NaN, which the fit masks. ``v_min`` cuts channels below
+    that velocity (Galactic HI near 0 km/s).
     """
     rows = []
     for line in raw.read_text().splitlines():
         if line.startswith("#") or not line.strip():
             continue
         p = line.split()
-        rows.append((float(p[1]), float(p[2])))
+        flux = float(p[2]) if "*" not in p[2] else np.nan  # overflow beyond 9999 mJy: masked
+        rows.append((float(p[1]), flux))
     a = np.array(rows)
     v = C * (1.0 - a[:, 0] / NU0)  # radio convention: uniform in frequency
     v0 = cz / (1.0 + cz / C)

@@ -41,6 +41,7 @@ NED_DIR = NED + "/spc1/2011/2011AJ....142..170H"
 # Galactic HI and the high-velocity clouds reach a few hundred km/s and are
 # Jy-bright; channels below this radio velocity are cut from the window.
 V_MIN = 350.0
+MIN_CHANNELS = 64  # a window with fewer usable channels is not fitted
 
 
 def ned_name(agc: int) -> str:
@@ -96,16 +97,22 @@ def fit(args: argparse.Namespace) -> None:
         ok = list(ex.map(lambda r: download(int(r["AGCNr"]), out / "raw" / f"AGC{r['AGCNr']}.txt"), rows))
     missing = [r["AGCNr"] for r, good in zip(rows, ok, strict=True) if not good]
     print(f"{len(rows)} sources, {len(rows) - len(missing)} spectra, {len(missing)} not in NED")
-    lines = []
+    lines: list[str] = []
+    short: list[str] = []
     for r, good in zip(rows, ok, strict=True):
         if not good:
             continue
         dest = out / "spectra" / f"AGC{r['AGCNr']}.txt"
         if not dest.exists():
             convert(out / "raw" / f"AGC{r['AGCNr']}.txt", dest, float(r["Vhelio"]), v_min=V_MIN)
+        n_good = int(np.sum(np.isfinite(np.loadtxt(dest, ndmin=2)[:, 1]))) if dest.stat().st_size else 0
+        if n_good < MIN_CHANNELS:  # source inside the Galactic HI cut, or a nearly empty window
+            short.append(r["AGCNr"])
+            continue
         lines.append(f"spectra/AGC{r['AGCNr']}.txt AGC{r['AGCNr']}")
     (out / "spectra.txt").write_text("\n".join(lines) + "\n")
-    (out / "sample.json").write_text(json.dumps({"n": args.n, "seed": args.seed, "missing": missing,
+    print(f"{len(short)} windows with fewer than {MIN_CHANNELS} usable channels skipped")
+    (out / "sample.json").write_text(json.dumps({"n": args.n, "seed": args.seed, "missing": missing + short,
                                                  "agc": [r["AGCNr"] for r in rows]}))  # fmt: skip
     (out / "alfalfa.yaml").write_text(CONFIG)
     subprocess.run(["hiprofile", "fit", "spectra.txt", "--config", "alfalfa.yaml", "--jobs", str(args.jobs),
