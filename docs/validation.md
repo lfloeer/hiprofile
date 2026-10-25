@@ -3,9 +3,12 @@
 Everything on this page comes from runs of `benchmarks/validate_all.sh` on
 a 4-core machine with the default configuration (full mode, SMC sampler,
 N ≤ 2, K ≤ 3, RFI pre-stage, Δv ~ Gamma(2.3, 83 km/s), f ~ Beta(1, 3)),
-5 km/s channels unless stated otherwise. The fits of the SBC, detection,
-misspecification, bias and ALFALFA stages were made at commit 2724f8a (the
-Δv prior); later commits only add the Springob et al. (2005) widths, which
+5 km/s channels unless stated otherwise. Detection and misspecification
+were refitted at 0ba7787, after two fixes found on bright ALFALFA spectra
+(the orthant probability of two amplitudes far in the tail, 8433605) and
+with the `residual_structure` flag; the SBC, bias and ALFALFA fits were made
+at commit 2724f8a (the Δv prior), and later commits only add the Springob
+et al. (2005) widths, which
 `benchmarks/add_springob.py` computed from the stored spectra and
 baselines (the naive values are reproduced exactly), and the Hanning bias
 run. The low-S/N bias decomposition (`benchmarks/w20_bias.py`) ran at
@@ -132,7 +135,7 @@ automatic flux-prior scale.
 |---|---|---|
 | false positives, P(detect) > 0.5 / 0.9 | 0 of 77 / 0 | 83 % / 83 % |
 | completeness S/N 3–5 / 5–8 / ≥ 8 | 0.55 / 0.94 / 1.00 | 0.90 / 1.00 / 1.00 |
-| flagged | 4.5 % | 87 % |
+| flagged | 5.5 % | 87 % |
 
 Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
 
@@ -144,8 +147,9 @@ Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
 
 * **N = 0 and N = 1** are separated cleanly: no false positive at any
   threshold, and no single line split into two. Without the pre-stage the
-  RFI spikes are fitted as lines (83 % false positives, 62 % flagged
-  `unresolved`); its higher "completeness" is the same effect.
+  RFI spikes are fitted as lines (83 % false positives, 64 % flagged
+  `unresolved`, 48 % `residual_structure`); its higher "completeness" is
+  the same effect.
 * **The completeness** at S/N 3–5 is that of the SBC, which has no RFI, so
   the pre-stage costs none.
 * **N = 2.** Of the 18 pairs with both components at S/N > 6 and separated
@@ -171,19 +175,20 @@ scale.
 
 | set | flagged | W50 bias / scatter [km/s] | 68 % coverage of W50 | W50 scatter naive / Springob | W20 bias / scatter: Bayes, naive, Springob |
 |---|---|---|---|---|---|
-| clean | 6 % | 0.6 / 4.7 | 0.75 | 11.4 / 8.3 | 1.2 / 4.4, 14.5 / 23.7, 3.5 / 6.8 |
-| template | 4 % | −1.5 / 6.9 | 0.69 | 9.4 / 11.4 | −0.4 / 7.7, 8.1 / 20.7, −1.1 / 12.7 |
-| sine baseline | 98 % | −1.2 / 27.6 | 0.30 | 26.3 / 27.7 | −1.4 / 27.0, 6.4 / 58.7, −0.6 / 37.1 |
-| RFI unmasked | 100 % | −103 / 113 | 0.20 | 106 / 67 | −105 / 129, −132 / 144, −35 / 69 |
-| baseline prior 50 × too wide | 9 % | 0.5 / 4.8 | 0.71 | 13.3 / 8.0 | 0.2 / 7.0, 26.1 / 38.2, 1.1 / 13.5 |
+| clean | 7 % | 0.6 / 4.7 | 0.75 | 11.4 / 8.3 | 1.2 / 4.4, 14.5 / 23.7, 3.5 / 6.8 |
+| template | 4 % | −1.5 / 6.9 | 0.69 | 9.4 / 11.4 | −0.4 / 7.7, 8.2 / 20.7, −1.1 / 12.7 |
+| sine baseline | 100 % | −0.7 / 24.7 | 0.35 | 25.9 / 25.0 | −1.0 / 24.6, 7.0 / 52.7, −0.4 / 35.8 |
+| RFI unmasked | 100 % | −104 / 110 | 0.16 | 106 / 77 | −106 / 128, −142 / 127, −39 / 67 |
+| baseline prior 50 × too wide | 8 % | 0.7 / 4.7 | 0.70 | 13.3 / 8.0 | 0.3 / 7.2, 26.1 / 38.2, 1.1 / 13.5 |
 
 * The model describes the galaxy-like templates well enough that the widths
   stay unbiased and calibrated, with less scatter than either classical
   method, which see the same profiles.
 * When the model is wrong the posteriors are overconfident, as any
-  posterior of a wrong model is, but the flags catch it: `ppp` and
-  `residual_acf` mark almost every sine-baseline fit; `ppp`, `prior_edge`,
-  `unresolved` and `wiggle` mark the RFI fits. Unmasked RFI hurts the
+  posterior of a wrong model is, but the flags catch it:
+  `residual_structure` marks every sine-baseline fit and `ppp` 96 % of
+  them; `ppp`, `prior_edge`, `unresolved`, `residual_structure` (89 %) and
+  `wiggle` mark the RFI fits. Unmasked RFI hurts the
   Springob widths least, because a spike rarely lies on a flank; it is
   still the flagged fits that tell the user something is wrong.
 * **A wrong baseline prior** leaves the line parameters unbiased and
