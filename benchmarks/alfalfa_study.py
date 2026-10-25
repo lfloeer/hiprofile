@@ -87,7 +87,8 @@ def convert(raw: Path, dest: Path, cz: float, half_window: float = 1000.0, v_min
 
     Column 3 is the baseline-subtracted flux everywhere; column 4, the subtracted
     baseline, reads '*****' where it overflows its format, which does not mark bad
-    data. ``v_min`` cuts channels below that velocity (Galactic HI near 0 km/s).
+    data. Blanked channels carry a flux of exactly 0 and are written as NaN, which
+    the fit masks. ``v_min`` cuts channels below that velocity (Galactic HI near 0 km/s).
     """
     rows = []
     for line in raw.read_text().splitlines():
@@ -102,7 +103,7 @@ def convert(raw: Path, dest: Path, cz: float, half_window: float = 1000.0, v_min
     o = np.argsort(v[sel])
     np.savetxt(
         dest,
-        np.c_[v[sel][o], a[sel, 1][o] / 1000.0],
+        np.c_[v[sel][o], np.where(a[sel, 1][o] == 0.0, np.nan, a[sel, 1][o] / 1000.0)],
         header=f"{raw.stem}: radio heliocentric velocity [km/s], flux density [Jy]; ALFALFA alpha.40 via NED",
         fmt="%.4f %.6f",
     )
