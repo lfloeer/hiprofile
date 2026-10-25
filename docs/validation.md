@@ -3,11 +3,12 @@
 Everything on this page comes from runs of `benchmarks/validate_all.sh` on
 a 4-core machine with the default configuration (full mode, SMC sampler,
 N ≤ 2, K ≤ 3, RFI pre-stage, Δv ~ Gamma(2.3, 83 km/s), f ~ Beta(1, 3)),
-5 km/s channels unless stated otherwise. Detection and misspecification
-were refitted at 0ba7787, after two fixes found on bright ALFALFA spectra
-(the orthant probability of two amplitudes far in the tail, 8433605) and
-with the `residual_structure` flag; the SBC, bias and ALFALFA fits were made
-at commit 2724f8a (the Δv prior), and later commits only add the Springob
+5 km/s channels unless stated otherwise. SBC, detection and
+misspecification were refitted at 0ba7787, after two fixes found on bright
+ALFALFA spectra (the orthant probability of two amplitudes far in the tail,
+8433605) and with the `residual_structure` flag; the SBC came out
+identical apart from the flags. The bias and ALFALFA fits were made at
+commit 2724f8a (the Δv prior), and later commits only add the Springob
 et al. (2005) widths, which
 `benchmarks/add_springob.py` computed from the stored spectra and
 baselines (the naive values are reproduced exactly), and the Hanning bias
@@ -93,9 +94,10 @@ the right answer for terms the data cannot see. This calibration holds when
 the baseline prior matches the baselines; Stage 3 shows what happens when
 it does not.
 
-**Flags.** 12.1 % of the fits carry a flag: `prior_edge` 5.5 % (Δv_rand at
+**Flags.** 12.2 % of the fits carry a flag: `prior_edge` 5.5 % (Δv_rand at
 its 4 km/s bound for faint, narrow lines), `prior_dominated` 3.4 %,
-`wiggle` 2.1 %, `multimodal` 1.3 %, `ppp` 1.1 %.
+`wiggle` 2.1 %, `multimodal` 1.3 %, `ppp` 1.1 %, `residual_structure` 0.1 % (its
+calibrated false-alarm rate).
 
 The same simulations measured against the truth (726 detected, N = 1;
 median error and robust scatter):
