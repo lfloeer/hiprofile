@@ -1,0 +1,999 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Bayesian fitting of global HI line profiles">
+      
+      
+      
+      
+        <link rel="prev" href="../validation/">
+      
+      
+        <link rel="next" href="../legacy/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>ALFALFA α.40 refitted - hiprofile</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#alfalfa-40-refitted" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="hiprofile" class="md-header__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hiprofile
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ALFALFA α.40 refitted
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="hiprofile" class="md-nav__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hiprofile
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../priors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Priors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outputs and flags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ALFALFA α.40 refitted
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ALFALFA α.40 refitted
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disagreements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Disagreements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Disagreements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-positive-profile-on-a-negative-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A positive profile on a negative baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catalogue-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Catalogue columns
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy code (Phase 0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disagreements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Disagreements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Disagreements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-positive-profile-on-a-negative-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A positive profile on a negative baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catalogue-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Catalogue columns
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="alfalfa-40-refitted">ALFALFA α.40 refitted<a class="headerlink" href="#alfalfa-40-refitted" title="Permanent link">&para;</a></h1>
+<p>All 15 041 sources with HIcode 1 or 2 of the ALFALFA α.40 catalogue
+(Haynes et al. 2011) were refitted with hiprofile and compared with the
+catalogue, source by source. The result is <code>data/alfalfa_a40.csv</code> (one row
+per source, columns below) with <code>data/alfalfa_a40_summary.json</code>.</p>
+<pre><code class="language-bash">python benchmarks/alfalfa_survey.py fit --out DIR --n 0 --jobs 4
+python benchmarks/alfalfa_survey.py compare --out DIR --catalog data/alfalfa_a40.csv --figures docs/img
+</code></pre>
+<p><code>fit</code> downloads the spectra from NED (Hanning smoothed, baseline
+subtracted, 5.2 km/s channels), cuts ±1000 km/s around the catalogue
+velocity, and fits them with <code>model.response: boxcar+hanning</code>, N ≤ 2 and
+otherwise the default configuration. Fits at 0ba7787 (median 10.6 s per
+spectrum on one core, about 44 h of CPU in total), spectrum conversion at
+d114eb0; the 120 spectra of the follow-up below were refitted at d053ea5
+with the current defaults (symmetric outlier background, negative runs
+masked, components contained in the window).
+Downloads and fits resume where they stopped.</p>
+<p><strong>Data preparation.</strong> Three properties of the NED files matter:</p>
+<ul>
+<li>Blanked channels carry a flux of exactly 0 (14 % of the spectra have
+  some in the window, median 22 channels); they are masked.</li>
+<li><code>*****</code> marks a value that overflows its column. In the baseline column it
+  is harmless, in the flux column (over 10 Jy) the channel is masked.</li>
+<li>Galactic HI and the high-velocity clouds reach a few hundred km/s and are
+  Jy-bright; the window starts at 350 km/s. 2 sources leave fewer than 64
+  usable channels and are skipped, 3 have no spectrum in NED.</li>
+</ul>
+<p><img alt="ALFALFA α.40 refit against the catalogue" src="../img/alfalfa_survey.png" /></p>
+<h2 id="results">Results<a class="headerlink" href="#results" title="Permanent link">&para;</a></h2>
+<p>15 036 spectra fitted, none failed; 14 824 detected (P(detect) &gt; 0.5).</p>
+<table>
+<thead>
+<tr>
+<th>ALFALFA S/N</th>
+<th>sources</th>
+<th>detected</th>
+<th>W50 / catalogue − 1</th>
+<th>naive</th>
+<th>Springob</th>
+<th>S / catalogue − 1</th>
+<th>Δcz [km/s]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5–6.5</td>
+<td>2244</td>
+<td>98.9 %</td>
+<td>+4.8 % ± 19 %</td>
+<td>+0.3 % ± 17 %</td>
+<td>+1.8 % ± 22 %</td>
+<td>+0.9 % ± 13 %</td>
+<td>+0.4 ± 13.2</td>
+</tr>
+<tr>
+<td>6.5–8</td>
+<td>3353</td>
+<td>99.8 %</td>
+<td>+2.6 % ± 11 %</td>
+<td>−0.5 % ± 10 %</td>
+<td>+2.4 % ± 14 %</td>
+<td>0.0 % ± 8 %</td>
+<td>+0.3 ± 7.3</td>
+</tr>
+<tr>
+<td>8–12</td>
+<td>4099</td>
+<td>99.8 %</td>
+<td>+1.5 % ± 6.5 %</td>
+<td>−0.8 % ± 5.7 %</td>
+<td>+2.6 % ± 6.1 %</td>
+<td>0.0 % ± 4.7 %</td>
+<td>+0.6 ± 4.9</td>
+</tr>
+<tr>
+<td>12–20</td>
+<td>2407</td>
+<td>99.6 %</td>
+<td>+0.5 % ± 3.5 %</td>
+<td>−1.1 % ± 3.7 %</td>
+<td>+1.3 % ± 3.0 %</td>
+<td>−0.2 % ± 2.9 %</td>
+<td>+0.4 ± 2.9</td>
+</tr>
+<tr>
+<td>20–50</td>
+<td>1475</td>
+<td>99.4 %</td>
+<td>−0.5 % ± 2.0 %</td>
+<td>−1.1 % ± 2.3 %</td>
+<td>−0.4 % ± 1.6 %</td>
+<td>−0.2 % ± 1.7 %</td>
+<td>+0.5 ± 1.8</td>
+</tr>
+<tr>
+<td>&gt; 50</td>
+<td>501</td>
+<td>96.0 %</td>
+<td>−1.0 % ± 1.8 %</td>
+<td>−0.9 % ± 1.7 %</td>
+<td>−1.3 % ± 1.1 %</td>
+<td>−0.6 % ± 1.5 %</td>
+<td>+0.5 ± 1.4</td>
+</tr>
+</tbody>
+</table>
+<p>Median and robust scatter over the detected sources; "naive" and
+"Springob" are the classical widths that hiprofile measures on the same
+spectra around the fitted component (see <a href="../validation/">validation</a>).</p>
+<ul>
+<li><strong>Fluxes and velocities agree</strong> with the catalogue to better than 1 % and
+  1 km/s in the median at every S/N.</li>
+<li><strong>Widths</strong> agree to about 1 % from S/N 12. Below, the posterior median is
+  3–5 % wider than the catalogue, where the naive measurement on the same
+  spectra is not: the shrinkage of faint lines toward the typical width of
+  the prior (see the conditional-bias study in the validation).</li>
+<li><strong>Detection:</strong> 99.5 % of the HIcode 1 and 95.0 % of the HIcode 2 sources.
+  The undetected bright sources lie below cz = 350 km/s, behind the
+  Galactic cut.</li>
+<li><strong>The W50 pull</strong> (difference over the combined errors) is narrower than a
+  unit normal (robust width ≈ 0.55): both measurements see the same noise,
+  so their difference is smaller than independent errors would make it.</li>
+<li><strong>N = 2</strong> is preferred for 7 % of the HIcode 1 sources, rising to most
+  sources above S/N 300: bright profiles show more structure than the
+  model, or a neighbour is in the window.</li>
+<li><strong>Flags:</strong> 20.5 % of the detections; <code>ppp</code> 7.4 %, <code>prior_dominated</code>
+  6.1 %, <code>prior_edge</code> 5.5 %, <code>wiggle</code> 3.5 %, <code>multimodal</code> 2.7 %,
+  <code>residual_structure</code> 1.6 %, <code>rfi</code> 0.6 %.</li>
+</ul>
+<h2 id="disagreements">Disagreements<a class="headerlink" href="#disagreements" title="Permanent link">&para;</a></h2>
+<p>15 % of the detections differ from the catalogue W50 by more than 30 %
+(10 % of HIcode 1 and 34 % of HIcode 2 above cz = 1000 km/s), 7.4 % in cz
+by more than 40 km/s. 39 % of them are flagged, against 17 % of the rest.</p>
+<p><img alt="The twelve largest W50 differences" src="../img/alfalfa_survey_outliers.png" /></p>
+<p>The largest differences fall into a few groups:</p>
+<ul>
+<li><strong>A bright neighbour.</strong> The catalogue source is a faint, narrow line next
+  to a much brighter galaxy in the same spectrum; with N = 1 the fit
+  describes the bright one (e.g. AGC 227952, 732898). These need the
+  maps the ALFALFA team used; a single spectrum cannot tell which line
+  belongs to the position.</li>
+<li><strong>Strong narrow spikes</strong> that the RFI pre-stage leaves unmasked and the fit
+  takes for the line (AGC 233790, 721520, 181695); mostly flagged
+  <code>unresolved</code>, <code>ppp</code> or <code>prior_edge</code>.</li>
+<li><strong>Faint HIcode 2 lines</strong> where narrow and wide solutions compete
+  (<code>prior_dominated</code>, <code>multimodal</code>), and strongly lopsided profiles where
+  the catalogue measures each horn at half its own height.</li>
+<li><strong>Nearby sources</strong> (cz &lt; 1000 km/s, 299 detections): N = 2 in 16 % and
+  W50 differences above 30 % in 19 %, from the wing of Galactic HI and from
+  extended, bright galaxies.</li>
+</ul>
+<h3 id="a-positive-profile-on-a-negative-baseline">A positive profile on a negative baseline<a class="headerlink" href="#a-positive-profile-on-a-negative-baseline" title="Permanent link">&para;</a></h3>
+<p>Every component is positive by construction (S ≥ 0, f in [0, 1],
+|α| ≤ 1, positive kernels), but in 0.4 % of the detections a profile sat on
+a baseline more than 5 rms below zero, so that the sum dipped below −3 rms:
+the fit reproduced a dip next to strong continuum, or an RFI feature, as
+"profile minus baseline". In 0.6 % a component reached the edge of the
+window. The RFI pre-stage found these dips (outlier probability ≈ 1) but
+kept them, because runs longer than <code>rfi.max_width</code> (20 km/s) are
+protected as possible lines. Two changes followed: the protection is now
+limited to runs above the pre-stage model, with a symmetric outlier
+background, and every profile component must lie entirely inside the window
+(<code>priors.contain</code>, see <a href="../priors/">Priors</a>). On the 120 affected spectra
+(detected fractions; the last row counts detections):</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>before</th>
+<th>symmetric RFI pre-stage</th>
+<th>and contained</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>profile and baseline cancel</td>
+<td>45 %</td>
+<td>21 %</td>
+<td>15 %</td>
+</tr>
+<tr>
+<td>component at the window edge</td>
+<td>77 %</td>
+<td>53 %</td>
+<td>0 %</td>
+</tr>
+<tr>
+<td>N = 2</td>
+<td>73 %</td>
+<td>49 %</td>
+<td>30 %</td>
+</tr>
+<tr>
+<td>W50 / S / cz off by &gt; 30 % / 30 % / 40 km/s</td>
+<td>53 / 60 / 51 %</td>
+<td>40 / 43 / 34 %</td>
+<td>39 / 36 / 36 %</td>
+</tr>
+<tr>
+<td>the same for the 96 sources above cz = 1000 km/s</td>
+<td></td>
+<td>35 / 33 / 30</td>
+<td>30 / 28 / 26</td>
+</tr>
+</tbody>
+</table>
+<p>Above 1000 km/s, about a dozen sources whose fit had settled on structure
+at the window edge, 700–1000 km/s from the catalogue line, now find the
+line (e.g. AGC 748902, 222316, 7286). The 24 sources below 1000 km/s sit at
+or behind the Galactic cut at 350 km/s, where a line at the catalogue
+velocity no longer fits inside the window; the fit then describes the wing
+of Galactic HI with a broad component (14 detections, 13 of them flagged),
+and the detected fraction among them drops from 79 % to 58 %. These sources
+need the Galactic emission modelled, not a single-spectrum fit.</p>
+<p>A random sample of 500 other sources is unchanged by both steps (detected
+98.2 % and 98.4 %, W50 scatter 7.0 % and 7.1 %, 7.2 % before), and narrow
+test lines (Δv = 20–50 km/s, S/N 5–8) lose no channel to the mask. The rest
+of the catalogue keeps the earlier fits; refitting all of it with the new
+defaults changes the masks of about 15 % of the spectra, mostly by one or
+two channels.</p>
+<h2 id="catalogue-columns">Catalogue columns<a class="headerlink" href="#catalogue-columns" title="Permanent link">&para;</a></h2>
+<p><code>data/alfalfa_a40.csv</code>, widths and fluxes on the cz scale of the catalogue:</p>
+<table>
+<thead>
+<tr>
+<th>columns</th>
+<th>content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agc</code>, <code>code</code>, <code>snr_cat</code>, <code>rms_cat</code>, <code>cz_cat</code>, <code>W50_cat</code>, <code>W50_cat_err</code>, <code>S_cat</code>, <code>S_cat_err</code></td>
+<td>catalogue values</td>
+</tr>
+<tr>
+<td><code>status</code>, <code>p_detect</code>, <code>best_n</code>, <code>best_k</code>, <code>runtime</code>, <code>flagged</code>, <code>flags</code></td>
+<td>fit summary</td>
+</tr>
+<tr>
+<td><code>component</code></td>
+<td>the fitted component nearest the catalogue velocity, which all values below describe</td>
+</tr>
+<tr>
+<td><code>cz</code>, <code>W50</code>, <code>W20</code>, <code>S</code> and <code>_p16</code>, <code>_p84</code></td>
+<td>posterior median and 68 % interval</td>
+</tr>
+<tr>
+<td><code>delta_v</code>, <code>delta_v_rand</code>, <code>alpha</code>, <code>f</code>, <code>constraint_delta_v</code></td>
+<td>profile parameters (medians) and how far the data narrow the Δv prior</td>
+</tr>
+<tr>
+<td><code>rms</code></td>
+<td>noise per channel [mJy]</td>
+</tr>
+<tr>
+<td><code>W50_naive</code>, <code>W20_naive</code>, <code>S_naive</code>, <code>W50_springob</code>, <code>W20_springob</code></td>
+<td>classical measurements on the same spectrum</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

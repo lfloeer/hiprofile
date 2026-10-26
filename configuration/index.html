@@ -1,0 +1,1206 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Bayesian fitting of global HI line profiles">
+      
+      
+      
+      
+        <link rel="prev" href="../outputs/">
+      
+      
+        <link rel="next" href="../validation/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Configuration - hiprofile</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuration-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="hiprofile" class="md-header__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hiprofile
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="hiprofile" class="md-nav__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hiprofile
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../priors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Priors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outputs and flags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fit-configuration-hiprofile-fit-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fit configuration (hiprofile fit --config)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-configuration-hiprofile-simulate-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation configuration (hiprofile simulate --config)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alfalfa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ALFALFA α.40 refitted
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy code (Phase 0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fit-configuration-hiprofile-fit-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fit configuration (hiprofile fit --config)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-configuration-hiprofile-simulate-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation configuration (hiprofile simulate --config)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="configuration-reference">Configuration reference<a class="headerlink" href="#configuration-reference" title="Permanent link">&para;</a></h1>
+<p>Generated from <code>hiprofile.config</code> by <code>docs/gen_config_reference.py</code>. Every key is optional.
+The validated configuration, the code version and the seed are written into every result file.</p>
+<h2 id="fit-configuration-hiprofile-fit-config">Fit configuration (<code>hiprofile fit --config</code>)<a class="headerlink" href="#fit-configuration-hiprofile-fit-config" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>type</th>
+<th>default</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model.n_max</code></td>
+<td><code>int</code></td>
+<td><code>2</code></td>
+<td>Largest number of profile components</td>
+</tr>
+<tr>
+<td><code>model.k_min</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>model.k_max</code></td>
+<td><code>int</code></td>
+<td><code>3</code></td>
+<td>Largest Chebyshev baseline order</td>
+</tr>
+<tr>
+<td><code>model.n_rfi</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Narrow RFI components added to every model</td>
+</tr>
+<tr>
+<td><code>model.poisson_rate</code></td>
+<td><code>float</code></td>
+<td><code>0.5</code></td>
+<td>Poisson prior mean of N</td>
+</tr>
+<tr>
+<td><code>model.response</code></td>
+<td><code>str</code></td>
+<td><code>boxcar</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>model.supersample</code></td>
+<td><code>int \| None</code></td>
+<td><code>null</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>priors.v_ctr</code></td>
+<td><code>Range</code></td>
+<td><code>{'kind': 'uniform'}</code></td>
+<td>Line centre [km/s]. Uniform bounds default to the band minus <code>v_margin</code>.</td>
+</tr>
+<tr>
+<td><code>priors.v_margin</code></td>
+<td><code>float</code></td>
+<td><code>0.05</code></td>
+<td>Band fraction excluded at each edge</td>
+</tr>
+<tr>
+<td><code>priors.contain</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td>Profile components lie entirely inside the band minus <code>v_margin</code>: v_ctr +- (delta_v / 2 + 3 delta_v_rand); the centre is uniform where the whole line fits, the widths keep their priors and are truncated only where no line fits. Needs a uniform v_ctr prior.</td>
+</tr>
+<tr>
+<td><code>priors.delta_v</code></td>
+<td><code>Range</code></td>
+<td><code>{'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}</code></td>
+<td>Rotational width [km/s]: gamma with shape 2.3 and scale 83 km/s (median 166, 16-84 % 77-305 km/s), truncated at 800 km/s; fitted so that the predicted W50 matches the 25 434 ALFALFA alpha.100 detections (benchmarks/fit_width_prior.py)</td>
+</tr>
+<tr>
+<td><code>priors.delta_v_rand</code></td>
+<td><code>Range</code></td>
+<td><code>{'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}</code></td>
+<td>Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s)</td>
+</tr>
+<tr>
+<td><code>priors.alpha</code></td>
+<td><code>Range</code></td>
+<td><code>{'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}</code></td>
+<td>Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14)</td>
+</tr>
+<tr>
+<td><code>priors.f</code></td>
+<td><code>Range</code></td>
+<td><code>{'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}</code></td>
+<td>Solid-body fraction: Beta(1, 3), density 3 (1 - f)^2, median 0.21, P(f &gt; 0.7) = 2.7 %; fitted to the 34 THINGS galaxies (median 0.15, 3 % above 0.7), which reject a uniform prior</td>
+</tr>
+<tr>
+<td><code>priors.amplitude_scale</code></td>
+<td><code>Union[float, Literal['auto']]</code></td>
+<td><code>auto</code></td>
+<td>Std of the half-normal prior on the integrated flux S of each component [flux * km/s]. Fix it for a survey so that evidences are comparable between spectra.</td>
+</tr>
+<tr>
+<td><code>priors.baseline_scale</code></td>
+<td><code>Union[float, Literal['auto']]</code></td>
+<td><code>auto</code></td>
+<td>Std of the Chebyshev coefficients; auto = 10 x noise rms</td>
+</tr>
+<tr>
+<td><code>priors.baseline_mean</code></td>
+<td><code>list[float] \| None</code></td>
+<td><code>null</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>priors.baseline_cov</code></td>
+<td><code>list[list[float]] \| None</code></td>
+<td><code>null</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>priors.rfi_sigma_channels</code></td>
+<td><code>tuple[float, float]</code></td>
+<td><code>(0.3, 1.0)</code></td>
+<td>Width range of RFI components in channels</td>
+</tr>
+<tr>
+<td><code>priors.noise_scale</code></td>
+<td><code>tuple[float, float] \| None</code></td>
+<td><code>null</code></td>
+<td>Fit a global noise scale factor with log-uniform prior in this range</td>
+</tr>
+<tr>
+<td><code>noise.sigma</code></td>
+<td><code>Literal['auto', 'input', 'estimate']</code></td>
+<td><code>auto</code></td>
+<td>auto: use the input sigma column if present, else estimate</td>
+</tr>
+<tr>
+<td><code>noise.correlation</code></td>
+<td><code>str \| list[float]</code></td>
+<td><code>auto</code></td>
+<td>auto | estimate | white | hanning | hanning-decimated | [rho_1, rho_2, ...]; a '+white' suffix (e.g. hanning+white) adds a white component whose fraction is estimated from the data. auto: the correlation of the channel smoothing in model.response (hanning, kernel) plus an estimated white part, white without smoothing. estimate: rho_1..rho_m measured on the residuals of the robust pre-fit (any smoothing, regridding or spectrometer window)</td>
+</tr>
+<tr>
+<td><code>noise.signal_free</code></td>
+<td><code>list[tuple[float, float]] \| None</code></td>
+<td><code>null</code></td>
+<td>Velocity ranges used to estimate sigma</td>
+</tr>
+<tr>
+<td><code>rfi.prefit</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi.background</code></td>
+<td><code>Literal['positive', 'symmetric']</code></td>
+<td><code>symmetric</code></td>
+<td>Outlier background of the pre-stage: symmetric also catches dips below the model (artefacts next to strong continuum, baseline-subtraction residues); positive only RFI-like excess</td>
+</tr>
+<tr>
+<td><code>rfi.threshold</code></td>
+<td><code>float</code></td>
+<td><code>0.5</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi.action</code></td>
+<td><code>Literal['mask', 'inflate']</code></td>
+<td><code>mask</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi.n_iter</code></td>
+<td><code>int</code></td>
+<td><code>8</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi.flag_fraction</code></td>
+<td><code>float</code></td>
+<td><code>0.05</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi.min_sigma_channels</code></td>
+<td><code>float</code></td>
+<td><code>2.0</code></td>
+<td>Smallest Delta v_rand (in channels) of the line model in the pre-stage, so that a spike of one or two channels cannot be absorbed as a line</td>
+</tr>
+<tr>
+<td><code>rfi.close_holes</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td>Also mask a single channel between two masked ones</td>
+</tr>
+<tr>
+<td><code>rfi.mask_negative_runs</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td>Mask runs of outliers below the pre-stage model whatever their length (max_width only protects positive runs, which may be a line); needs background: symmetric</td>
+</tr>
+<tr>
+<td><code>rfi.max_width</code></td>
+<td><code>float \| None</code></td>
+<td><code>20.0</code></td>
+<td>Longest run of outlier channels treated as RFI, in km/s (gaps of up to two channels included; at least one channel): a longer run is signal the one-component pre-stage cannot explain, typically a second line, and stays in the fit. In velocity so that 1 km/s and 15 km/s channels behave alike; null: no limit</td>
+</tr>
+<tr>
+<td><code>sampler.mode</code></td>
+<td><code>Literal['quick', 'full', 'check']</code></td>
+<td><code>full</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sampler.backend</code></td>
+<td><code>Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']</code></td>
+<td><code>smc</code></td>
+<td>smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower</td>
+</tr>
+<tr>
+<td><code>sampler.check_backend</code></td>
+<td><code>Literal['nautilus', 'dynesty', 'ultranest', 'smc']</code></td>
+<td><code>nautilus</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sampler.n_live</code></td>
+<td><code>int</code></td>
+<td><code>400</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sampler.gate_margin</code></td>
+<td><code>float \| None</code></td>
+<td><code>5.0</code></td>
+<td>Skip nested sampling for N when its quick evidence is this many nats below the best model with fewer components (null: always sample)</td>
+</tr>
+<tr>
+<td><code>sampler.n_seeds</code></td>
+<td><code>int</code></td>
+<td><code>3</code></td>
+<td>Warm starts of the quick stage for N &gt;= 2: the N-1 solution plus a new component on each of the strongest residual features (random starts rarely hit a second line)</td>
+</tr>
+<tr>
+<td><code>sampler.init_fraction</code></td>
+<td><code>float</code></td>
+<td><code>0.25</code></td>
+<td>Fraction of the SMC particles drawn from the quick-stage posterior instead of the prior (defensive mixture with importance weights, the evidence stays exact); 0 disables</td>
+</tr>
+<tr>
+<td><code>sampler.options</code></td>
+<td><code>dict[str, Any]</code></td>
+<td><code>{}</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sampler.likelihood_backend</code></td>
+<td><code>Literal['numpy', 'jax']</code></td>
+<td><code>numpy</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>diagnostics.ppp_min</code></td>
+<td><code>float</code></td>
+<td><code>0.01</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>diagnostics.wiggle_max</code></td>
+<td><code>float</code></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>diagnostics.structure_p</code></td>
+<td><code>float</code></td>
+<td><code>0.001</code></td>
+<td>Flag <code>residual_structure</code> when the whitened residuals have more power at low frequencies (0 &lt; f &lt;= structure_fmax) than the noise model allows at this p-value</td>
+</tr>
+<tr>
+<td><code>diagnostics.structure_fmax</code></td>
+<td><code>float</code></td>
+<td><code>0.1</code></td>
+<td>Upper frequency of the residual-structure test [cycles per channel]</td>
+</tr>
+<tr>
+<td><code>diagnostics.edge_mass</code></td>
+<td><code>float</code></td>
+<td><code>0.2</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>diagnostics.min_ess</code></td>
+<td><code>float</code></td>
+<td><code>500.0</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>diagnostics.logz_sigma</code></td>
+<td><code>float</code></td>
+<td><code>3.0</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>diagnostics.min_w50_channels</code></td>
+<td><code>float</code></td>
+<td><code>2.0</code></td>
+<td>Flag <code>unresolved</code> when a component's W50 is narrower than this many channels</td>
+</tr>
+<tr>
+<td><code>diagnostics.min_constraint</code></td>
+<td><code>float</code></td>
+<td><code>0.3</code></td>
+<td>Flag <code>prior_dominated</code> when the posterior 16-84 % width of delta_v is wider than (1 - min_constraint) times the prior width, i.e. the line width is not measured</td>
+</tr>
+<tr>
+<td><code>diagnostics.negative_fraction</code></td>
+<td><code>float</code></td>
+<td><code>0.5</code></td>
+<td>Flag when this fraction of amplitude draws is negative. Narrow profiles make ring and disk nearly degenerate, so 10 % (roadmap value) flags most of them.</td>
+</tr>
+<tr>
+<td><code>diagnostics.multimodal_weight</code></td>
+<td><code>float</code></td>
+<td><code>0.1</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>output.n_posterior</code></td>
+<td><code>int</code></td>
+<td><code>2000</code></td>
+<td>Posterior samples stored per model</td>
+</tr>
+<tr>
+<td><code>output.plots</code></td>
+<td><code>Literal['none', 'flagged', 'sample', 'all']</code></td>
+<td><code>sample</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>output.plot_fraction</code></td>
+<td><code>float</code></td>
+<td><code>0.02</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>output.catalog_format</code></td>
+<td><code>Literal['fits', 'parquet', 'csv']</code></td>
+<td><code>fits</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>seed</code></td>
+<td><code>int</code></td>
+<td><code>20141</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Prior ranges (<code>priors.v_ctr</code>, <code>priors.delta_v</code>, ...) take <code>kind</code> (<code>uniform</code>, <code>loguniform</code>,
+<code>normal</code>), <code>low</code>/<code>high</code> or <code>mean</code>/<code>std</code>.</p>
+<h2 id="simulation-configuration-hiprofile-simulate-config">Simulation configuration (<code>hiprofile simulate --config</code>)<a class="headerlink" href="#simulation-configuration-hiprofile-simulate-config" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>type</th>
+<th>default</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>n_chan</code></td>
+<td><code>int</code></td>
+<td><code>512</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>dv</code></td>
+<td><code>float</code></td>
+<td><code>5.0</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>v0</code></td>
+<td><code>float</code></td>
+<td><code>500.0</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>response</code></td>
+<td><code>str</code></td>
+<td><code>boxcar</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>supersample</code></td>
+<td><code>int</code></td>
+<td><code>8</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>n_components</code></td>
+<td><code>int \| list[float]</code></td>
+<td><code>1</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>profiles</code></td>
+<td><code>Literal['model', 'template', 'mixed']</code></td>
+<td><code>model</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>template_files</code></td>
+<td><code>list[str]</code></td>
+<td><code>[]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>priors</code></td>
+<td><code>Priors</code></td>
+<td><code>{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'contain': True, 'delta_v': {'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>flux</code></td>
+<td><code>Literal['prior', 'snr']</code></td>
+<td><code>snr</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>snr_range</code></td>
+<td><code>tuple[float, float]</code></td>
+<td><code>(3.0, 100.0)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>noise_sigma</code></td>
+<td><code>float</code></td>
+<td><code>0.01</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>noise_correlation</code></td>
+<td><code>Literal['white', 'hanning']</code></td>
+<td><code>white</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>noise_kernel</code></td>
+<td><code>list[float] \| None</code></td>
+<td><code>null</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>baseline</code></td>
+<td><code>Literal['none', 'chebyshev', 'sine']</code></td>
+<td><code>none</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>baseline_order</code></td>
+<td><code>int</code></td>
+<td><code>1</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>baseline_order_min</code></td>
+<td><code>int \| None</code></td>
+<td><code>null</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>baseline_scale</code></td>
+<td><code>float</code></td>
+<td><code>0.01</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sine_amplitude</code></td>
+<td><code>float</code></td>
+<td><code>0.5</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sine_period</code></td>
+<td><code>tuple[float, float]</code></td>
+<td><code>(100.0, 600.0)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi</code></td>
+<td><code>Literal['none', 'spikes', 'broad']</code></td>
+<td><code>none</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi_rate</code></td>
+<td><code>float</code></td>
+<td><code>0.01</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>rfi_amplitude</code></td>
+<td><code>tuple[float, float]</code></td>
+<td><code>(5.0, 50.0)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>write_sigma</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
