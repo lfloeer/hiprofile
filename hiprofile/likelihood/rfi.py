@@ -52,14 +52,20 @@ def _normal_logpdf(r: np.ndarray, s: np.ndarray) -> np.ndarray:
 
 
 def outlier_mask(
-    q: np.ndarray, threshold: float, close_holes: bool = True, max_width: int | None = 3
+    q: np.ndarray,
+    threshold: float,
+    close_holes: bool = True,
+    max_width: int | None = 3,
+    resid: np.ndarray | None = None,
 ) -> np.ndarray:
     """Channels to treat as RFI, from the outlier probabilities of the pre-stage.
 
     A single channel between two outliers is masked with them. A run of more
     than `max_width` outlier channels (gaps of up to two channels count as part
     of the run) is not RFI but signal the one-component model of the pre-stage
-    cannot explain, typically a second line, and stays in the fit.
+    cannot explain, typically a second line, and stays in the fit. With the
+    residuals of the pre-stage given, runs whose median residual is negative
+    are masked whatever their length: an emission line cannot produce them.
     """
     bad = q > threshold
     if bad.size < 3:
@@ -72,6 +78,8 @@ def outlier_mask(
         idx = np.flatnonzero(bad)
         for run in np.split(idx, np.flatnonzero(np.diff(idx) > 3) + 1):
             if run.size and run[-1] - run[0] + 1 > max_width:
+                if resid is not None and np.median(resid[run]) < 0:
+                    continue
                 bad[run[0] : run[-1] + 1] = False
     return bad
 

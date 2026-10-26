@@ -159,6 +159,11 @@ class RFIConfig(_Base):
         "spike of one or two channels cannot be absorbed as a line",
     )
     close_holes: bool = Field(True, description="Also mask a single channel between two masked ones")
+    mask_negative_runs: bool = Field(
+        False,
+        description="Mask runs of outliers below the pre-stage model whatever their length "
+        "(max_width only protects positive runs, which may be a line); needs background: symmetric",
+    )
     max_width: float | None = Field(
         20.0,
         gt=0,

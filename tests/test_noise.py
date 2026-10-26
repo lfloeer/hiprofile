@@ -91,3 +91,18 @@ def test_auto_correlation_follows_the_response_kernel():
     np.testing.assert_allclose(rho[:3], [1.0, 0.24 / 0.44, 0.04 / 0.44])
     assert white
     assert _correlation(Config()) == ("white", False)
+
+
+def test_negative_outlier_runs_are_masked_whatever_their_length():
+    """max_width protects long positive runs (possibly a line), not dips below the model."""
+    from hiprofile.likelihood.rfi import outlier_mask
+
+    q = np.zeros(60)
+    q[10:18] = 1.0  # 8 channels, longer than max_width
+    q[40:48] = 1.0
+    resid = np.zeros(60)
+    resid[10:18] = -5.0  # dip
+    resid[40:48] = +5.0  # bump: may be a narrow line
+    bad = outlier_mask(q, 0.5, max_width=4, resid=resid)
+    assert bad[10:18].all() and not bad[40:48].any()
+    assert not outlier_mask(q, 0.5, max_width=4).any()  # without residuals both are kept
