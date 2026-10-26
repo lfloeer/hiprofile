@@ -147,7 +147,11 @@ class NoiseConfig(_Base):
 
 class RFIConfig(_Base):
     prefit: bool = True
-    background: Literal["positive", "symmetric"] = "positive"
+    background: Literal["positive", "symmetric"] = Field(
+        "symmetric",
+        description="Outlier background of the pre-stage: symmetric also catches dips below the model "
+        "(artefacts next to strong continuum, baseline-subtraction residues); positive only RFI-like excess",
+    )
     threshold: float = Field(0.5, gt=0, lt=1)
     action: Literal["mask", "inflate"] = "mask"
     n_iter: int = Field(8, ge=1)
@@ -160,7 +164,7 @@ class RFIConfig(_Base):
     )
     close_holes: bool = Field(True, description="Also mask a single channel between two masked ones")
     mask_negative_runs: bool = Field(
-        False,
+        True,
         description="Mask runs of outliers below the pre-stage model whatever their length "
         "(max_width only protects positive runs, which may be a line); needs background: symmetric",
     )

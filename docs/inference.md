@@ -112,8 +112,9 @@ compared by evidence with a flat prior.
 1. **Pre-stage** (`rfi.prefit`): EM fit of profile + baseline with the outlier
    mixture of Hogg, Bovy & Lang (2010),
    $L_j = (1-P_b)\mathcal N(y_j\mid m_j,\sigma_j) + P_b B(y_j)$, with a broad
-   background $B$ that can be restricted to positive residuals. Output: outlier
-   probabilities $q_j$ (stored and plotted).
+   background $B$, symmetric by default (`rfi.background`; `positive`
+   restricts it to excess flux). Output: outlier probabilities $q_j$
+   (stored and plotted).
 2. **Main fit**: channels with $q_j$ above `rfi.threshold` are masked
    (`action: mask`) or their $\sigma$ inflated by $1/\sqrt{1-q_j}$
    (`action: inflate`). A single channel between two outliers is masked
@@ -128,7 +129,11 @@ mask. And a run of outlier channels longer than `rfi.max_width` (20 km/s,
 gaps of up to two channels included, at least one channel) is not RFI but
 signal the one-component pre-stage cannot explain, typically a second line
 or a narrow dwarf, and stays in the fit; broader RFI needs a larger value or
-`model.n_rfi`. The limit is in velocity so that 1 km/s and 15 km/s channels
+`model.n_rfi`. The limit protects only runs above the pre-stage model: a run
+below it cannot be emission and is masked whatever its length
+(`rfi.mask_negative_runs`). On ALFALFA spectra these are the dips next to
+strong continuum sources, which the main fit otherwise reproduced as a
+positive profile on a strongly negative baseline (see the ALFALFA page). The limit is in velocity so that 1 km/s and 15 km/s channels
 behave alike: at 15 km/s only single-channel spikes are RFI, and a line
 narrower than one channel cannot be told from one.
 `hiprofile validate --stage detection` measures the completeness with and

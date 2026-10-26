@@ -30,14 +30,14 @@ The validated configuration, the code version and the seed are written into ever
 | `noise.correlation` | `str \| list[float]` | `auto` | auto \| estimate \| white \| hanning \| hanning-decimated \| [rho_1, rho_2, ...]; a '+white' suffix (e.g. hanning+white) adds a white component whose fraction is estimated from the data. auto: the correlation of the channel smoothing in model.response (hanning, kernel) plus an estimated white part, white without smoothing. estimate: rho_1..rho_m measured on the residuals of the robust pre-fit (any smoothing, regridding or spectrometer window) |
 | `noise.signal_free` | `list[tuple[float, float]] \| None` | `null` | Velocity ranges used to estimate sigma |
 | `rfi.prefit` | `bool` | `True` |  |
-| `rfi.background` | `Literal['positive', 'symmetric']` | `positive` |  |
+| `rfi.background` | `Literal['positive', 'symmetric']` | `symmetric` | Outlier background of the pre-stage: symmetric also catches dips below the model (artefacts next to strong continuum, baseline-subtraction residues); positive only RFI-like excess |
 | `rfi.threshold` | `float` | `0.5` |  |
 | `rfi.action` | `Literal['mask', 'inflate']` | `mask` |  |
 | `rfi.n_iter` | `int` | `8` |  |
 | `rfi.flag_fraction` | `float` | `0.05` |  |
 | `rfi.min_sigma_channels` | `float` | `2.0` | Smallest Delta v_rand (in channels) of the line model in the pre-stage, so that a spike of one or two channels cannot be absorbed as a line |
 | `rfi.close_holes` | `bool` | `True` | Also mask a single channel between two masked ones |
-| `rfi.mask_negative_runs` | `bool` | `False` | Mask runs of outliers below the pre-stage model whatever their length (max_width only protects positive runs, which may be a line); needs background: symmetric |
+| `rfi.mask_negative_runs` | `bool` | `True` | Mask runs of outliers below the pre-stage model whatever their length (max_width only protects positive runs, which may be a line); needs background: symmetric |
 | `rfi.max_width` | `float \| None` | `20.0` | Longest run of outlier channels treated as RFI, in km/s (gaps of up to two channels included; at least one channel): a longer run is signal the one-component pre-stage cannot explain, typically a second line, and stays in the fit. In velocity so that 1 km/s and 15 km/s channels behave alike; null: no limit |
 | `sampler.mode` | `Literal['quick', 'full', 'check']` | `full` |  |
 | `sampler.backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']` | `smc` | smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower |
