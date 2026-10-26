@@ -18,6 +18,15 @@ With several profile components, the centres are ordered,
 v_ctr_1 < v_ctr_2 < ..., by mapping the cube to the order statistics of the
 uniform prior; the prior on the ordered set is N! / V^N, which equals the
 exchangeable prior with the labels removed.
+
+Containment (``priors.contain``, the default for a uniform centre prior): every
+profile component lies inside the band minus ``v_margin``, i.e.
+v_ctr +- (delta_v / 2 + CONTAIN_SIGMA delta_v_rand) does. The prior is built
+sequentially: delta_v_rand and then delta_v keep their shapes and are only
+truncated further where no line of that width fits, and the centre is uniform
+over the positions where the whole component fits. A fixed window therefore
+does not favour narrow lines. With several components the labels are ordered
+by this relative position r in [0, 1] instead of by v_ctr.
 """
 
 from __future__ import annotations
@@ -30,6 +39,7 @@ from scipy import special
 from hiprofile.config import Priors, Range
 
 NPROFILE = 5  # v_ctr, delta_v, delta_v_rand, alpha, f
+CONTAIN_SIGMA = 3.0  # half extent of a component: delta_v / 2 + CONTAIN_SIGMA delta_v_rand
 
 
 @dataclass(frozen=True)
@@ -69,6 +79,44 @@ class Bounds1D:
         lo = float(self._cdf(np.asarray(self.low))) if np.isfinite(self.low) else 0.0
         hi = float(self._cdf(np.asarray(self.high))) if np.isfinite(self.high) else 1.0
         return lo, hi
+
+    def _cdf_any(self, x: np.ndarray) -> np.ndarray:
+        """Untruncated CDF of every kind (uniform, log-uniform and beta on [low, high])."""
+        x = np.asarray(x, dtype=float)
+        if self.kind == "uniform":
+            return np.clip((x - self.low) / (self.high - self.low), 0.0, 1.0)
+        if self.kind == "loguniform":
+            lx = np.log(np.clip(x, self.low, self.high))
+            return (lx - np.log(self.low)) / (np.log(self.high) - np.log(self.low))
+        if self.kind == "beta":
+            return special.betainc(self.a, self.b, np.clip((x - self.low) / (self.high - self.low), 0.0, 1.0))
+        return self._cdf(x)
+
+    def _ppf_any(self, p: np.ndarray) -> np.ndarray:
+        if self.kind in ("uniform", "loguniform", "beta"):
+            return self.transform(p)
+        if self.kind == "gamma":
+            return self.scale * special.gammaincinv(self.a, np.clip(p, 0.0, 1.0))
+        z = special.ndtri(np.clip(p, 1e-300, 1 - 1e-16))
+        return 10.0 ** (self.mean + self.std * z) if self.kind == "lognormal" else self.mean + self.std * z
+
+    def _upper(self, high: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
+        hi = np.clip(np.asarray(high, dtype=float), self.low, self.high)
+        c_lo = 0.0 if self.kind in ("uniform", "loguniform", "beta") else self._trunc()[0]
+        return hi, c_lo, self._cdf_any(hi)
+
+    def transform_below(self, u: np.ndarray, high: np.ndarray) -> np.ndarray:
+        """Transform with the prior truncated further at a per-sample upper bound ``high``."""
+        hi, c_lo, c_hi = self._upper(high)
+        x = self._ppf_any(c_lo + (c_hi - c_lo) * np.asarray(u, dtype=float))
+        return np.clip(x, self.low, hi)
+
+    def inverse_below(self, x: np.ndarray, high: np.ndarray) -> np.ndarray:
+        _, c_lo, c_hi = self._upper(high)
+        span = c_hi - c_lo
+        with np.errstate(divide="ignore", invalid="ignore"):
+            u = (self._cdf_any(x) - c_lo) / span
+        return np.clip(np.where(span > 0, u, 0.5), 0.0, 1.0)
 
     def transform(self, u: np.ndarray) -> np.ndarray:
         u = np.asarray(u, dtype=float)
@@ -160,12 +208,13 @@ class ModelPrior:
     rfi_v: Bounds1D
     rfi_sigma: Bounds1D
     noise_scale: Bounds1D | None = None
+    band: tuple[float, float] | None = None  # every profile component lies inside (containment)
     names: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         n_prof = self.components.count("profile")
-        if n_prof > 1 and self.v_ctr.kind != "uniform":
-            raise ValueError("several profile components need a uniform v_ctr prior")
+        if (n_prof > 1 or self.band is not None) and self.v_ctr.kind != "uniform":
+            raise ValueError("several profile components and containment need a uniform v_ctr prior")
         names = []
         ip = ig = 0
         for c in self.components:
@@ -199,7 +248,31 @@ class ModelPrior:
             i += NPROFILE if c == "profile" else 2
         return cols
 
-    # ---------------------------------------------------------------- widths
+    # ----------------------------------------------------------- containment
+    def _half_max(self) -> float:
+        """Largest half extent of a component that still fits the band and the centre range."""
+        b_lo, b_hi = self.band
+        return min(0.5 * (b_hi - b_lo), self.v_ctr.high - b_lo, b_hi - self.v_ctr.low)
+
+    def _centre_range(self, delta_v: np.ndarray, sigma: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        h = 0.5 * delta_v + CONTAIN_SIGMA * sigma
+        lo = np.maximum(self.v_ctr.low, self.band[0] + h)
+        hi = np.maximum(np.minimum(self.v_ctr.high, self.band[1] - h), lo)
+        return lo, hi
+
+    def band_position(self, theta: np.ndarray) -> np.ndarray:
+        """Relative position r in [0, 1] of each profile centre within its allowed range, (n, N)."""
+        theta = np.atleast_2d(np.asarray(theta, dtype=float))
+        pc = self._profile_cols()
+        if self.band is None:
+            return self.v_ctr.inverse(theta[:, pc])
+        r = np.empty((theta.shape[0], len(pc)))
+        for j, c in enumerate(pc):
+            lo, hi = self._centre_range(theta[:, c + 1], theta[:, c + 2])
+            with np.errstate(divide="ignore", invalid="ignore"):
+                r[:, j] = np.where(hi > lo, (theta[:, c] - lo) / (hi - lo), 0.5)
+        return np.clip(r, 0.0, 1.0)
+
     # ------------------------------------------------------------- transform
     def transform(self, u: np.ndarray) -> np.ndarray:
         u = np.atleast_2d(np.asarray(u, dtype=float))
@@ -209,10 +282,19 @@ class ModelPrior:
             uc = u[:, pc]
             if len(pc) > 1:
                 uc = ordered_uniform(uc)
-            theta[:, pc] = self.v_ctr.transform(uc)
-            for c in pc:
-                theta[:, c + 1] = self.delta_v.transform(u[:, c + 1])
-                theta[:, c + 2] = self.delta_v_rand.transform(u[:, c + 2])
+            if self.band is None:
+                theta[:, pc] = self.v_ctr.transform(uc)
+            for j, c in enumerate(pc):
+                if self.band is None:
+                    theta[:, c + 1] = self.delta_v.transform(u[:, c + 1])
+                    theta[:, c + 2] = self.delta_v_rand.transform(u[:, c + 2])
+                else:
+                    h_max = self._half_max()
+                    sig = self.delta_v_rand.transform_below(u[:, c + 2], h_max / CONTAIN_SIGMA)
+                    width = self.delta_v.transform_below(u[:, c + 1], 2.0 * (h_max - CONTAIN_SIGMA * sig))
+                    lo, hi = self._centre_range(width, sig)
+                    theta[:, c] = lo + (hi - lo) * uc[:, j]
+                    theta[:, c + 1], theta[:, c + 2] = width, sig
                 theta[:, c + 3] = self.alpha.transform(u[:, c + 3])
                 theta[:, c + 4] = self.f.transform(u[:, c + 4])
         gc = self._gauss_cols()
@@ -232,13 +314,25 @@ class ModelPrior:
         u = np.empty_like(theta)
         pc = self._profile_cols()
         if pc:
-            uc = self.v_ctr.inverse(theta[:, pc])
+            if self.band is not None and len(pc) > 1:  # labels in the order of the band positions
+                idx = np.array([np.arange(c, c + NPROFILE) for c in pc])
+                order = np.argsort(self.band_position(theta), axis=1, kind="stable")
+                theta = theta.copy()
+                theta[:, idx.ravel()] = np.take_along_axis(theta, idx[order].reshape(len(theta), -1), axis=1)
+            uc = self.band_position(theta)
             if len(pc) > 1:
                 uc = ordered_uniform_inverse(uc)
             u[:, pc] = uc
             for c in pc:
-                u[:, c + 1] = self.delta_v.inverse(theta[:, c + 1])
-                u[:, c + 2] = self.delta_v_rand.inverse(theta[:, c + 2])
+                if self.band is None:
+                    u[:, c + 1] = self.delta_v.inverse(theta[:, c + 1])
+                    u[:, c + 2] = self.delta_v_rand.inverse(theta[:, c + 2])
+                else:
+                    h_max = self._half_max()
+                    sig = theta[:, c + 2]
+                    u[:, c + 2] = self.delta_v_rand.inverse_below(sig, h_max / CONTAIN_SIGMA)
+                    w_max = 2.0 * (h_max - CONTAIN_SIGMA * sig)
+                    u[:, c + 1] = self.delta_v.inverse_below(theta[:, c + 1], w_max)
                 u[:, c + 3] = self.alpha.inverse(theta[:, c + 3])
                 u[:, c + 4] = self.f.inverse(theta[:, c + 4])
         gc = self._gauss_cols()
@@ -282,6 +376,7 @@ def build_prior(
     span = v_hi - v_lo
     dv = float(velocity[1] - velocity[0])
     vc = _bounds(priors.v_ctr, v_lo + priors.v_margin * span, v_hi - priors.v_margin * span)
+    contain = priors.contain and vc.kind == "uniform" and "profile" in components
     lo_c, hi_c = priors.rfi_sigma_channels
     noise = None
     if priors.noise_scale is not None:
@@ -296,4 +391,5 @@ def build_prior(
         rfi_v=Bounds1D("uniform", v_lo, v_hi),
         rfi_sigma=Bounds1D("loguniform", lo_c * dv, hi_c * dv),
         noise_scale=noise,
+        band=(v_lo + priors.v_margin * span, v_hi - priors.v_margin * span) if contain else None,
     )

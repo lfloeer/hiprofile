@@ -86,6 +86,15 @@ where a neighbour shares the beam.
 
 ![Line widths: Bayesian fit against the two classical measurements](docs/img/bayes_vs_classic.png)
 
+The whole ALFALFA α.40 catalogue (15 036 sources) was refitted
+([docs/alfalfa.md](docs/alfalfa.md), `data/alfalfa_a40.csv`): fluxes and
+velocities agree with the catalogue to better than 1 % and 1 km/s in the
+median, widths to 1 % from S/N 12 (3–5 % wider below, the prior shrinkage
+of faint lines); the largest disagreements are bright neighbours in the
+same spectrum, RFI spikes and faint HIcode 2 lines.
+
+![ALFALFA α.40 refit against the catalogue](docs/img/alfalfa_survey.png)
+
 ## Development
 
 ```bash

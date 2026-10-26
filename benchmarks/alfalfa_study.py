@@ -82,25 +82,30 @@ def select(out: Path, seed: int = 2026) -> list[dict[str, str]]:
     return got
 
 
-def convert(raw: Path, dest: Path, cz: float, half_window: float = 1000.0) -> None:
+def convert(raw: Path, dest: Path, cz: float, half_window: float = 1000.0, v_min: float = -np.inf) -> None:
+    """NED ASCII spectrum -> two-column file on the radio velocity scale, +-half_window around cz.
+
+    Column 3 is the baseline-subtracted flux everywhere; column 4, the subtracted
+    baseline, reads '*****' where it overflows its format, which does not mark bad
+    data. Blanked channels (flux exactly 0) and fluxes overflowing their own
+    column are written as NaN, which the fit masks. ``v_min`` cuts channels below
+    that velocity (Galactic HI near 0 km/s).
+    """
     rows = []
     for line in raw.read_text().splitlines():
         if line.startswith("#") or not line.strip():
             continue
         p = line.split()
-        try:
-            float(p[3])  # subtracted baseline; '*****' outside the baseline-fit region
-        except ValueError:
-            continue
-        rows.append((float(p[1]), float(p[2])))
+        flux = float(p[2]) if "*" not in p[2] else np.nan  # overflow beyond 9999 mJy: masked
+        rows.append((float(p[1]), flux))
     a = np.array(rows)
     v = C * (1.0 - a[:, 0] / NU0)  # radio convention: uniform in frequency
     v0 = cz / (1.0 + cz / C)
-    sel = np.abs(v - v0) < half_window
+    sel = (np.abs(v - v0) < half_window) & (v > v_min)
     o = np.argsort(v[sel])
     np.savetxt(
         dest,
-        np.c_[v[sel][o], a[sel, 1][o] / 1000.0],
+        np.c_[v[sel][o], np.where(a[sel, 1][o] == 0.0, np.nan, a[sel, 1][o] / 1000.0)],
         header=f"{raw.stem}: radio heliocentric velocity [km/s], flux density [Jy]; ALFALFA alpha.40 via NED",
         fmt="%.4f %.6f",
     )

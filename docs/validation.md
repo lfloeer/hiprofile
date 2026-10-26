@@ -3,9 +3,13 @@
 Everything on this page comes from runs of `benchmarks/validate_all.sh` on
 a 4-core machine with the default configuration (full mode, SMC sampler,
 N ≤ 2, K ≤ 3, RFI pre-stage, Δv ~ Gamma(2.3, 83 km/s), f ~ Beta(1, 3)),
-5 km/s channels unless stated otherwise. The fits of the SBC, detection,
-misspecification, bias and ALFALFA stages were made at commit 2724f8a (the
-Δv prior); later commits only add the Springob et al. (2005) widths, which
+5 km/s channels unless stated otherwise. SBC, detection and
+misspecification were refitted at d053ea5, with profile components
+contained in the band (`priors.contain`; simulations and fits use it) and
+the current RFI pre-stage (symmetric outlier background, runs below the
+model masked whatever their length). The bias and ALFALFA fits were made at
+commit 2724f8a (the Δv prior), and later commits only add the Springob
+et al. (2005) widths, which
 `benchmarks/add_springob.py` computed from the stored spectra and
 baselines (the naive values are reproduced exactly), and the Hanning bias
 run. The low-S/N bias decomposition (`benchmarks/w20_bias.py`) ran at
@@ -27,7 +31,7 @@ chosen:
   20 % of the same lines it gives a W20, which is our extension of the
   method (λ is calibrated for W_F50 only). Where a flank cannot be fitted
   (fit rising away from the horn, crossing outside the window) it gives no
-  value; that happens for 14 % of the detected SBC lines, nearly all at
+  value; that happens for 18 % of the detected SBC lines, nearly all at
   S/N < 8.
 
 | stage | command | spectra |
@@ -52,24 +56,25 @@ rate.
 
 | parameter | rank p-value | 68 % coverage | 95 % coverage |
 |---|---|---|---|
-| v_ctr | 0.79 | 0.68 | 0.96 |
-| Δv | 0.54 | 0.69 | 0.94 |
-| Δv_rand | 0.03 | 0.69 | 0.95 |
-| α | 0.18 | 0.67 | 0.95 |
-| S | 0.21 | 0.68 | 0.95 |
-| f | 0.48 | 0.70 | 0.94 |
-| W50 | 0.10 | 0.70 | 0.94 |
-| W20 | 0.96 | 0.68 | 0.93 |
+| v_ctr | 0.07 | 0.71 | 0.96 |
+| Δv | 0.80 | 0.68 | 0.94 |
+| Δv_rand | 0.11 | 0.71 | 0.94 |
+| α | 0.87 | 0.67 | 0.95 |
+| S | 0.45 | 0.68 | 0.95 |
+| f | 0.13 | 0.69 | 0.95 |
+| W50 | 0.03 | 0.68 | 0.96 |
+| W20 | 0.52 | 0.68 | 0.95 |
 
 ![SBC: rank histograms, interval coverage and baseline-order calibration](img/sbc.png)
 
 The 68 % coverages lie inside the ±2σ band for 1000 simulations
-(0.65–0.71), the 95 % coverages inside theirs (0.936–0.964) except W20 at
-0.932. Seven of eight rank histograms are flat (p ≥ 0.1); the Δv_rand
-histogram has p = 0.03 (counts 82, 97, 88, 130, 100, 116, 88, 95, 98, 106
-in ten bins), one high bin without a slope or U shape. With eight tests, one
-p below 0.05 turns up by chance in a third of all runs. With
-the previous log-normal Δv prior the same test gave p = 0.39. The faint
+(0.65–0.71), the 95 % coverages inside theirs (0.936–0.964). Seven of eight
+rank histograms pass (p ≥ 0.07); the W50 histogram has p = 0.03 (counts
+112, 104, 79, 88, 99, 129, 92, 108, 87, 102 in ten bins), one high and one
+low bin without a slope or U shape. With eight tests, one p below 0.05
+turns up by chance in a third of all runs; the previous run, without
+containment, had the same pattern in Δv_rand (p = 0.03) and a flat W50
+(p = 0.10). The faint
 draws of the flux prior that are not detected take part like every other
 simulation.
 
@@ -79,10 +84,10 @@ panel) follows the diagonal. The confusion matrix (rows: true K, columns:
 most probable K) is one-sided:
 
 ```
-  266      2      0      0
-   14    229      0      0
-    5     13    222      0
-    2      6     25    216
+  267      1      0      0
+   14    227      2      0
+    5     15    219      1
+    1      6     26    216
 ```
 
 A true K = 3 whose highest coefficients happen to be small is read as K = 2,
@@ -90,19 +95,20 @@ the right answer for terms the data cannot see. This calibration holds when
 the baseline prior matches the baselines; Stage 3 shows what happens when
 it does not.
 
-**Flags.** 12.1 % of the fits carry a flag: `prior_edge` 5.5 % (Δv_rand at
+**Flags.** 12.9 % of the fits carry a flag: `prior_edge` 6.8 % (Δv_rand at
 its 4 km/s bound for faint, narrow lines), `prior_dominated` 3.4 %,
-`wiggle` 2.1 %, `multimodal` 1.3 %, `ppp` 1.1 %.
+`wiggle` 2.0 %, `ppp` 1.0 %, `multimodal` 0.8 %, `residual_structure` 0.1 % (its
+calibrated false-alarm rate).
 
-The same simulations measured against the truth (726 detected, N = 1;
+The same simulations measured against the truth (739 detected, N = 1;
 median error and robust scatter):
 
 | quantity | Bayes | naive | Springob |
 |---|---|---|---|
-| W50 [km/s] | 0.4 ± 10.6 | 0.3 ± 22.2 | −7.5 ± 22.6 (624 measured) |
-| W20 [km/s] | 0.4 ± 12.6 | 27.7 ± 35.5 | −10.1 ± 32.8 |
-| S [Jy km/s] | 0.01 ± 0.36 | 0.04 ± 0.39 | – |
-| v_sys [km/s] | 0.0 ± 4.8 | 0.1 ± 9.0 | 0.4 ± 9.3 |
+| W50 [km/s] | 0.0 ± 10.6 | −0.3 ± 21.0 | −7.4 ± 21.5 (607 measured) |
+| W20 [km/s] | 0.4 ± 11.6 | 28.9 ± 37.0 | −8.8 ± 32.5 |
+| S [Jy km/s] | 0.01 ± 0.38 | 0.05 ± 0.39 | – |
+| v_sys [km/s] | −0.3 ± 4.8 | −0.5 ± 8.5 | −0.2 ± 9.2 |
 
 ![Line widths: Bayesian fit against the two classical measurements](img/bayes_vs_classic.png)
 
@@ -131,30 +137,35 @@ automatic flux-prior scale.
 | | with RFI pre-stage | without |
 |---|---|---|
 | false positives, P(detect) > 0.5 / 0.9 | 0 of 77 / 0 | 83 % / 83 % |
-| completeness S/N 3–5 / 5–8 / ≥ 8 | 0.55 / 0.94 / 1.00 | 0.90 / 1.00 / 1.00 |
-| flagged | 4.5 % | 87 % |
+| completeness S/N 3–5 / 5–8 / ≥ 8 | 0.50 / 0.88 / 1.00 | 0.90 / 1.00 / 1.00 |
+| flagged | 4.0 % | 86 % |
 
 Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
 
 ```
    77      0      0
    19     64      0
-    2     19     19
+    2     17     21
 ```
 
 * **N = 0 and N = 1** are separated cleanly: no false positive at any
   threshold, and no single line split into two. Without the pre-stage the
-  RFI spikes are fitted as lines (83 % false positives, 62 % flagged
-  `unresolved`); its higher "completeness" is the same effect.
+  RFI spikes are fitted as lines (83 % false positives, 64 % flagged
+  `unresolved`, 48 % `residual_structure`); its higher "completeness" is
+  the same effect.
 * **The completeness** at S/N 3–5 is that of the SBC, which has no RFI, so
   the pre-stage costs none.
-* **N = 2.** Of the 18 pairs with both components at S/N > 6 and separated
-  by more than their width, 15 are fitted as N = 2. Pairs with a second
+* **N = 2.** Of the 19 pairs with both components at S/N > 6 and separated
+  by more than their width, 17 are fitted as N = 2. Pairs with a second
   component below S/N 6 (21 of 40) are mostly fitted as N = 1: a second line
   at S/N 3 is not detectable on its own either.
 * Widths of the detected single lines (bias ± scatter, km/s): W50
-  0.2 ± 8.5 (naive −1.9 ± 11.9, Springob −1.0 ± 13.8), W20 0.4 ± 9.4
-  (naive 26.3 ± 35.3, Springob 0.6 ± 12.8).
+  0.0 ± 9.9 (naive −1.2 ± 12.3, Springob −4.5 ± 12.8), W20 0.0 ± 9.2
+  (naive 25.6 ± 30.5, Springob −3.8 ± 19.6).
+* **The symmetric pre-stage** (current default) against the earlier
+  positive-only one: no false positive either way; completeness at S/N 3–5
+  0.50 instead of 0.55 (one line of 20). Narrow test lines (Δv = 20 and
+  50 km/s at S/N 5 and 8, 50 each) lose no channel to the mask.
 
 ## Stage 3: misspecification
 
@@ -171,24 +182,26 @@ scale.
 
 | set | flagged | W50 bias / scatter [km/s] | 68 % coverage of W50 | W50 scatter naive / Springob | W20 bias / scatter: Bayes, naive, Springob |
 |---|---|---|---|---|---|
-| clean | 6 % | 0.6 / 4.7 | 0.75 | 11.4 / 8.3 | 1.2 / 4.4, 14.5 / 23.7, 3.5 / 6.8 |
-| template | 4 % | −1.5 / 6.9 | 0.69 | 9.4 / 11.4 | −0.4 / 7.7, 8.1 / 20.7, −1.1 / 12.7 |
-| sine baseline | 98 % | −1.2 / 27.6 | 0.30 | 26.3 / 27.7 | −1.4 / 27.0, 6.4 / 58.7, −0.6 / 37.1 |
-| RFI unmasked | 100 % | −103 / 113 | 0.20 | 106 / 67 | −105 / 129, −132 / 144, −35 / 69 |
-| baseline prior 50 × too wide | 9 % | 0.5 / 4.8 | 0.71 | 13.3 / 8.0 | 0.2 / 7.0, 26.1 / 38.2, 1.1 / 13.5 |
+| clean | 8 % | −0.3 / 4.9 | 0.71 | 10.6 / 10.0 | 0.8 / 4.4, 7.4 / 19.8, 2.9 / 9.7 |
+| template | 6 % | −1.5 / 6.1 | 0.72 | 11.8 / 10.6 | 0.6 / 6.7, 18.7 / 26.4, 0.3 / 12.7 |
+| sine baseline | 100 % | −1.8 / 31.6 | 0.28 | 29.5 / 24.6 | −2.3 / 44.9, 2.1 / 51.0, 1.0 / 33.9 |
+| RFI unmasked | 100 % | −96 / 122 | 0.15 | 106 / 57 | −105 / 135, −120 / 140, −29 / 61 |
+| baseline prior 50 × too wide | 12 % | 0.8 / 7.4 | 0.71 | 12.2 / 11.0 | 1.2 / 6.6, 24.1 / 36.5, 2.2 / 14.2 |
 
 * The model describes the galaxy-like templates well enough that the widths
   stay unbiased and calibrated, with less scatter than either classical
   method, which see the same profiles.
 * When the model is wrong the posteriors are overconfident, as any
-  posterior of a wrong model is, but the flags catch it: `ppp` and
-  `residual_acf` mark almost every sine-baseline fit; `ppp`, `prior_edge`,
-  `unresolved` and `wiggle` mark the RFI fits. Unmasked RFI hurts the
+  posterior of a wrong model is, but the flags catch it:
+  `residual_structure` marks every sine-baseline fit and `ppp` 98 % of
+  them (the symmetric pre-stage masks some of the wave's troughs as runs
+  below the model, which widens the W50 scatter from 25 to 30 km/s there); `ppp`, `prior_edge`, `unresolved`, `residual_structure` (88 %) and
+  `wiggle` mark the RFI fits. Unmasked RFI hurts the
   Springob widths least, because a spike rarely lies on a flank; it is
   still the flagged fits that tell the user something is wrong.
 * **A wrong baseline prior** leaves the line parameters unbiased and
   calibrated, but not the baseline order: the most probable K is right in
-  42 % of the spectra, nearly always too low (22 of 28 true K = 3 are fitted
+  41 % of the spectra, nearly always too low (23 of 28 true K = 3 are fitted
   as K = 0). Coefficients of 0.2 σ per channel are barely visible, and with
   a prior 50 times too wide the Occam factor wins. The `p_k` columns of the
   catalogue are calibrated only with a fitting `priors.baseline_scale`, for

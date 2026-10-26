@@ -61,6 +61,12 @@ class Priors(_Base):
         description="Line centre [km/s]. Uniform bounds default to the band minus `v_margin`.",
     )
     v_margin: float = Field(0.05, ge=0, lt=0.5, description="Band fraction excluded at each edge")
+    contain: bool = Field(
+        True,
+        description="Profile components lie entirely inside the band minus `v_margin`: v_ctr +- "
+        "(delta_v / 2 + 3 delta_v_rand); the centre is uniform where the whole line fits, the widths "
+        "keep their priors and are truncated only where no line fits. Needs a uniform v_ctr prior.",
+    )
     # Defaults from the 34 THINGS fits of Stewart et al. (2014, Table 1 and App. B.2),
     # widened for survey galaxies; see docs/priors.md.
     delta_v: Range = Field(
@@ -147,7 +153,11 @@ class NoiseConfig(_Base):
 
 class RFIConfig(_Base):
     prefit: bool = True
-    background: Literal["positive", "symmetric"] = "positive"
+    background: Literal["positive", "symmetric"] = Field(
+        "symmetric",
+        description="Outlier background of the pre-stage: symmetric also catches dips below the model "
+        "(artefacts next to strong continuum, baseline-subtraction residues); positive only RFI-like excess",
+    )
     threshold: float = Field(0.5, gt=0, lt=1)
     action: Literal["mask", "inflate"] = "mask"
     n_iter: int = Field(8, ge=1)
@@ -159,6 +169,11 @@ class RFIConfig(_Base):
         "spike of one or two channels cannot be absorbed as a line",
     )
     close_holes: bool = Field(True, description="Also mask a single channel between two masked ones")
+    mask_negative_runs: bool = Field(
+        True,
+        description="Mask runs of outliers below the pre-stage model whatever their length "
+        "(max_width only protects positive runs, which may be a line); needs background: symmetric",
+    )
     max_width: float | None = Field(
         20.0,
         gt=0,
@@ -202,7 +217,14 @@ class SamplerConfig(_Base):
 class DiagnosticsConfig(_Base):
     ppp_min: float = 0.01
     wiggle_max: float = 0.1
-    acf_sigma: float = 4.0
+    structure_p: float = Field(
+        1e-3,
+        description="Flag `residual_structure` when the whitened residuals have more power at low "
+        "frequencies (0 < f <= structure_fmax) than the noise model allows at this p-value",
+    )
+    structure_fmax: float = Field(
+        0.1, description="Upper frequency of the residual-structure test [cycles per channel]"
+    )
     edge_mass: float = 0.2
     min_ess: float = 500.0
     logz_sigma: float = 3.0

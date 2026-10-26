@@ -20,6 +20,7 @@ from scipy import special
 
 LOG2 = float(np.log(2.0))
 _TINY = 1e-300
+_TAIL = 1e-200  # below this the closed form is replaced by the log-space tail approximation
 
 
 def log_bvn_orthant(mean: np.ndarray, cov: np.ndarray) -> np.ndarray:
@@ -49,7 +50,29 @@ def log_bvn_orthant(mean: np.ndarray, cov: np.ndarray) -> np.ndarray:
     # independent-case product scaled by the most favourable correlation
     upper = np.minimum(special.ndtr(a), special.ndtr(b))
     p = np.clip(p, 0.0, upper)
-    return np.log(np.maximum(p, _TINY))
+    # Far in the tail (a component many sigma negative, as when a second profile
+    # takes up a structure as negative flux) the formula underflows; flooring it
+    # would cap the positivity penalty, so use the log-space approximation there.
+    tail = p < _TAIL
+    if np.any(tail):
+        p = np.where(tail, 1.0, p)
+        return np.where(tail, _log_bvn_orthant_tail(a, b, rho), np.log(p))
+    return np.log(p)
+
+
+def _log_bvn_orthant_tail(a: np.ndarray, b: np.ndarray, rho: np.ndarray) -> np.ndarray:
+    """ln P(Z1 > -a, Z2 > -b) for small probabilities (Mendell & Elston 1974).
+
+    P(Z2 > h2) times a normal approximation of P(Z1 > h1 | Z2 > h2), with the
+    less probable variable conditioned on first; all in log space.
+    """
+    swap = a > b  # condition on the more negative standardised mean first
+    h1, h2 = -np.where(swap, a, b), -np.where(swap, b, a)
+    log_q2 = special.log_ndtr(-h2)
+    lam = np.exp(-0.5 * h2**2 - 0.5 * np.log(2 * np.pi) - log_q2)  # E[Z2 | Z2 > h2]
+    var2 = np.maximum(1.0 + h2 * lam - lam**2, 0.0)  # Var[Z2 | Z2 > h2]
+    sd1 = np.sqrt(np.maximum(1.0 - rho**2 * (1.0 - var2), 1e-12))
+    return log_q2 + special.log_ndtr(-(h1 - rho * lam) / sd1)
 
 
 def log_orthant(mean: np.ndarray, cov: np.ndarray) -> np.ndarray:

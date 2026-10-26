@@ -11,7 +11,7 @@ from hiprofile.config import DiagnosticsConfig
 FLAG_NAMES = (
     "ppp",
     "wiggle",
-    "residual_acf",
+    "residual_structure",
     "prior_edge",
     "multimodal",
     "low_ess",
@@ -35,11 +35,10 @@ def compute_flags(
         v = metrics.get(key, default)
         return float(v) if v is not None else default
 
-    acf = np.asarray(metrics.get("residual_acf", [0.0]), float)
     flags = {
         "ppp": get("ppp") < cfg.ppp_min,
         "wiggle": get("wiggle_J") > cfg.wiggle_max and get("wiggle_snr", np.inf) > WIGGLE_SIGNIFICANCE,
-        "residual_acf": bool(np.any(np.abs(acf) > cfg.acf_sigma)),
+        "residual_structure": get("residual_lowfreq_lnp", 0.0) < float(np.log(cfg.structure_p)),
         "prior_edge": get("edge_mass", 0.0) > cfg.edge_mass,
         "multimodal": get("multimodal_weight", 0.0) > cfg.multimodal_weight
         and get("multimodal_separation", 0.0) > MULTIMODAL_SEPARATION,

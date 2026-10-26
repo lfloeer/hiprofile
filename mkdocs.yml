@@ -21,4 +21,5 @@ nav:
   - Outputs and flags: outputs.md
   - Configuration: configuration.md
   - Validation: validation.md
+  - "ALFALFA α.40 refitted": alfalfa.md
   - Legacy code (Phase 0): legacy.md

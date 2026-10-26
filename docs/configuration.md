@@ -16,6 +16,7 @@ The validated configuration, the code version and the seed are written into ever
 | `model.supersample` | `int \| None` | `null` |  |
 | `priors.v_ctr` | `Range` | `{'kind': 'uniform'}` | Line centre [km/s]. Uniform bounds default to the band minus `v_margin`. |
 | `priors.v_margin` | `float` | `0.05` | Band fraction excluded at each edge |
+| `priors.contain` | `bool` | `True` | Profile components lie entirely inside the band minus `v_margin`: v_ctr +- (delta_v / 2 + 3 delta_v_rand); the centre is uniform where the whole line fits, the widths keep their priors and are truncated only where no line fits. Needs a uniform v_ctr prior. |
 | `priors.delta_v` | `Range` | `{'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}` | Rotational width [km/s]: gamma with shape 2.3 and scale 83 km/s (median 166, 16-84 % 77-305 km/s), truncated at 800 km/s; fitted so that the predicted W50 matches the 25 434 ALFALFA alpha.100 detections (benchmarks/fit_width_prior.py) |
 | `priors.delta_v_rand` | `Range` | `{'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}` | Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s) |
 | `priors.alpha` | `Range` | `{'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}` | Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14) |
@@ -30,13 +31,14 @@ The validated configuration, the code version and the seed are written into ever
 | `noise.correlation` | `str \| list[float]` | `auto` | auto \| estimate \| white \| hanning \| hanning-decimated \| [rho_1, rho_2, ...]; a '+white' suffix (e.g. hanning+white) adds a white component whose fraction is estimated from the data. auto: the correlation of the channel smoothing in model.response (hanning, kernel) plus an estimated white part, white without smoothing. estimate: rho_1..rho_m measured on the residuals of the robust pre-fit (any smoothing, regridding or spectrometer window) |
 | `noise.signal_free` | `list[tuple[float, float]] \| None` | `null` | Velocity ranges used to estimate sigma |
 | `rfi.prefit` | `bool` | `True` |  |
-| `rfi.background` | `Literal['positive', 'symmetric']` | `positive` |  |
+| `rfi.background` | `Literal['positive', 'symmetric']` | `symmetric` | Outlier background of the pre-stage: symmetric also catches dips below the model (artefacts next to strong continuum, baseline-subtraction residues); positive only RFI-like excess |
 | `rfi.threshold` | `float` | `0.5` |  |
 | `rfi.action` | `Literal['mask', 'inflate']` | `mask` |  |
 | `rfi.n_iter` | `int` | `8` |  |
 | `rfi.flag_fraction` | `float` | `0.05` |  |
 | `rfi.min_sigma_channels` | `float` | `2.0` | Smallest Delta v_rand (in channels) of the line model in the pre-stage, so that a spike of one or two channels cannot be absorbed as a line |
 | `rfi.close_holes` | `bool` | `True` | Also mask a single channel between two masked ones |
+| `rfi.mask_negative_runs` | `bool` | `True` | Mask runs of outliers below the pre-stage model whatever their length (max_width only protects positive runs, which may be a line); needs background: symmetric |
 | `rfi.max_width` | `float \| None` | `20.0` | Longest run of outlier channels treated as RFI, in km/s (gaps of up to two channels included; at least one channel): a longer run is signal the one-component pre-stage cannot explain, typically a second line, and stays in the fit. In velocity so that 1 km/s and 15 km/s channels behave alike; null: no limit |
 | `sampler.mode` | `Literal['quick', 'full', 'check']` | `full` |  |
 | `sampler.backend` | `Literal['nautilus', 'dynesty', 'ultranest', 'smc', 'quick']` | `smc` | smc: fastest (vectorised tempered SMC); nautilus: most precise ln Z but ~10x slower |
@@ -49,7 +51,8 @@ The validated configuration, the code version and the seed are written into ever
 | `sampler.likelihood_backend` | `Literal['numpy', 'jax']` | `numpy` |  |
 | `diagnostics.ppp_min` | `float` | `0.01` |  |
 | `diagnostics.wiggle_max` | `float` | `0.1` |  |
-| `diagnostics.acf_sigma` | `float` | `4.0` |  |
+| `diagnostics.structure_p` | `float` | `0.001` | Flag `residual_structure` when the whitened residuals have more power at low frequencies (0 < f <= structure_fmax) than the noise model allows at this p-value |
+| `diagnostics.structure_fmax` | `float` | `0.1` | Upper frequency of the residual-structure test [cycles per channel] |
 | `diagnostics.edge_mass` | `float` | `0.2` |  |
 | `diagnostics.min_ess` | `float` | `500.0` |  |
 | `diagnostics.logz_sigma` | `float` | `3.0` |  |
@@ -78,7 +81,7 @@ Prior ranges (`priors.v_ctr`, `priors.delta_v`, ...) take `kind` (`uniform`, `lo
 | `n_components` | `int \| list[float]` | `1` |  |
 | `profiles` | `Literal['model', 'template', 'mixed']` | `model` |  |
 | `template_files` | `list[str]` | `[]` |  |
-| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'delta_v': {'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
+| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'contain': True, 'delta_v': {'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
 | `flux` | `Literal['prior', 'snr']` | `snr` |  |
 | `snr_range` | `tuple[float, float]` | `(3.0, 100.0)` |  |
 | `noise_sigma` | `float` | `0.01` |  |

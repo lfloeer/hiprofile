@@ -113,6 +113,9 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
         m["ppp"] = dm.posterior_predictive_p(y, full[:, gi], ctx.noise, ctx.rng)
         m["residual_acf"] = dm.residual_acf(rw).tolist()
         m["residual_acf_max"] = float(np.max(np.abs(m["residual_acf"])))
+        m["residual_lowfreq_lnp"], m["residual_lowfreq_ratio"] = dm.residual_lowfreq(
+            rw, cfg.diagnostics.structure_fmax
+        )
         line = out.components_median[:n_post].sum(axis=0)
         width = float(np.median(post.theta[:, 1])) + 2.35 * float(np.median(post.theta[:, 2]))
         m["wiggle_J"], m["wiggle_snr"] = dm.wiggle_fraction(
@@ -131,6 +134,11 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
                 lo, hi = bounds[name]
                 e = dm.edge_mass(post.theta[:, i], post.weights, lo, hi)
                 m[f"edge_{name}"] = e
+                edge_vals.append(e)
+        if prior.band is not None:  # a centre pressed against the containment limit: line cut by the window
+            r = prior.band_position(post.theta)
+            for j in range(r.shape[1]):
+                m[f"edge_band_{j + 1}"] = e = dm.edge_mass(r[:, j], post.weights, 0.0, 1.0)
                 edge_vals.append(e)
         m["edge_mass"] = max(edge_vals) if edge_vals else 0.0
         m.update(prior_constraints(prior, post, ctx.rng))

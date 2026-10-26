@@ -60,6 +60,29 @@ def wiggle_fraction(
     return (float(np.sqrt(j2)) if j2 > 0 else 0.0), j2 / max(j2_err, 1e-300)
 
 
+def residual_lowfreq(resid_white: np.ndarray, f_max: float = 0.1) -> tuple[float, float]:
+    """Excess power of whitened residuals at low frequencies, 0 < f <= ``f_max`` cycles per channel.
+
+    Unmodelled baselines, RFI and profile misfits put power at periods of many
+    channels; a slightly wrong white-noise fraction only changes the power near
+    the Nyquist frequency, which the lag-1 autocorrelation is sensitive to. Each
+    periodogram bin of unit white noise is chi2 with 2 degrees of freedom
+    (scaled by n / 2). Returns (ln p, observed / expected power).
+    """
+    from scipy import stats
+
+    r = resid_white - resid_white.mean()
+    n = r.size
+    f = np.fft.rfftfreq(n)
+    sel = (f > 0) & (f <= f_max) & (f < 0.5)
+    if n < 8 or not sel.any():
+        return 0.0, 1.0
+    power = np.abs(np.fft.rfft(r)[sel]) ** 2 / (n / 2.0)
+    dof = 2 * int(sel.sum())
+    stat = float(np.sum(power))
+    return float(stats.chi2.logsf(stat, dof)), stat / dof
+
+
 def residual_acf(resid_white: np.ndarray, lags: tuple[int, ...] = (1, 2, 3)) -> np.ndarray:
     """Autocorrelation of whitened residuals, in units of its standard error 1/sqrt(n)."""
     r = resid_white - resid_white.mean()

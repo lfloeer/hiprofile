@@ -14,7 +14,7 @@ lower S/N.
 | Δv_rand | log-normal, log₁₀ = 1.1 ± 0.2 (≈ 12.6 km/s), 4–60 km/s | 8–32 km/s, median 12.4, log₁₀ 1.13 ± 0.16 | Stewart B.2: 1.17 ± 0.14; resolved HI dispersions ≈ 10 ± 2 km/s (Tamburro et al. 2009); narrow / broad super-profile components 6.5 ± 1.5 / 16.8 ± 4.3 km/s (Ianjamasimanana et al. 2012) |
 | α | normal(0, 0.25) truncated to [−1, 1] | median 0.00, robust σ 0.14; 3 of 34 with \|α\| > 0.6 (NGC 3077, NGC 1569, Ho I) | Stewart B.2: normal(0, 0.2) |
 | f | Beta(1, 3), density 3(1 − f)², median 0.21, P(f > 0.7) = 2.7 % | median 0.15, mean 0.23, 1 of 34 above 0.7 (0.93); a uniform prior is rejected (KS p < 0.001), Beta(1, 3) is not (p = 0.13) | Stewart B.2: exponentially decreasing with characteristic constant 0.3 (printed as 0.3 e^(−0.3 f), which would be nearly flat; the text describes a decreasing prior) |
-| v_ctr | uniform over the band minus 5 % margins; normal(v_cat, 20–50 km/s) for targeted spectra | – | Stewart B.2: normal, σ = 20 km/s |
+| v_ctr | uniform over the positions where the whole component lies inside the band minus 5 % margins (`contain`); normal(v_cat, 20–50 km/s) for targeted spectra | – | Stewart B.2: normal, σ = 20 km/s |
 | S | half-normal; scale `amplitude_scale`: `auto` = max(10 × noise of the band-integrated flux, 2 × positive band flux), i.e. noise-set near the detection threshold and flat over a bright source (a narrower prior would split bright sources into pairs); fix per survey | – | Stewart: flat (improper, unusable for evidences) |
 | K | flat over `k_min` … `k_max`, coefficients N(0, `baseline_scale`²), `auto` = 10 × rms | the misspecification stage checks the K choice with a prior 50 × too wide | Stewart: order by maximum evidence |
 
@@ -24,6 +24,23 @@ a half-normal prior so that it can be marginalised analytically; positivity
 enters the sampling target exactly through the orthant probability (see
 [Inference](inference.md)). f is a sampled parameter with its own prior: an
 implicit f prior from two amplitude scales would depend on S.
+
+**Components inside the band.** With `priors.contain` (default) every
+profile component lies entirely inside the band minus the `v_margin`
+margins: v_ctr ± (Δv/2 + 3 Δv_rand), which reaches about 1 % of the horn
+height. The prior is built in sequence: Δv_rand and then Δv keep their
+shapes and are only truncated further where no line of that width fits the
+band, and v_ctr is uniform over the positions where the whole component
+fits. A fixed window therefore does not favour narrow lines, and where the
+band minus its margins is wider than 1160 km/s the width priors are
+unchanged. Without it a
+component could sit half outside the window and take up a baseline slope or
+the wing of Galactic HI. Several components are labelled in the order of
+their relative position in that allowed range (not strictly of v_ctr). A
+posterior pressed against the limit (`edge_band_<i>`) raises `prior_edge`:
+the line is probably cut by the window. Containment needs a uniform v_ctr
+prior; an explicit range `v_ctr: {low, high}` stays the range of the
+centre.
 
 **Rotational width.** W50 mixes the rotational width Δv with the random
 motions, the asymmetry and the solid-body fraction, so Δv cannot be read off

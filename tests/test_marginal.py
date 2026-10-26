@@ -184,3 +184,24 @@ def test_two_component_positivity_is_exact(rng):
     d = draw_amplitudes(like, th, rng)
     assert np.all(d.factor == 1.0) and d.k.shape == (3,)
     assert np.all(d.beta[:, :2] >= 0)
+
+
+@pytest.mark.parametrize(
+    "a, b, rho",
+    [(2.0, 1.0, 0.3), (3.0, -2.0, -0.5), (-20.0, -25.0, 0.5), (-15.0, -15.0, 0.8), (163.0, -210.0, -0.85)],
+)
+def test_bivariate_orthant_down_to_the_far_tail(a, b, rho):
+    """ln P(X1 > 0, X2 > 0) against a log-space integral, also far below 1e-300.
+
+    A floor at 1e-300 capped the penalty for a negative amplitude at 690 nats;
+    a bright spectrum then preferred N = 2 with a large negative second profile.
+    """
+    from scipy import special
+
+    from hiprofile.likelihood.orthant import log_bvn_orthant
+
+    t = np.linspace(-b, -b + 60 + 2 * abs(a) + abs(b), 400001)
+    f = -0.5 * t**2 - 0.5 * np.log(2 * np.pi) + special.log_ndtr((a + rho * t) / np.sqrt(1 - rho**2))
+    ref = logsumexp(f) + np.log(t[1] - t[0])
+    got = log_bvn_orthant(np.array([[a, b]]), np.array([[[1.0, rho], [rho, 1.0]]]))[0]
+    assert abs(got - ref) < 1e-3 * max(1.0, abs(ref))
