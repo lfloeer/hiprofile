@@ -100,18 +100,18 @@ class Bounds1D:
         z = special.ndtri(np.clip(p, 1e-300, 1 - 1e-16))
         return 10.0 ** (self.mean + self.std * z) if self.kind == "lognormal" else self.mean + self.std * z
 
-    def _upper(self, high: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
+    def _upper(self, high: np.ndarray | float) -> tuple[np.ndarray, float, np.ndarray]:
         hi = np.clip(np.asarray(high, dtype=float), self.low, self.high)
         c_lo = 0.0 if self.kind in ("uniform", "loguniform", "beta") else self._trunc()[0]
         return hi, c_lo, self._cdf_any(hi)
 
-    def transform_below(self, u: np.ndarray, high: np.ndarray) -> np.ndarray:
+    def transform_below(self, u: np.ndarray, high: np.ndarray | float) -> np.ndarray:
         """Transform with the prior truncated further at a per-sample upper bound ``high``."""
         hi, c_lo, c_hi = self._upper(high)
         x = self._ppf_any(c_lo + (c_hi - c_lo) * np.asarray(u, dtype=float))
         return np.clip(x, self.low, hi)
 
-    def inverse_below(self, x: np.ndarray, high: np.ndarray) -> np.ndarray:
+    def inverse_below(self, x: np.ndarray, high: np.ndarray | float) -> np.ndarray:
         _, c_lo, c_hi = self._upper(high)
         span = c_hi - c_lo
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -251,10 +251,12 @@ class ModelPrior:
     # ----------------------------------------------------------- containment
     def _half_max(self) -> float:
         """Largest half extent of a component that still fits the band and the centre range."""
+        assert self.band is not None
         b_lo, b_hi = self.band
         return min(0.5 * (b_hi - b_lo), self.v_ctr.high - b_lo, b_hi - self.v_ctr.low)
 
     def _centre_range(self, delta_v: np.ndarray, sigma: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        assert self.band is not None
         h = 0.5 * delta_v + CONTAIN_SIGMA * sigma
         lo = np.maximum(self.v_ctr.low, self.band[0] + h)
         hi = np.maximum(np.minimum(self.v_ctr.high, self.band[1] - h), lo)
