@@ -61,6 +61,12 @@ class Priors(_Base):
         description="Line centre [km/s]. Uniform bounds default to the band minus `v_margin`.",
     )
     v_margin: float = Field(0.05, ge=0, lt=0.5, description="Band fraction excluded at each edge")
+    contain: bool = Field(
+        True,
+        description="Profile components lie entirely inside the band minus `v_margin`: v_ctr +- "
+        "(delta_v / 2 + 3 delta_v_rand); the centre is uniform where the whole line fits, the widths "
+        "keep their priors and are truncated only where no line fits. Needs a uniform v_ctr prior.",
+    )
     # Defaults from the 34 THINGS fits of Stewart et al. (2014, Table 1 and App. B.2),
     # widened for survey galaxies; see docs/priors.md.
     delta_v: Range = Field(

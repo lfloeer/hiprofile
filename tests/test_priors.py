@@ -16,7 +16,8 @@ def test_round_trip_and_ordering(rng):
         u = rng.uniform(size=(2000, p.ndim))
         t = p(u)
         np.testing.assert_allclose(p.inverse(t), u, atol=1e-9)
-        assert np.all(t[:, 0] < t[:, 5])
+        r = p.band_position(t)
+        assert np.all(r[:, 0] < r[:, 1])  # labels ordered by the relative position in the band
         assert np.all(t[:, 2] >= 4.0 - 1e-9)
         assert np.all((t[:, 4] >= 0) & (t[:, 4] <= 1))
 
@@ -72,3 +73,34 @@ def test_truncated_round_trip(rng):
         Bounds1D("gamma", 20.0, np.inf, a=0.8, scale=50.0),
     ):
         np.testing.assert_allclose(b.inverse(b.transform(u)), u, atol=1e-10)
+
+
+def test_components_lie_inside_the_band(rng):
+    """Containment: v_ctr +- (delta_v / 2 + 3 delta_v_rand) inside the band minus the margins; the
+    widths keep their prior where they fit, and the labels may be permuted on input."""
+    from hiprofile.inference.priors import CONTAIN_SIGMA
+
+    for n_chan in (512, 60):
+        v = np.arange(n_chan) * 5.0
+        p = build_prior(("profile", "profile"), Priors(), v)
+        lo, hi = p.band
+        assert lo == 0.05 * v[-1] and hi == 0.95 * v[-1]
+        u = rng.uniform(size=(20000, p.ndim))
+        t = p(u)
+        np.testing.assert_allclose(p.inverse(t), u, atol=1e-9)
+        swapped = np.c_[t[:, 5:], t[:, :5]]
+        np.testing.assert_allclose(p(p.inverse(swapped)), t, atol=1e-8)
+        for c in (0, 5):
+            h = 0.5 * t[:, c + 1] + CONTAIN_SIGMA * t[:, c + 2]
+            assert np.all(t[:, c] - h >= lo - 1e-6) and np.all(t[:, c] + h <= hi + 1e-6)
+    # a wide band leaves the width prior untouched
+    p = build_prior(("profile",), Priors(), np.arange(1000) * 5.0)
+    free = build_prior(("profile",), Priors(contain=False), np.arange(1000) * 5.0)
+    u = rng.uniform(size=(1000, 5))
+    np.testing.assert_allclose(p(u)[:, 1:], free(u)[:, 1:], atol=1e-9)
+    # an explicit centre range is kept, and a normal centre prior switches containment off
+    v = np.arange(512) * 5.0
+    p = build_prior(("profile",), Priors(v_ctr=Range(kind="uniform", low=1000, high=1100)), v)
+    t = p(rng.uniform(size=(5000, 5)))
+    assert t[:, 0].min() >= 1000 and t[:, 0].max() <= 1100 and np.median(t[:, 1]) > 140
+    assert build_prior(("profile",), Priors(v_ctr=Range(kind="normal", mean=1e3, std=30)), v).band is None

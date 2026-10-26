@@ -135,6 +135,11 @@ def evaluate(ctx: FitContext, out: FitResult) -> None:
                 e = dm.edge_mass(post.theta[:, i], post.weights, lo, hi)
                 m[f"edge_{name}"] = e
                 edge_vals.append(e)
+        if prior.band is not None:  # a centre pressed against the containment limit: line cut by the window
+            r = prior.band_position(post.theta)
+            for j in range(r.shape[1]):
+                m[f"edge_band_{j + 1}"] = e = dm.edge_mass(r[:, j], post.weights, 0.0, 1.0)
+                edge_vals.append(e)
         m["edge_mass"] = max(edge_vals) if edge_vals else 0.0
         m.update(prior_constraints(prior, post, ctx.rng))
         mw, sep = dm.multimodality(post.u, post.weights, ctx.rng)
