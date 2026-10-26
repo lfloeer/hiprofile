@@ -15,7 +15,9 @@ subtracted, 5.2 km/s channels), cuts ±1000 km/s around the catalogue
 velocity, and fits them with `model.response: boxcar+hanning`, N ≤ 2 and
 otherwise the default configuration. Fits at 0ba7787 (median 10.6 s per
 spectrum on one core, about 44 h of CPU in total), spectrum conversion at
-d114eb0. Downloads and fits resume where they stopped.
+d114eb0; the 120 spectra of the RFI follow-up below were refitted with the
+current RFI defaults (symmetric outlier background, negative runs masked).
+Downloads and fits resume where they stopped.
 
 **Data preparation.** Three properties of the NED files matter:
 
@@ -31,16 +33,16 @@ d114eb0. Downloads and fits resume where they stopped.
 
 ## Results
 
-15 036 spectra fitted, none failed; 14 836 detected (P(detect) > 0.5).
+15 036 spectra fitted, none failed; 14 831 detected (P(detect) > 0.5).
 
 | ALFALFA S/N | sources | detected | W50 / catalogue − 1 | naive | Springob | S / catalogue − 1 | Δcz [km/s] |
 |---|---|---|---|---|---|---|---|
-| 5–6.5 | 2244 | 98.9 % | +4.7 % ± 19 % | +0.2 % ± 18 % | +1.8 % ± 23 % | +0.9 % ± 13 % | +0.4 ± 13.3 |
+| 5–6.5 | 2244 | 98.9 % | +4.7 % ± 19 % | +0.3 % ± 17 % | +1.8 % ± 22 % | +0.9 % ± 13 % | +0.4 ± 13.2 |
 | 6.5–8 | 3353 | 99.8 % | +2.6 % ± 11 % | −0.5 % ± 10 % | +2.4 % ± 14 % | 0.0 % ± 8 % | +0.4 ± 7.4 |
-| 8–12 | 4099 | 99.8 % | +1.5 % ± 6.5 % | −0.8 % ± 5.7 % | +2.6 % ± 6.2 % | 0.0 % ± 4.7 % | +0.6 ± 4.9 |
+| 8–12 | 4099 | 99.8 % | +1.5 % ± 6.5 % | −0.8 % ± 5.7 % | +2.6 % ± 6.1 % | 0.0 % ± 4.7 % | +0.6 ± 4.9 |
 | 12–20 | 2407 | 99.6 % | +0.5 % ± 3.5 % | −1.1 % ± 3.7 % | +1.3 % ± 3.0 % | −0.2 % ± 2.9 % | +0.4 ± 2.9 |
 | 20–50 | 1475 | 99.4 % | −0.5 % ± 2.0 % | −1.1 % ± 2.3 % | −0.4 % ± 1.6 % | −0.2 % ± 1.7 % | +0.5 ± 1.8 |
-| > 50 | 501 | 96.8 % | −1.1 % ± 1.8 % | −0.9 % ± 1.8 % | −1.3 % ± 1.1 % | −0.6 % ± 1.5 % | +0.6 ± 1.4 |
+| > 50 | 501 | 96.0 % | −1.0 % ± 1.8 % | −0.9 % ± 1.7 % | −1.3 % ± 1.1 % | −0.6 % ± 1.5 % | +0.5 ± 1.4 |
 
 Median and robust scatter over the detected sources; "naive" and
 "Springob" are the classical widths that hiprofile measures on the same
@@ -61,14 +63,14 @@ spectra around the fitted component (see [validation](validation.md)).
 * **N = 2** is preferred for 7 % of the HIcode 1 sources, rising to most
   sources above S/N 300: bright profiles show more structure than the
   model, or a neighbour is in the window.
-* **Flags:** 20.7 % of the detections; `ppp` 7.6 %, `prior_dominated`
-  6.0 %, `prior_edge` 5.7 %, `wiggle` 3.5 %, `multimodal` 2.8 %,
-  `residual_structure` 1.8 %, `rfi` 0.5 %.
+* **Flags:** 20.6 % of the detections; `ppp` 7.3 %, `prior_dominated`
+  6.1 %, `prior_edge` 5.5 %, `wiggle` 3.5 %, `multimodal` 2.7 %,
+  `residual_structure` 1.6 %, `rfi` 0.6 %.
 
 ## Disagreements
 
 15 % of the detections differ from the catalogue W50 by more than 30 %
-(10 % of HIcode 1 and 34 % of HIcode 2 above cz = 1000 km/s), 7.5 % in cz
+(10 % of HIcode 1 and 34 % of HIcode 2 above cz = 1000 km/s), 7.4 % in cz
 by more than 40 km/s. 39 % of them are flagged, against 17 % of the rest.
 
 ![The twelve largest W50 differences](img/alfalfa_survey_outliers.png)
@@ -86,9 +88,37 @@ The largest differences fall into a few groups:
 * **Faint HIcode 2 lines** where narrow and wide solutions compete
   (`prior_dominated`, `multimodal`), and strongly lopsided profiles where
   the catalogue measures each horn at half its own height.
-* **Nearby sources** (cz < 1000 km/s, 309 detections): N = 2 in 18 % and
-  W50 differences above 30 % in 20 %, from the wing of Galactic HI and from
+* **Nearby sources** (cz < 1000 km/s, 304 detections): N = 2 in 16 % and
+  W50 differences above 30 % in 18 %, from the wing of Galactic HI and from
   extended, bright galaxies.
+
+### A positive profile on a negative baseline
+
+Every component is positive by construction (S ≥ 0, f in [0, 1],
+|α| ≤ 1, positive kernels), but in 0.4 % of the detections a profile sat on
+a baseline more than 5 rms below zero, so that the sum dipped below −3 rms:
+the fit reproduced a dip next to strong continuum, or an RFI feature, as
+"profile minus baseline". In 0.6 % a component reached the edge of the
+window. The RFI pre-stage found these dips (outlier probability ≈ 1) but
+kept them, because runs longer than `rfi.max_width` (20 km/s) are
+protected as possible lines. That protection is now limited to runs above
+the pre-stage model, and the outlier background is symmetric. On the 120
+affected spectra:
+
+| | before | now |
+|---|---|---|
+| profile and baseline cancel | 45 % | 21 % |
+| component at the window edge | 77 % | 53 % |
+| N = 2 | 73 % | 49 % |
+| W50 / S / cz off by > 30 % / 30 % / 40 km/s | 53 / 60 / 51 % | 40 / 43 / 34 % |
+
+A random sample of 500 other sources is unchanged (detected 98.2 %, W50
+scatter 7.0 % instead of 7.2 %), and narrow test lines (Δv = 20–50 km/s,
+S/N 5–8) lose no channel to the mask. The 5 of the 120 that are no longer
+detected lie below the Galactic cut at 350 km/s: the earlier "detection" was
+the wing of Galactic HI. The rest of the catalogue keeps the earlier fits;
+refitting all of it with the new defaults changes the masks of about 15 % of
+the spectra, mostly by one or two channels.
 
 ## Catalogue columns
 
