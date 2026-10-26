@@ -3,11 +3,13 @@
 Everything on this page comes from runs of `benchmarks/validate_all.sh` on
 a 4-core machine with the default configuration (full mode, SMC sampler,
 N ≤ 2, K ≤ 3, RFI pre-stage, Δv ~ Gamma(2.3, 83 km/s), f ~ Beta(1, 3)),
-5 km/s channels unless stated otherwise. SBC, detection and
-misspecification were refitted at 0ba7787, after two fixes found on bright
-ALFALFA spectra (the orthant probability of two amplitudes far in the tail,
-8433605) and with the `residual_structure` flag; the SBC came out
-identical apart from the flags. The bias and ALFALFA fits were made at
+5 km/s channels unless stated otherwise. Detection and misspecification
+were refitted at 84320c4 with the current RFI pre-stage (symmetric outlier
+background, runs below the model masked whatever their length). The SBC,
+which fits without the pre-stage, was refitted at 0ba7787, after two fixes
+found on bright ALFALFA spectra (the orthant probability of two amplitudes
+far in the tail, 8433605) and with the `residual_structure` flag; it came
+out identical apart from the flags. The bias and ALFALFA fits were made at
 commit 2724f8a (the Δv prior), and later commits only add the Springob
 et al. (2005) widths, which
 `benchmarks/add_springob.py` computed from the stored spectra and
@@ -136,15 +138,15 @@ automatic flux-prior scale.
 | | with RFI pre-stage | without |
 |---|---|---|
 | false positives, P(detect) > 0.5 / 0.9 | 0 of 77 / 0 | 83 % / 83 % |
-| completeness S/N 3–5 / 5–8 / ≥ 8 | 0.55 / 0.94 / 1.00 | 0.90 / 1.00 / 1.00 |
-| flagged | 5.5 % | 87 % |
+| completeness S/N 3–5 / 5–8 / ≥ 8 | 0.50 / 0.94 / 1.00 | 0.90 / 1.00 / 1.00 |
+| flagged | 4.0 % | 87 % |
 
 Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
 
 ```
    77      0      0
    19     64      0
-    2     19     19
+    2     18     20
 ```
 
 * **N = 0 and N = 1** are separated cleanly: no false positive at any
@@ -159,8 +161,12 @@ Confusion matrix with the pre-stage (rows: true N, columns: most probable N):
   component below S/N 6 (21 of 40) are mostly fitted as N = 1: a second line
   at S/N 3 is not detectable on its own either.
 * Widths of the detected single lines (bias ± scatter, km/s): W50
-  0.2 ± 8.5 (naive −1.9 ± 11.9, Springob −1.0 ± 13.8), W20 0.4 ± 9.4
-  (naive 26.3 ± 35.3, Springob 0.6 ± 12.8).
+  0.1 ± 8.1 (naive −1.9 ± 11.9, Springob −0.7 ± 12.8), W20 0.4 ± 9.5
+  (naive 26.3 ± 35.3, Springob 0.3 ± 13.3).
+* **The symmetric pre-stage** (current default) against the earlier
+  positive-only one: no false positive either way; completeness at S/N 3–5
+  0.50 instead of 0.55 (one line of 20). Narrow test lines (Δv = 20 and
+  50 km/s at S/N 5 and 8, 50 each) lose no channel to the mask.
 
 ## Stage 3: misspecification
 
@@ -177,19 +183,20 @@ scale.
 
 | set | flagged | W50 bias / scatter [km/s] | 68 % coverage of W50 | W50 scatter naive / Springob | W20 bias / scatter: Bayes, naive, Springob |
 |---|---|---|---|---|---|
-| clean | 7 % | 0.6 / 4.7 | 0.75 | 11.4 / 8.3 | 1.2 / 4.4, 14.5 / 23.7, 3.5 / 6.8 |
-| template | 4 % | −1.5 / 6.9 | 0.69 | 9.4 / 11.4 | −0.4 / 7.7, 8.2 / 20.7, −1.1 / 12.7 |
-| sine baseline | 100 % | −0.7 / 24.7 | 0.35 | 25.9 / 25.0 | −1.0 / 24.6, 7.0 / 52.7, −0.4 / 35.8 |
+| clean | 6 % | 0.7 / 5.0 | 0.75 | 11.8 / 8.3 | 1.3 / 4.4, 14.5 / 23.7, 3.5 / 6.8 |
+| template | 5 % | −1.3 / 6.7 | 0.69 | 9.1 / 11.4 | −0.3 / 7.6, 8.2 / 20.7, −1.4 / 12.2 |
+| sine baseline | 100 % | −0.2 / 29.8 | 0.30 | 33.9 / 27.0 | −1.2 / 24.7, 7.7 / 60.7, −0.3 / 31.2 |
 | RFI unmasked | 100 % | −104 / 110 | 0.16 | 106 / 77 | −106 / 128, −142 / 127, −39 / 67 |
-| baseline prior 50 × too wide | 8 % | 0.7 / 4.7 | 0.70 | 13.3 / 8.0 | 0.3 / 7.2, 26.1 / 38.2, 1.1 / 13.5 |
+| baseline prior 50 × too wide | 9 % | 0.8 / 4.5 | 0.72 | 13.3 / 8.0 | 0.3 / 7.2, 26.1 / 38.8, 1.1 / 13.5 |
 
 * The model describes the galaxy-like templates well enough that the widths
   stay unbiased and calibrated, with less scatter than either classical
   method, which see the same profiles.
 * When the model is wrong the posteriors are overconfident, as any
   posterior of a wrong model is, but the flags catch it:
-  `residual_structure` marks every sine-baseline fit and `ppp` 96 % of
-  them; `ppp`, `prior_edge`, `unresolved`, `residual_structure` (89 %) and
+  `residual_structure` marks every sine-baseline fit and `ppp` 97 % of
+  them (the symmetric pre-stage masks some of the wave's troughs as runs
+  below the model, which widens the W50 scatter from 25 to 30 km/s there); `ppp`, `prior_edge`, `unresolved`, `residual_structure` (89 %) and
   `wiggle` mark the RFI fits. Unmasked RFI hurts the
   Springob widths least, because a spike rarely lies on a flank; it is
   still the flagged fits that tell the user something is wrong.
