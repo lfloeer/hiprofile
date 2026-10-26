@@ -70,7 +70,7 @@ crossings.
 | `wiggle_J`, `wiggle_snr` (Stewart et al. Eq. 8) | `wiggle` | J > `wiggle_max` and J² significant at 3σ |
 | `residual_lowfreq_lnp`, `residual_lowfreq_ratio` (excess power of the whitened residuals at periods longer than 1/`structure_fmax` = 10 channels: ln p against the noise model, observed/expected power) | `residual_structure` | p < `structure_p` (10⁻³): baseline ripple, RFI or a profile the model does not describe |
 | `residual_acf` (lag 1–3, in units of 1/√n; informational) | – | – (it also reacts to a slightly wrong white-noise fraction near the Nyquist frequency, which carries no line information; on real ALFALFA spectra that fired in a quarter of the fits) |
-| `edge_<par>`, `edge_mass` (posterior mass next to a bound of α, Δv, Δv_rand (f is bounded by definition and not checked): within half the posterior's 16–84 % width, at most 1/20 of the range) | `prior_edge` | > `edge_mass` (0.2): the bound cuts the posterior |
+| `edge_<par>`, `edge_band_<i>`, `edge_mass` (posterior mass next to a bound of α, Δv, Δv_rand (f is bounded by definition and not checked), or of a centre pressed against the band edge by `priors.contain`: within half the posterior's 16–84 % width, at most 1/20 of the range) | `prior_edge` | > `edge_mass` (0.2): the bound cuts the posterior |
 | `multimodal_weight`, `multimodal_separation` (2-means in the unit cube) | `multimodal` | weight > 0.1 and separation > 4 |
 | `ess` (Kish) | `low_ess` | < `min_ess` (500) |
 | `logz_check_sigma` (check mode) | `logz_mismatch` | > `logz_sigma` (3) |

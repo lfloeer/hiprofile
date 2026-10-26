@@ -16,6 +16,7 @@ The validated configuration, the code version and the seed are written into ever
 | `model.supersample` | `int \| None` | `null` |  |
 | `priors.v_ctr` | `Range` | `{'kind': 'uniform'}` | Line centre [km/s]. Uniform bounds default to the band minus `v_margin`. |
 | `priors.v_margin` | `float` | `0.05` | Band fraction excluded at each edge |
+| `priors.contain` | `bool` | `True` | Profile components lie entirely inside the band minus `v_margin`: v_ctr +- (delta_v / 2 + 3 delta_v_rand); the centre is uniform where the whole line fits, the widths keep their priors and are truncated only where no line fits. Needs a uniform v_ctr prior. |
 | `priors.delta_v` | `Range` | `{'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}` | Rotational width [km/s]: gamma with shape 2.3 and scale 83 km/s (median 166, 16-84 % 77-305 km/s), truncated at 800 km/s; fitted so that the predicted W50 matches the 25 434 ALFALFA alpha.100 detections (benchmarks/fit_width_prior.py) |
 | `priors.delta_v_rand` | `Range` | `{'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}` | Random motions [km/s]: log-normal around 12.6 km/s (THINGS: 8-32 km/s) |
 | `priors.alpha` | `Range` | `{'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}` | Asymmetry: normal(0, 0.25) truncated to [-1, 1] (THINGS: median 0.00, robust std 0.14) |
@@ -80,7 +81,7 @@ Prior ranges (`priors.v_ctr`, `priors.delta_v`, ...) take `kind` (`uniform`, `lo
 | `n_components` | `int \| list[float]` | `1` |  |
 | `profiles` | `Literal['model', 'template', 'mixed']` | `model` |  |
 | `template_files` | `list[str]` | `[]` |  |
-| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'delta_v': {'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
+| `priors` | `Priors` | `{'v_ctr': {'kind': 'uniform'}, 'v_margin': 0.05, 'contain': True, 'delta_v': {'kind': 'gamma', 'low': 0.0, 'high': 800.0, 'a': 2.3, 'scale': 83.0}, 'delta_v_rand': {'kind': 'lognormal', 'low': 4.0, 'high': 60.0, 'mean': 1.1, 'std': 0.2}, 'alpha': {'kind': 'normal', 'low': -1.0, 'high': 1.0, 'mean': 0.0, 'std': 0.25}, 'f': {'kind': 'beta', 'low': 0.0, 'high': 1.0, 'a': 1.0, 'b': 3.0}, 'amplitude_scale': 'auto', 'baseline_scale': 'auto', 'rfi_sigma_channels': (0.3, 1.0)}` |  |
 | `flux` | `Literal['prior', 'snr']` | `snr` |  |
 | `snr_range` | `tuple[float, float]` | `(3.0, 100.0)` |  |
 | `noise_sigma` | `float` | `0.01` |  |
