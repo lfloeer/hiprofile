@@ -1,0 +1,1176 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Bayesian fitting of global HI line profiles">
+      
+      
+      
+      
+        <link rel="prev" href="../priors/">
+      
+      
+        <link rel="next" href="../outputs/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Inference - hiprofile</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#inference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="hiprofile" class="md-header__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hiprofile
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Inference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="hiprofile" class="md-nav__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hiprofile
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../priors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Priors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#marginal-likelihood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Marginal likelihood
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linear-and-nonlinear-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linear and nonlinear parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#amplitude-positivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Amplitude positivity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Noise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Baseline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rfi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RFI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#samplers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Samplers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Samplers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#accuracy-and-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accuracy and speed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compiled-kernel-and-likelihood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compiled kernel and likelihood
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outputs and flags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alfalfa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ALFALFA α.40 refitted
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy code (Phase 0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#marginal-likelihood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Marginal likelihood
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linear-and-nonlinear-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linear and nonlinear parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#amplitude-positivity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Amplitude positivity
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Noise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Baseline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rfi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RFI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#samplers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Samplers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Samplers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#accuracy-and-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accuracy and speed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compiled-kernel-and-likelihood" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compiled kernel and likelihood
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="inference">Inference<a class="headerlink" href="#inference" title="Permanent link">&para;</a></h1>
+<h2 id="marginal-likelihood">Marginal likelihood<a class="headerlink" href="#marginal-likelihood" title="Permanent link">&para;</a></h2>
+<p>For fixed <span class="arithmatex">\(\theta\)</span> the model is <span class="arithmatex">\(m = M\beta\)</span> with the design matrix
+<span class="arithmatex">\(M = [R, D, \dots, T_0, \dots, T_K]\)</span>. With the prior <span class="arithmatex">\(\beta \sim \mathcal N(\mu, \Lambda)\)</span>
+and the noise covariance <span class="arithmatex">\(C\)</span>,</p>
+<div class="arithmatex">\[
+\mathbf y \mid \theta \sim \mathcal N(M\mu,\; C + M\Lambda M^\top).
+\]</div>
+<p>With the whitening <span class="arithmatex">\(L^{-1}\)</span> (<span class="arithmatex">\(C = LL^\top\)</span>) and the Woodbury identity only a
+<span class="arithmatex">\(p\times p\)</span> system is solved, <span class="arithmatex">\(p\)</span> = number of amplitudes + K + 1:</p>
+<div class="arithmatex">\[
+A = \Lambda^{-1} + \tilde M^\top\tilde M,\quad b = \tilde M^\top \tilde r,\quad
+\ln L = -\tfrac12\left[\tilde r^\top\tilde r - b^\top A^{-1} b + \ln|C| + \ln|\Lambda| + \ln|A| + n\ln 2\pi\right]
+\]</div>
+<p>and <span class="arithmatex">\(\beta\mid\theta, y \sim \mathcal N(\mu + A^{-1}b, A^{-1})\)</span>. The tests compare
+this with the dense formula and with a numerical integral over <span class="arithmatex">\(\beta\)</span>.</p>
+<h2 id="linear-and-nonlinear-parameters">Linear and nonlinear parameters<a class="headerlink" href="#linear-and-nonlinear-parameters" title="Permanent link">&para;</a></h2>
+<p>Each profile component has five nonlinear parameters, <span class="arithmatex">\(\theta = (v_\mathrm{ctr},
+\Delta v, \Delta v_\mathrm{rand}, \alpha, f)\)</span>, and one linear amplitude, the
+integrated flux <span class="arithmatex">\(S\)</span>. The kernel still returns the ring and disk basis
+functions separately; the likelihood combines them into the unit-flux column
+<span class="arithmatex">\((1-f)R + fD\)</span>. An earlier version kept <span class="arithmatex">\(a_\mathrm{ring} = S(1-f)\)</span> and
+<span class="arithmatex">\(a_\mathrm{disk} = Sf\)</span> as two linear amplitudes. That is cheaper by one
+sampling dimension but has two drawbacks: for narrow profiles ring and disk
+are nearly identical and the two amplitudes become degenerate with large
+anti-correlated values, and the implied prior on <span class="arithmatex">\(f\)</span> (the ratio of two
+half-normal amplitudes) depends on <span class="arithmatex">\(S\)</span>, flat for faint and peaked for bright
+sources. With <span class="arithmatex">\(f\)</span> sampled, its prior is explicit and the same for every
+source, and the degeneracy becomes a flat direction in <span class="arithmatex">\(f\)</span> that the prior
+handles.</p>
+<h2 id="amplitude-positivity">Amplitude positivity<a class="headerlink" href="#amplitude-positivity" title="Permanent link">&para;</a></h2>
+<p>The amplitude <span class="arithmatex">\(S\)</span> of each component has a half-normal prior (scale
+<code>priors.amplitude_scale</code>), i.e. a zero-mean Gaussian truncated to <span class="arithmatex">\(S \ge 0\)</span>.
+The truncation enters the likelihood exactly through the orthant probability
+of the conditional Gaussian,</p>
+<div class="arithmatex">\[
+p(y \mid \theta, K) = p_\mathrm{gauss}(y \mid \theta, K)\; P(S \ge 0 \mid \theta, y, K)\, 2^{q},
+\]</div>
+<p>with the normal CDF for one component and the bivariate normal CDF (Owen's T
+function) for two. For three or more components the product of the marginal
+probabilities is used in the sampling target and the remaining correction is
+estimated by Monte Carlo and applied as importance weight
+(<code>hiprofile.inference.amplitudes</code>). The fraction of Gaussian draws with a
+negative amplitude is reported as <code>negative_fraction</code>; with the half-normal
+prior in the target it is informational.</p>
+<h2 id="noise">Noise<a class="headerlink" href="#noise" title="Permanent link">&para;</a></h2>
+<p>Per-channel <span class="arithmatex">\(\sigma\)</span> comes from the input or a robust estimate (MAD of first
+differences, corrected for the channel correlation; optionally restricted to
+<code>noise.signal_free</code> ranges). The covariance between channels i and j is
+<span class="arithmatex">\(C_{ij} = \sigma_i\sigma_j\,\rho(|i-j|)\)</span>; masked channels are dropped, and
+the banded covariance is factorised once (banded Cholesky for NumPy, dense
+inverse factor for JAX). <code>priors.noise_scale</code> optionally fits a global
+scale factor.</p>
+<p>Real spectra are smoothed in the channel domain (spectrometer window,
+Hanning, regridding to a velocity grid, averaging of Doppler-shifted
+scans), which correlates neighbouring channels. <code>noise.correlation</code>:</p>
+<table>
+<thead>
+<tr>
+<th>value</th>
+<th>correlation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auto</code> (default)</td>
+<td>the smoothing in <code>model.response</code> (<code>hanning</code>, <code>kernel(...)</code>) plus an estimated white part; white without smoothing</td>
+</tr>
+<tr>
+<td><code>estimate</code></td>
+<td>measured on the residuals of the robust pre-fit: white noise smoothed by an unknown symmetric kernel <span class="arithmatex">\([h_2, h_1, 1, h_1, h_2]\)</span> with <span class="arithmatex">\(h \ge 0\)</span> plus a white part, fitted to the variance ratios of the 2nd–4th to the 1st differences of the residuals; white, 3-tap and 5-tap models are chosen by AIC</td>
+</tr>
+<tr>
+<td><code>white</code>, <code>hanning</code>, <code>hanning-decimated</code>, <code>[ρ₁, ρ₂, …]</code></td>
+<td>fixed; a <code>+white</code> suffix adds an estimated white part</td>
+</tr>
+</tbody>
+</table>
+<p>Two details keep the noise model safe on real data. Its power spectrum is
+kept above 0.5 % (<code>+white</code>) or 1 % (<code>estimate</code>) of the mean (a white floor); an exact Hanning model has zero
+power at the Nyquist frequency, real spectra do not, and whitening with it
+amplified that component by orders of magnitude (χ²_red up to 10⁴ on
+ALFALFA spectra). And the estimate is positive definite by construction,
+so masks and gaps cannot break the Cholesky factorisation. Differences
+rather than the sample autocorrelation, because the residuals also contain
+baseline ripple and line residues at low frequencies, which bias the
+autocorrelation (on ALFALFA spectra ρ₃ down to −0.27) and which a smoothing
+kernel cannot represent; differences suppress them and weight the high
+frequencies that the whitening divides by. Non-negative taps, because every
+physical smoothing has them; a free kernel turns noise in the higher lags
+into side lobes with deep spectral notches. The price: ρ₂ of a broad kernel
+is determined to about 0.03 only, which changes the noise of a flux
+integrated over a line by about 2 %. The fitted
+correlation is stored as the metrics <code>noise_rho</code> and <code>noise_rho1</code>.
+<code>estimate</code> costs one extra pre-fit iteration when the RFI pre-stage is off.
+<a href="../validation/#correlated-noise">Validation</a> compares the options on noise
+smoothed by a kernel the fit does not know: a close guess written into
+<code>model.response</code> is as good as the true correlation, <code>estimate</code> is slightly
+overconfident (coverages 2–5 points low), ignoring the correlation is
+useless (85 % false positives). Use <code>estimate</code> only when the smoothing is
+unknown.</p>
+<h2 id="baseline">Baseline<a class="headerlink" href="#baseline" title="Permanent link">&para;</a></h2>
+<p>Chebyshev polynomials of order K = <code>k_min</code> … <code>k_max</code> with a Gaussian prior
+(<code>baseline_scale</code>, or mean/covariance from signal-free neighbour spectra via
+<code>hiprofile.likelihood.baseline.baseline_prior_from_spectra</code>). K is
+compared by evidence with a flat prior.</p>
+<h2 id="rfi">RFI<a class="headerlink" href="#rfi" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Pre-stage</strong> (<code>rfi.prefit</code>): EM fit of profile + baseline with the outlier
+   mixture of Hogg, Bovy &amp; Lang (2010),
+   <span class="arithmatex">\(L_j = (1-P_b)\mathcal N(y_j\mid m_j,\sigma_j) + P_b B(y_j)\)</span>, with a broad
+   background <span class="arithmatex">\(B\)</span>, symmetric by default (<code>rfi.background</code>; <code>positive</code>
+   restricts it to excess flux). Output: outlier probabilities <span class="arithmatex">\(q_j\)</span>
+   (stored and plotted).</li>
+<li><strong>Main fit</strong>: channels with <span class="arithmatex">\(q_j\)</span> above <code>rfi.threshold</code> are masked
+   (<code>action: mask</code>) or their <span class="arithmatex">\(\sigma\)</span> inflated by <span class="arithmatex">\(1/\sqrt{1-q_j}\)</span>
+   (<code>action: inflate</code>). A single channel between two outliers is masked
+   with them. Many outliers set the <code>rfi</code> flag.</li>
+<li><strong>Extension</strong>: <code>model.n_rfi</code> adds narrow Gaussian components (width
+   <code>priors.rfi_sigma_channels</code>, 0.3–1 channel by default) to every model.</li>
+</ol>
+<p>Two guards keep the pre-stage from eating signal. Its line model is not
+allowed to be narrower than <code>rfi.min_sigma_channels</code> (2) channels, so a
+bright spike cannot be absorbed as a "line" and hide its own centre from the
+mask. And a run of outlier channels longer than <code>rfi.max_width</code> (20 km/s,
+gaps of up to two channels included, at least one channel) is not RFI but
+signal the one-component pre-stage cannot explain, typically a second line
+or a narrow dwarf, and stays in the fit; broader RFI needs a larger value or
+<code>model.n_rfi</code>. The limit protects only runs above the pre-stage model: a run
+below it cannot be emission and is masked whatever its length
+(<code>rfi.mask_negative_runs</code>). On ALFALFA spectra these are the dips next to
+strong continuum sources, which the main fit otherwise reproduced as a
+positive profile on a strongly negative baseline (see the ALFALFA page). The limit is in velocity so that 1 km/s and 15 km/s channels
+behave alike: at 15 km/s only single-channel spikes are RFI, and a line
+narrower than one channel cannot be told from one.
+<code>hiprofile validate --stage detection</code> measures the completeness with and
+without the pre-stage.</p>
+<h2 id="model-comparison">Model comparison<a class="headerlink" href="#model-comparison" title="Permanent link">&para;</a></h2>
+<p>For each spectrum the models N = 0 … <code>n_max</code> are evaluated; the baseline
+order K = <code>k_min</code> … <code>k_max</code> is marginalised <em>inside</em> the likelihood,</p>
+<div class="arithmatex">\[
+p(y \mid \theta) = \sum_K P(K)\, p(y \mid \theta, K), \qquad P(K) \text{ flat}.
+\]</div>
+<p>Because the Chebyshev columns are nested, <span class="arithmatex">\(A_K\)</span> is the leading principal block
+of <span class="arithmatex">\(A_{K_\max}\)</span>: one Cholesky factorisation gives <span class="arithmatex">\(\ln|A_K|\)</span> and
+<span class="arithmatex">\(b_K^\top A_K^{-1} b_K\)</span> for every K as partial sums, so marginalising over K
+costs about as much as a single order. Consequences:</p>
+<ul>
+<li>one sampler run per N (no K scan, no reweighting, no re-runs);</li>
+<li>the posterior is exactly marginalised over K; every sample carries
+  <span class="arithmatex">\(P(K \mid \theta, y)\)</span>, and the order stored with a sample (<code>k_samples</code>) is
+  drawn from it;</li>
+<li>the per-(N, K) evidences follow from the run without extra sampling,
+  <span class="arithmatex">\(Z_{N,K} = Z_N\, \mathbb E_\mathrm{post}[P(K\mid\theta,y)] / P(K)\)</span>;</li>
+<li>an informative baseline prior from neighbour spectra (mean or covariance)
+  fixes K = <code>k_max</code>, because the leading-block trick needs independent
+  zero-mean coefficient priors.</li>
+</ul>
+<p>N = 0 has no nonlinear parameters and its evidence is analytic for every K.
+For N ≥ 1 a quick fit (MAP + Laplace + importance sampling) runs first; if
+its evidence lies more than <code>sampler.gate_margin</code> (5) nats below a model with
+fewer components, the sampler is skipped and the quick evidence kept
+(<code>method = quick-gated</code>). Otherwise the sampler runs once on the K-marginal
+likelihood (<code>method = marginal</code>).</p>
+<p>A second, fainter line is a needle in the prior volume: random starts and
+prior-drawn particles rarely place a component on it. Two warm starts take
+care of that without touching the evidence. For N ≥ 2 the quick stage also
+optimises the N − 1 solution with a new component on each of the strongest
+features of the N − 1 residual (matched filters of 2 and 6 channels,
+<code>sampler.n_seeds</code>). The SMC then draws <code>sampler.init_fraction</code> (25 %) of its
+particles from the quick stage's importance proposal and the rest from the
+prior; the initial importance weights prior/q₀ of this defensive mixture
+keep ln Z exact and are bounded by 1/(1 − 0.25). Every second MCMC move of
+the SMC is an independence proposal from the same mixture (exact
+Metropolis–Hastings), so particles can jump into the narrow mode of a faint
+second line at every temperature instead of having to random-walk there.
+On pairs whose second line has S/N ≈ 6 (ln Z of N = 2 within a nat of N = 1)
+this brought the SMC evidence from 2–5 nats below nautilus to within a nat.</p>
+<p>Model probabilities use a Poisson prior on N (mean <code>poisson_rate</code>) and the
+flat prior on K; the detection probability is <span class="arithmatex">\(P(N\ge 1\mid y)\)</span>. Several
+components are compared through evidences, not trans-dimensional sampling.</p>
+<h2 id="samplers">Samplers<a class="headerlink" href="#samplers" title="Permanent link">&para;</a></h2>
+<p>All backends implement <code>run(loglike, prior_transform, ndim) -&gt; SamplerResult</code>
+(samples, weights, ln Z ± error, runtime, number of likelihood calls, statistics).</p>
+<table>
+<thead>
+<tr>
+<th>backend</th>
+<th>role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>smc</code></td>
+<td><strong>default</strong>: adaptive tempered SMC (1000 particles, random-walk moves), one batched likelihood call per step; with <code>--gpu</code> (JAX likelihood) the batch runs as one XLA call</td>
+</tr>
+<tr>
+<td><code>nautilus</code></td>
+<td>most precise ln Z, fewest likelihood calls, but ~10x slower here because its neural-network training dominates for a cheap likelihood; default <code>check_backend</code></td>
+</tr>
+<tr>
+<td><code>dynesty</code></td>
+<td>second opinion, well-documented diagnostics</td>
+</tr>
+<tr>
+<td><code>ultranest</code></td>
+<td>robustness check, conservative ln Z errors</td>
+</tr>
+<tr>
+<td><code>quick</code></td>
+<td>MAP + Laplace + adaptive importance sampling; quick look and start values, may miss modes</td>
+</tr>
+</tbody>
+</table>
+<p>Modes: <code>--mode quick</code> (quick backend everywhere), <code>--mode full</code> (sampling of
+all N and K), <code>--mode check</code> (additionally runs <code>check_backend</code> at K* and
+flags <span class="arithmatex">\(|\Delta\ln Z| &gt; 3\sigma\)</span>).</p>
+<p>Every nested sampler has a time / call budget (nautilus 600 s or 10⁶ calls,
+dynesty and UltraNest 10⁶ calls); a fit that hits it gets the <code>sampler_budget</code> flag.</p>
+<h3 id="accuracy-and-speed">Accuracy and speed<a class="headerlink" href="#accuracy-and-speed" title="Permanent link">&para;</a></h3>
+<p>Measured on a 512-channel spectrum (S/N 15, first-order baseline), eight seeds per setting:</p>
+<table>
+<thead>
+<tr>
+<th>backend</th>
+<th>N = 1: ln Z bias / scatter / time</th>
+<th>N = 2: ln Z bias / scatter / time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nautilus (reference)</td>
+<td>– / 0.02 / 10 s</td>
+<td>– / 0.03 / 40–46 s</td>
+</tr>
+<tr>
+<td>smc, 1000 particles, 10 moves</td>
+<td>−0.04 / 0.10 / 0.9 s</td>
+<td>+0.25 / 0.23 / 3.2 s</td>
+</tr>
+<tr>
+<td>smc, 1000 particles, 20 moves</td>
+<td>0.00 / 0.11 / 1.8 s</td>
+<td>+0.16 / 0.11 / 6.6 s</td>
+</tr>
+<tr>
+<td>quick</td>
+<td>−0.03 / 0.02 / 0.3 s</td>
+<td>−0.1 / 0.1 / 0.7 s (low ESS)</td>
+</tr>
+</tbody>
+</table>
+<p>dynesty and UltraNest lie 0.05–0.15 above nautilus for N = 2, so part of the SMC
+offset is nautilus' own.</p>
+<p>The SMC runs as two independent runs of 500 particles whose samples are
+pooled and whose evidences are averaged; the spread between the runs gives
+the evidence error (the incremental-weight variance of one run misses the
+correlation that the MCMC moves leave between particles). Measured on a
+single-line spectrum at S/N 8 with K = 0…3 marginalised, six seeds: the
+K-marginal ln Z_N of N = 1 scatters by 0.15 (reported 0.10), that of N = 2,
+whose second component has a broad flat posterior, by 1.0 (reported 0.3;
+nautilus lies within 0.3 of the SMC values). The per-(N, K) evidences of an
+improbable K carry an extra Monte-Carlo noise of about 1 nat from
+<span class="arithmatex">\(\mathbb E_\mathrm{post}[P(K\mid\theta,y)]\)</span>; model probabilities use the sum
+over K and are unaffected. Offsets of a few tenths in ln Z change model
+probabilities by tens of per cent at most; use <code>--backend nautilus</code> or
+<code>--mode check</code> where precise evidences matter.</p>
+<h3 id="compiled-kernel-and-likelihood">Compiled kernel and likelihood<a class="headerlink" href="#compiled-kernel-and-likelihood" title="Permanent link">&para;</a></h3>
+<p>With numba installed (a default dependency), the ring/disk kernel and the
+Woodbury algebra run as compiled loops (<code>hiprofile.model.fast</code>,
+<code>hiprofile.likelihood.fast</code>): table-based Bessel functions (Estrin scheme),
+recurrences for the phase factor and the Gaussian, direct scattering into the
+folded spectrum, banded whitening and a small Cholesky solve per parameter
+vector. They agree with the NumPy reference to 1e-12 (tests/test_fast.py).
+One evaluation of the marginal likelihood (one component, 512 channels, K = 2)
+takes about 19 µs in batches and 36 µs as a single call; the NumPy path takes
+about 100 µs and 300 µs.</p>
+<p>Complete fits with the default configuration (N ≤ 2, K = 0…3, RFI pre-stage), one process:</p>
+<table>
+<thead>
+<tr>
+<th>spectrum</th>
+<th>before (NumPy kernel, nautilus)</th>
+<th>now (numba, smc)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pure noise</td>
+<td>15–55 s</td>
+<td>3.4 s</td>
+</tr>
+<tr>
+<td>one component</td>
+<td>100–220 s</td>
+<td>4.9 s</td>
+</tr>
+<tr>
+<td>two components</td>
+<td>100–250 s</td>
+<td>9 s</td>
+</tr>
+</tbody>
+</table>
+<p><code>benchmarks/bench_kernel.py</code> and <code>benchmarks/bench_fit.py</code> reproduce the numbers.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

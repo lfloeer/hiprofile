@@ -1,0 +1,1822 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Bayesian fitting of global HI line profiles">
+      
+      
+      
+      
+        <link rel="prev" href="../configuration/">
+      
+      
+        <link rel="next" href="../alfalfa/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Validation - hiprofile</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#validation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="hiprofile" class="md-header__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            hiprofile
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Validation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="hiprofile" class="md-nav__button md-logo" aria-label="hiprofile" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    hiprofile
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lfloeer/hiprofile" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../priors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Priors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outputs and flags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#stage-1-simulation-based-calibration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 1: simulation-based calibration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-2-detection-and-confusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 2: detection and confusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-3-misspecification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 3: misspecification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conditional-bias-priors-and-classical-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional bias: priors and classical methods
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Conditional bias: priors and classical methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-low-sn-bias-comes-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the low-S/N bias comes from
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-classical-methods-at-low-sn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The classical methods at low S/N
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#correlated-noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correlated noise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channel-widths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel widths
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-data-low-sn-alfalfa-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real data: low-S/N ALFALFA sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alfalfa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ALFALFA α.40 refitted
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy code (Phase 0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#stage-1-simulation-based-calibration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 1: simulation-based calibration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-2-detection-and-confusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 2: detection and confusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-3-misspecification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 3: misspecification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conditional-bias-priors-and-classical-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional bias: priors and classical methods
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Conditional bias: priors and classical methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-low-sn-bias-comes-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the low-S/N bias comes from
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-classical-methods-at-low-sn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The classical methods at low S/N
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#correlated-noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correlated noise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channel-widths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel widths
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-data-low-sn-alfalfa-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real data: low-S/N ALFALFA sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h1>
+<p>Everything on this page comes from runs of <code>benchmarks/validate_all.sh</code> on
+a 4-core machine with the default configuration (full mode, SMC sampler,
+N ≤ 2, K ≤ 3, RFI pre-stage, Δv ~ Gamma(2.3, 83 km/s), f ~ Beta(1, 3)),
+5 km/s channels unless stated otherwise. SBC, detection and
+misspecification were refitted at d053ea5, with profile components
+contained in the band (<code>priors.contain</code>; simulations and fits use it) and
+the current RFI pre-stage (symmetric outlier background, runs below the
+model masked whatever their length). The bias and ALFALFA fits were made at
+commit 2724f8a (the Δv prior), and later commits only add the Springob
+et al. (2005) widths, which
+<code>benchmarks/add_springob.py</code> computed from the stored spectra and
+baselines (the naive values are reproduced exactly), and the Hanning bias
+run. The low-S/N bias decomposition (<code>benchmarks/w20_bias.py</code>) ran at
+b0f5c72, the same fitting code. The correlated-noise study is from 61a2b05 with the earlier
+log-normal Δv prior; it tests the noise model, which the prior does not
+touch.</p>
+<p><strong>Classical references.</strong> Every stage measures the widths in two classical
+ways on the same baseline-subtracted spectra, in a window of ±(W20/2 + 25 %
++ 2 channels) around the posterior v_sys, as a by-eye window would be
+chosen:</p>
+<ul>
+<li><em>naive</em>: outermost channels above 50 % / 20 % of the peak channel,
+  interpolated linearly to the next channel outward;</li>
+<li><em>Springob et al. (2005)</em> W_F50, as used for the ALFALFA catalogue widths:
+  per horn, a straight line fitted to the flank between the first channels
+  below 85 % and 15 % of (horn − rms), read at 50 %; for Hanning-smoothed
+  spectra minus their instrumental correction 2 Δv_chan λ(S/N). Read at
+  20 % of the same lines it gives a W20, which is our extension of the
+  method (λ is calibrated for W_F50 only). Where a flank cannot be fitted
+  (fit rising away from the horn, crossing outside the window) it gives no
+  value; that happens for 18 % of the detected SBC lines, nearly all at
+  S/N &lt; 8.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>stage</th>
+<th>command</th>
+<th>spectra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SBC</td>
+<td><code>hiprofile validate --stage sbc --n 1000 --seed 11</code></td>
+<td>1000</td>
+</tr>
+<tr>
+<td>detection</td>
+<td><code>hiprofile validate --stage detection --n 200 --seed 21</code></td>
+<td>200, fitted twice</td>
+</tr>
+<tr>
+<td>misspecification</td>
+<td><code>hiprofile validate --stage misspec --n 100 --seed 31</code></td>
+<td>5 × 100</td>
+</tr>
+<tr>
+<td>conditional bias</td>
+<td><code>python benchmarks/bias_study.py --n 20 --priors default\|flat</code>, and <code>--response boxcar+hanning</code></td>
+<td>3 × 500</td>
+</tr>
+<tr>
+<td>low-S/N bias causes</td>
+<td><code>python benchmarks/w20_bias.py --n 100</code>, and <code>--variants default --response boxcar+hanning</code></td>
+<td>1500, fitted three times; 1500 Hanning</td>
+</tr>
+<tr>
+<td>correlated noise</td>
+<td><code>python benchmarks/correlated_noise.py --n 300 --n-noise 150</code></td>
+<td>450, fitted four times</td>
+</tr>
+<tr>
+<td>real data</td>
+<td><code>python benchmarks/alfalfa_study.py</code></td>
+<td>10 ALFALFA sources</td>
+</tr>
+</tbody>
+</table>
+<h2 id="stage-1-simulation-based-calibration">Stage 1: simulation-based calibration<a class="headerlink" href="#stage-1-simulation-based-calibration" title="Permanent link">&para;</a></h2>
+<p>Every simulation is drawn from the fit priors: the five shape parameters,
+the flux (half-normal, scale 4 Jy km/s) and a Chebyshev baseline of order
+K ~ U{0, …, 3} with coefficients from the baseline prior; white noise with
+σ = 0.01 Jy on 512 channels. The fit uses the same priors with the order
+marginalised. The rank of the truth among 99 posterior draws must then be
+uniform, and the posterior intervals must cover the truth at their nominal
+rate.</p>
+<table>
+<thead>
+<tr>
+<th>parameter</th>
+<th>rank p-value</th>
+<th>68 % coverage</th>
+<th>95 % coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v_ctr</td>
+<td>0.07</td>
+<td>0.71</td>
+<td>0.96</td>
+</tr>
+<tr>
+<td>Δv</td>
+<td>0.80</td>
+<td>0.68</td>
+<td>0.94</td>
+</tr>
+<tr>
+<td>Δv_rand</td>
+<td>0.11</td>
+<td>0.71</td>
+<td>0.94</td>
+</tr>
+<tr>
+<td>α</td>
+<td>0.87</td>
+<td>0.67</td>
+<td>0.95</td>
+</tr>
+<tr>
+<td>S</td>
+<td>0.45</td>
+<td>0.68</td>
+<td>0.95</td>
+</tr>
+<tr>
+<td>f</td>
+<td>0.13</td>
+<td>0.69</td>
+<td>0.95</td>
+</tr>
+<tr>
+<td>W50</td>
+<td>0.03</td>
+<td>0.68</td>
+<td>0.96</td>
+</tr>
+<tr>
+<td>W20</td>
+<td>0.52</td>
+<td>0.68</td>
+<td>0.95</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="SBC: rank histograms, interval coverage and baseline-order calibration" src="../img/sbc.png" /></p>
+<p>The 68 % coverages lie inside the ±2σ band for 1000 simulations
+(0.65–0.71), the 95 % coverages inside theirs (0.936–0.964). Seven of eight
+rank histograms pass (p ≥ 0.07); the W50 histogram has p = 0.03 (counts
+112, 104, 79, 88, 99, 129, 92, 108, 87, 102 in ten bins), one high and one
+low bin without a slope or U shape. With eight tests, one p below 0.05
+turns up by chance in a third of all runs; the previous run, without
+containment, had the same pattern in Δv_rand (p = 0.03) and a flat W50
+(p = 0.10). The faint
+draws of the flux prior that are not detected take part like every other
+simulation.</p>
+<p><strong>Baseline order.</strong> The most probable K is the true one in 93 % of the
+simulations and P(K_true | y) averages 0.88; the reliability curve (right
+panel) follows the diagonal. The confusion matrix (rows: true K, columns:
+most probable K) is one-sided:</p>
+<pre><code>  267      1      0      0
+   14    227      2      0
+    5     15    219      1
+    1      6     26    216
+</code></pre>
+<p>A true K = 3 whose highest coefficients happen to be small is read as K = 2,
+the right answer for terms the data cannot see. This calibration holds when
+the baseline prior matches the baselines; Stage 3 shows what happens when
+it does not.</p>
+<p><strong>Flags.</strong> 12.9 % of the fits carry a flag: <code>prior_edge</code> 6.8 % (Δv_rand at
+its 4 km/s bound for faint, narrow lines), <code>prior_dominated</code> 3.4 %,
+<code>wiggle</code> 2.0 %, <code>ppp</code> 1.0 %, <code>multimodal</code> 0.8 %, <code>residual_structure</code> 0.1 % (its
+calibrated false-alarm rate).</p>
+<p>The same simulations measured against the truth (739 detected, N = 1;
+median error and robust scatter):</p>
+<table>
+<thead>
+<tr>
+<th>quantity</th>
+<th>Bayes</th>
+<th>naive</th>
+<th>Springob</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>W50 [km/s]</td>
+<td>0.0 ± 10.6</td>
+<td>−0.3 ± 21.0</td>
+<td>−7.4 ± 21.5 (607 measured)</td>
+</tr>
+<tr>
+<td>W20 [km/s]</td>
+<td>0.4 ± 11.6</td>
+<td>28.9 ± 37.0</td>
+<td>−8.8 ± 32.5</td>
+</tr>
+<tr>
+<td>S [Jy km/s]</td>
+<td>0.01 ± 0.38</td>
+<td>0.05 ± 0.39</td>
+<td>–</td>
+</tr>
+<tr>
+<td>v_sys [km/s]</td>
+<td>−0.3 ± 4.8</td>
+<td>−0.5 ± 8.5</td>
+<td>−0.2 ± 9.2</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Line widths: Bayesian fit against the two classical measurements" src="../img/bayes_vs_classic.png" /></p>
+<p>The posterior medians are unbiased with half the scatter of either
+classical width. Each classical method fails in its own way at low S/N:
+noise peaks above the 20 % threshold make the naive W20 too wide, and in
+these unsmoothed 5 km/s channels a noise dip next to a horn ends the
+Springob flank search early, so its widths come out too narrow below
+S/N ≈ 15. Above S/N ≈ 25 all three agree (figure). The SBC population is
+drawn from the prior with unsmoothed channels; for Hanning-smoothed
+spectra, where Springob's method is at home, see the bias study below.</p>
+<p>Example posterior (corner plot of a low-S/N spectrum with a bimodal centre):</p>
+<p><img alt="corner plot" src="../img/corner_example.png" /></p>
+<h2 id="stage-2-detection-and-confusion">Stage 2: detection and confusion<a class="headerlink" href="#stage-2-detection-and-confusion" title="Permanent link">&para;</a></h2>
+<p>200 spectra with N = 0, 1, 2 (probabilities 0.4, 0.4, 0.2), integrated S/N
+2–40 per component, a first-order baseline and single-channel RFI spikes
+(2–3 per spectrum), fitted with and without the RFI pre-stage and the
+automatic flux-prior scale.</p>
+<p><img alt="Detection: completeness, reliability and confusion matrix" src="../img/detection.png" /></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>with RFI pre-stage</th>
+<th>without</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>false positives, P(detect) &gt; 0.5 / 0.9</td>
+<td>0 of 77 / 0</td>
+<td>83 % / 83 %</td>
+</tr>
+<tr>
+<td>completeness S/N 3–5 / 5–8 / ≥ 8</td>
+<td>0.50 / 0.88 / 1.00</td>
+<td>0.90 / 1.00 / 1.00</td>
+</tr>
+<tr>
+<td>flagged</td>
+<td>4.0 %</td>
+<td>86 %</td>
+</tr>
+</tbody>
+</table>
+<p>Confusion matrix with the pre-stage (rows: true N, columns: most probable N):</p>
+<pre><code>   77      0      0
+   19     64      0
+    2     17     21
+</code></pre>
+<ul>
+<li><strong>N = 0 and N = 1</strong> are separated cleanly: no false positive at any
+  threshold, and no single line split into two. Without the pre-stage the
+  RFI spikes are fitted as lines (83 % false positives, 64 % flagged
+  <code>unresolved</code>, 48 % <code>residual_structure</code>); its higher "completeness" is
+  the same effect.</li>
+<li><strong>The completeness</strong> at S/N 3–5 is that of the SBC, which has no RFI, so
+  the pre-stage costs none.</li>
+<li><strong>N = 2.</strong> Of the 19 pairs with both components at S/N &gt; 6 and separated
+  by more than their width, 17 are fitted as N = 2. Pairs with a second
+  component below S/N 6 (21 of 40) are mostly fitted as N = 1: a second line
+  at S/N 3 is not detectable on its own either.</li>
+<li>Widths of the detected single lines (bias ± scatter, km/s): W50
+  0.0 ± 9.9 (naive −1.2 ± 12.3, Springob −4.5 ± 12.8), W20 0.0 ± 9.2
+  (naive 25.6 ± 30.5, Springob −3.8 ± 19.6).</li>
+<li><strong>The symmetric pre-stage</strong> (current default) against the earlier
+  positive-only one: no false positive either way; completeness at S/N 3–5
+  0.50 instead of 0.55 (one line of 20). Narrow test lines (Δv = 20 and
+  50 km/s at S/N 5 and 8, 50 each) lose no channel to the mask.</li>
+</ul>
+<h2 id="stage-3-misspecification">Stage 3: misspecification<a class="headerlink" href="#stage-3-misspecification" title="Permanent link">&para;</a></h2>
+<p>Five sets of 100 one-component spectra at S/N 5–80: model profiles
+(<code>clean</code>); profiles the model does not generate (<code>template</code>: tilted-ring
+galaxies with a rising rotation curve, inclinations 30–85°, lopsidedness up
+to 30 % and central HI holes, integrated on a fine grid); model profiles on
+a sinusoidal baseline that no Chebyshev polynomial up to K = 3 describes;
+model profiles with RFI and no pre-stage; and Chebyshev baselines of order
+0–3 whose coefficients are 50 times smaller than the fit's automatic prior
+scale.</p>
+<p><img alt="Flag rates on misspecified spectra" src="../img/misspec_flags.png" /></p>
+<table>
+<thead>
+<tr>
+<th>set</th>
+<th>flagged</th>
+<th>W50 bias / scatter [km/s]</th>
+<th>68 % coverage of W50</th>
+<th>W50 scatter naive / Springob</th>
+<th>W20 bias / scatter: Bayes, naive, Springob</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>clean</td>
+<td>8 %</td>
+<td>−0.3 / 4.9</td>
+<td>0.71</td>
+<td>10.6 / 10.0</td>
+<td>0.8 / 4.4, 7.4 / 19.8, 2.9 / 9.7</td>
+</tr>
+<tr>
+<td>template</td>
+<td>6 %</td>
+<td>−1.5 / 6.1</td>
+<td>0.72</td>
+<td>11.8 / 10.6</td>
+<td>0.6 / 6.7, 18.7 / 26.4, 0.3 / 12.7</td>
+</tr>
+<tr>
+<td>sine baseline</td>
+<td>100 %</td>
+<td>−1.8 / 31.6</td>
+<td>0.28</td>
+<td>29.5 / 24.6</td>
+<td>−2.3 / 44.9, 2.1 / 51.0, 1.0 / 33.9</td>
+</tr>
+<tr>
+<td>RFI unmasked</td>
+<td>100 %</td>
+<td>−96 / 122</td>
+<td>0.15</td>
+<td>106 / 57</td>
+<td>−105 / 135, −120 / 140, −29 / 61</td>
+</tr>
+<tr>
+<td>baseline prior 50 × too wide</td>
+<td>12 %</td>
+<td>0.8 / 7.4</td>
+<td>0.71</td>
+<td>12.2 / 11.0</td>
+<td>1.2 / 6.6, 24.1 / 36.5, 2.2 / 14.2</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The model describes the galaxy-like templates well enough that the widths
+  stay unbiased and calibrated, with less scatter than either classical
+  method, which see the same profiles.</li>
+<li>When the model is wrong the posteriors are overconfident, as any
+  posterior of a wrong model is, but the flags catch it:
+  <code>residual_structure</code> marks every sine-baseline fit and <code>ppp</code> 98 % of
+  them (the symmetric pre-stage masks some of the wave's troughs as runs
+  below the model, which widens the W50 scatter from 25 to 30 km/s there); <code>ppp</code>, <code>prior_edge</code>, <code>unresolved</code>, <code>residual_structure</code> (88 %) and
+  <code>wiggle</code> mark the RFI fits. Unmasked RFI hurts the
+  Springob widths least, because a spike rarely lies on a flank; it is
+  still the flagged fits that tell the user something is wrong.</li>
+<li><strong>A wrong baseline prior</strong> leaves the line parameters unbiased and
+  calibrated, but not the baseline order: the most probable K is right in
+  41 % of the spectra, nearly always too low (23 of 28 true K = 3 are fitted
+  as K = 0). Coefficients of 0.2 σ per channel are barely visible, and with
+  a prior 50 times too wide the Occam factor wins. The <code>p_k</code> columns of the
+  catalogue are calibrated only with a fitting <code>priors.baseline_scale</code>, for
+  example from signal-free neighbour spectra
+  (<code>hiprofile.likelihood.baseline.baseline_prior_from_spectra</code>).</li>
+</ul>
+<h2 id="conditional-bias-priors-and-classical-methods">Conditional bias: priors and classical methods<a class="headerlink" href="#conditional-bias-priors-and-classical-methods" title="Permanent link">&para;</a></h2>
+<p>The SBC shows that the posteriors are calibrated <em>on average over the
+prior</em>. For a given galaxy the posterior median is still pulled towards
+typical values when the data are weak. The bias study fixes the true
+profile on a grid of widths (Δv = 20–400 km/s, Δv_rand = 12 km/s, α = 0.1,
+f = 0.25) and integrated S/N (3–40), simulates 20 spectra per cell and fits
+them with the default priors and with flat priors (log-uniform Δv and
+Δv_rand, uniform α and f). A third run repeats the default-prior case with
+Hanning-smoothed spectra (the line and white noise smoothed alike, so the
+integrated S/N is unchanged and the channel rms drops to 0.61 of it), fitted
+with <code>model.response: boxcar+hanning</code>; that is how ALFALFA and most
+single-dish spectra are delivered, and where Springob's correction applies.
+Medians are over the spectra the fit detects (P(detect) &gt; 0.5).</p>
+<p><img alt="Conditional bias for fixed true profiles, unsmoothed channels" src="../img/bias_study.png" /></p>
+<p><img alt="Conditional bias for fixed true profiles, Hanning-smoothed channels" src="../img/bias_study_boxcar_hanning.png" /></p>
+<p>Largest |median error| over the widths, in km/s (in brackets: median of
+the per-cell scatter):</p>
+<table>
+<thead>
+<tr>
+<th>channels</th>
+<th>S/N</th>
+<th>W50 Bayes</th>
+<th>W50 naive</th>
+<th>W50 Springob</th>
+<th>W20 Bayes</th>
+<th>W20 naive</th>
+<th>W20 Springob</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>unsmoothed</td>
+<td>5</td>
+<td>31 (29)</td>
+<td>36 (53)</td>
+<td>141 (27)</td>
+<td>29 (31)</td>
+<td>69 (36)</td>
+<td>153 (39)</td>
+</tr>
+<tr>
+<td>unsmoothed</td>
+<td>8–40</td>
+<td>10 (5)</td>
+<td>31 (7)</td>
+<td>136 (7)</td>
+<td>5 (7)</td>
+<td>103 (13)</td>
+<td>135 (7)</td>
+</tr>
+<tr>
+<td>unsmoothed</td>
+<td>15–40</td>
+<td>4 (4)</td>
+<td>12 (5)</td>
+<td>9 (4)</td>
+<td>2 (5)</td>
+<td>82 (11)</td>
+<td>10 (6)</td>
+</tr>
+<tr>
+<td>Hanning</td>
+<td>5</td>
+<td>19 (23)</td>
+<td>23 (49)</td>
+<td>167 (19)</td>
+<td>26 (37)</td>
+<td>94 (43)</td>
+<td>155 (16)</td>
+</tr>
+<tr>
+<td>Hanning</td>
+<td>8–40</td>
+<td>5 (5)</td>
+<td>9 (7)</td>
+<td>6 (5) ¹</td>
+<td>4 (8)</td>
+<td>63 (10)</td>
+<td>10 (8) ¹</td>
+</tr>
+</tbody>
+</table>
+<p>¹ From 20 spectra per cell; with 100 spectra the Springob widths of
+400 km/s lines at S/N 8 are −89 km/s (W50) and −81 km/s (W20) off in the
+median (see below), so this entry holds from S/N 15 only.</p>
+<ul>
+<li><strong>From S/N 8 upwards</strong> the posterior median with the default priors is
+  unbiased to within 11 km/s in W50 and 5 km/s in W20 for every width, on
+  either kind of channel.</li>
+<li><strong>Springob et al. (2005)</strong> is as good as the fit for W50 on Hanning-smoothed
+  spectra from S/N 15 (bias ≤ 3 km/s, the same scatter), and at S/N 8 for
+  lines up to Δv = 100 km/s. For wider lines at S/N 8 the 20 spectra per
+  cell of this study are too few: with 100 (next section) the Springob W50
+  of 400 km/s lines is 89 km/s too narrow in the median, by more than
+  50 km/s in 64 % of the spectra, where the fit is off by −10 km/s. On
+  unsmoothed channels and at S/N 5 it fails for wide lines (−70 to
+  −170 km/s). The per-channel S/N of a 400 km/s line at integrated S/N 8
+  is about 1, and the first noise dip below 15 % of the horn ends the flank
+  fit inside the profile.</li>
+<li><strong>The naive threshold crossing</strong> is fine for W50 but not for W20: noise
+  peaks above 20 % of the peak channel widen it by up to 100 km/s for wide
+  lines, still +46 km/s at S/N 15 with Hanning smoothing.</li>
+<li><strong>At S/N 5</strong> the default priors pull a 400 km/s line down by 31 km/s and
+  20–100 km/s lines up by up to 20 km/s (unsmoothed; 16 and 19 km/s with
+  Hanning). The flat priors pull the wide line down by 137 km/s and a
+  200 km/s line by 42 km/s. A flat prior is therefore <em>not</em> the unbiased
+  choice: the log-uniform width prior puts most of its mass at small
+  widths, and the faint wings of a wide line are lost in the noise and the
+  baseline whatever the prior.</li>
+<li><strong>Selection.</strong> At S/N 5 only about half of the 20 km/s lines are
+  detected (45 %, 60 % with Hanning), and those that are are the ones whose
+  noise made them look brighter and wider: their W20 is 23–29 km/s too wide,
+  and the 68 % interval of W20 covers the truth in 11 % (42 % with Hanning)
+  of them. This is a property of the detected subsample, not of the
+  posterior: over all simulations the SBC coverages hold. The
+  <code>prior_dominated</code> flag marks up to half of the fits at S/N 5 (the
+  400 km/s lines); the width of a line at S/N ≤ 5 is largely a statement of
+  the prior, not a measurement.</li>
+</ul>
+<h3 id="where-the-low-sn-bias-comes-from">Where the low-S/N bias comes from<a class="headerlink" href="#where-the-low-sn-bias-comes-from" title="Permanent link">&para;</a></h3>
+<p><code>benchmarks/w20_bias.py</code> refits the cells at S/N 3, 5 and 8 with 100
+spectra each (unsmoothed channels unless stated otherwise, no baseline in the data) three times:
+with the default configuration, with only a constant baseline (K = 0), and
+with a Δv prior uniform on 0–800 km/s. Medians are taken over all spectra
+(the N = 1 posterior exists for every spectrum), over the detected and over
+the undetected ones, with bootstrap errors.</p>
+<p><img alt="Low-S/N W20 bias against the true width" src="../img/w20_bias.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Δv, S/N</th>
+<th>detected</th>
+<th>all</th>
+<th>detected</th>
+<th>undetected</th>
+<th>K = 0 only, all</th>
+<th>uniform Δv prior, all</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>400 km/s, 3</td>
+<td>12 %</td>
+<td>−163 ± 9</td>
+<td>−102 ± 14</td>
+<td>−168 ± 9</td>
+<td>−166 ± 12</td>
+<td>+84 ± 9</td>
+</tr>
+<tr>
+<td>400 km/s, 5</td>
+<td>70 %</td>
+<td>−48 ± 9</td>
+<td>−28 ± 7</td>
+<td>−92 ± 19</td>
+<td>−48 ± 10</td>
+<td>+44 ± 14</td>
+</tr>
+<tr>
+<td>400 km/s, 8</td>
+<td>100 %</td>
+<td>−5 ± 2</td>
+<td>−5 ± 2</td>
+<td>–</td>
+<td>−6 ± 2</td>
+<td>+2 ± 2</td>
+</tr>
+<tr>
+<td>200 km/s, 5</td>
+<td>82 %</td>
+<td>+6 ± 3</td>
+<td>+7 ± 4</td>
+<td>+6 ± 6</td>
+<td>+5 ± 3</td>
+<td>+64 ± 12</td>
+</tr>
+<tr>
+<td>20 km/s, 5</td>
+<td>61 %</td>
+<td>+48 ± 9</td>
+<td>+22 ± 5</td>
+<td>+134 ± 23</td>
+<td>+47 ± 8</td>
+<td>+62 ± 27</td>
+</tr>
+</tbody>
+</table>
+<p>W20 error in km/s (true W20 431 km/s for Δv = 400, 50 km/s for Δv = 20).</p>
+<ul>
+<li><strong>Not small numbers.</strong> With 100 spectra per cell the negative W20 bias
+  of wide lines at S/N 5 is −48 ± 9 km/s (−28 ± 7 for the detected ones;
+  the 20-spectrum study gave −20).</li>
+<li><strong>Not a detection effect.</strong> The detected spectra are <em>less</em> biased than
+  the undetected ones: detection picks the spectra whose noise made the
+  line brighter and broader. Selection pushes widths up for every width,
+  which is why narrow lines are too wide and wide lines less too narrow
+  among the detected.</li>
+<li><strong>Not the baseline.</strong> Fitting with a constant baseline only changes
+  nothing (K &gt; 0 is the most probable order in at most 1 % of the fits).</li>
+<li><strong>It is the prior.</strong> With a Δv prior uniform on 0–800 km/s the sign flips
+  (+44 km/s for the 400 km/s lines at S/N 5, and narrow lines become several
+  hundred km/s too wide at S/N 3). At low S/N the posterior median moves
+  from the truth toward the prior's typical W20 (196 km/s for the default
+  priors): wide lines come out narrower, narrow lines wider, and lines near
+  Δv ≈ 200 km/s are unbiased (figure: the dash-dotted line is the limit of
+  a fit that has learned nothing). The default prior makes 400 km/s
+  rotation rare (P(Δv &gt; 400 km/s) = 7 %), and with a per-channel S/N of
+  about 1 the data cannot overrule that.</li>
+</ul>
+<p><strong>Are the intervals still right?</strong> On average over the population, yes;
+for one width, no. In the SBC the 68 % / 95 % coverage of W20 is
+0.61 / 0.94 for true S/N &lt; 2, 0.64 / 0.93 for 2–3 and 0.66 / 0.88 for 3–4
+(143, 59 and 67 spectra; all inside their ±2σ bands). For fixed widths at
+S/N 3 it is 0.03 / 0.20 for Δv = 20 km/s, 0.12 / 0.81 for 50, 0.56 / 0.98
+for 100, 0.92 / 0.99 for 200 and 0.41 / 0.97 for 400 km/s. The posterior
+there is the prior (its 16–84 % width, 240 km/s, equals the prior's), and a
+20 km/s line has W20 = 50 km/s, below the prior's 2.5 % quantile of
+58 km/s: the prior's own 95 % interval excludes it. In the SBC the 18
+spectra with S/N &lt; 4 and W20 &lt; 100 km/s are all outside their 68 %
+intervals, those with W20 &gt; 350 km/s 74 % of the time; the many lines in the
+middle of the prior make up for them. At S/N 5 the fixed-width coverages are
+0.67–0.88 except for the narrowest lines (0.25). For undetected spectra the
+<code>prior_dominated</code> flag is not set, as no profile flag is (P(detect) &lt; 0.5
+already says the width is not measured); among the detected spectra at
+S/N 3 it marks 17–50 %.</p>
+<p>This is the conditional bias that comes with a calibrated posterior: over
+the population the prior describes, the errors average out (SBC), for one
+kind of galaxy they do not. Uses that need widths unbiased for a fixed
+true width at S/N ≤ 5 (Tully–Fisher samples selected by width, for
+example) should cut at S/N ≈ 8, where the bias is below 6 km/s for every
+width, or fit the width distribution hierarchically.</p>
+<h3 id="the-classical-methods-at-low-sn">The classical methods at low S/N<a class="headerlink" href="#the-classical-methods-at-low-sn" title="Permanent link">&para;</a></h3>
+<p>The same 1500 spectra, and a second set with Hanning smoothing (line and
+noise smoothed alike, fitted with <code>model.response: boxcar+hanning</code>), are
+measured with both classical methods: once in the window the pipeline uses,
+around the posterior v_sys and W20, and once in a window of the same size
+around the true values with a constant baseline from outside it, the best
+case for an observer who knows where the line is.</p>
+<p><img alt="Low-S/N W20 bias of the posterior median and the classical methods" src="../img/w20_bias_classic.png" /></p>
+<table>
+<thead>
+<tr>
+<th>W20 error, all spectra [km/s]</th>
+<th>Bayes</th>
+<th>naive, true window</th>
+<th>naive, fit window</th>
+<th>Springob, true window</th>
+<th>Springob, fit window</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>20 km/s, S/N 5, unsmoothed</td>
+<td>+48</td>
+<td>+12</td>
+<td>+67</td>
+<td>−4</td>
+<td>+9</td>
+</tr>
+<tr>
+<td>400 km/s, S/N 5, unsmoothed</td>
+<td>−48</td>
+<td>+102</td>
+<td>+46</td>
+<td>−127</td>
+<td>−188</td>
+</tr>
+<tr>
+<td>400 km/s, S/N 8, unsmoothed</td>
+<td>−5</td>
+<td>+107</td>
+<td>+91</td>
+<td>−136</td>
+<td>−139</td>
+</tr>
+<tr>
+<td>20 km/s, S/N 5, Hanning</td>
+<td>+32</td>
+<td>+8</td>
+<td>+38</td>
+<td>0</td>
+<td>+7</td>
+</tr>
+<tr>
+<td>400 km/s, S/N 5, Hanning</td>
+<td>−41</td>
+<td>+83</td>
+<td>+28</td>
+<td>−138</td>
+<td>−183</td>
+</tr>
+<tr>
+<td>400 km/s, S/N 8, Hanning</td>
+<td>−5</td>
+<td>+84</td>
+<td>+76</td>
+<td>−89</td>
+<td>−81</td>
+</tr>
+</tbody>
+</table>
+<p>Springob gives no value for 5–45 % of the spectra (flank not fittable);
+those are left out of its medians.</p>
+<ul>
+<li><strong>Neither classical method shrinks toward a prior, but both have biases
+  of their own that do not go away with S/N</strong> for wide lines at S/N ≤ 8:
+  the naive W20 grows with the width (+80 to +107 km/s at 400 km/s: noise
+  peaks keep the 20 % crossing at the window edge), the Springob W20 shrinks
+  (−90 to −140 km/s: noise dips end the flank fit early). Hanning smoothing
+  reduces the Springob failures but does not remove them.</li>
+<li><strong>The pipeline window passes the prior on.</strong> Measured around the
+  posterior, both classical methods inherit its pull at S/N 3: the window
+  of a prior-dominated fit is too wide for a narrow line (naive +210 km/s
+  instead of +15) and too narrow for a wide one.</li>
+<li><strong>Where the classical methods win</strong> is the narrowest lines at S/N ≤ 5 in
+  a window around the truth: Springob's W20 of 20 km/s lines is unbiased
+  where the posterior median is 30–50 km/s too wide. An observer can only
+  place that window, however, when the line is visible, which at S/N 3 it
+  mostly is not.</li>
+</ul>
+<p>No choice of prior removes the conditional bias at low S/N, because there
+is no information on the width there; the default priors keep it smallest
+for the population they were calibrated on. What the fit adds over a good
+classical method is therefore not a better W50 for bright (S/N ≳ 15),
+smoothed lines, but the W20, the low-S/N and unsmoothed cases, calibrated uncertainties,
+detection probabilities, the separation of blended components and the
+marginalisation over the baseline.</p>
+<h2 id="correlated-noise">Correlated noise<a class="headerlink" href="#correlated-noise" title="Permanent link">&para;</a></h2>
+<p>The SBC simulations with the noise smoothed by a Gaussian kernel of 0.8
+channels that the fit does not know (ρ₁ = 0.67, ρ₂ = 0.21, ρ₃ = 0.03, as
+after regridding; the line itself is not smoothed), plus 150 line-free
+spectra, fitted with four noise models.</p>
+<p><img alt="Coverage and false positives for four noise models" src="../img/correlated_noise.png" /></p>
+<table>
+<thead>
+<tr>
+<th><code>noise.correlation</code></th>
+<th>ρ₁ used</th>
+<th>false positives P &gt; 0.5 / 0.9</th>
+<th>68 % coverage</th>
+<th>95 % coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>white</code> (correlation ignored)</td>
+<td>0</td>
+<td>85 % / 53 %</td>
+<td>0.38–0.59</td>
+<td>0.66–0.90</td>
+</tr>
+<tr>
+<td><code>hanning+white</code> (close guess)</td>
+<td>0.65</td>
+<td>2.0 % / 0 %</td>
+<td>0.65–0.69</td>
+<td>0.93–0.96</td>
+</tr>
+<tr>
+<td><code>estimate</code></td>
+<td>0.66 (0.63–0.70 per spectrum)</td>
+<td>4.0 % / 0.7 %</td>
+<td>0.63–0.67</td>
+<td>0.90–0.94</td>
+</tr>
+<tr>
+<td>true correlation</td>
+<td>0.67</td>
+<td>1.3 % / 0 %</td>
+<td>0.66–0.71</td>
+<td>0.94–0.97</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Ignoring the correlation is not an option: most line-free spectra become
+  detections and every interval is far too narrow.</li>
+<li>A close guess written into <code>model.response</code> is as good as the truth.
+  <code>auto</code>, which takes the correlation from the smoothing in the response,
+  stays the default.</li>
+<li><code>estimate</code> measures ρ₁ to ±0.035 per spectrum but leaves the posteriors
+  slightly overconfident (coverages 2–5 points low). Use it only when the
+  smoothing is unknown.</li>
+</ul>
+<h2 id="channel-widths">Channel widths<a class="headerlink" href="#channel-widths" title="Permanent link">&para;</a></h2>
+<p>The runs above use 5 km/s channels. Surveys range from 1 to 15 km/s; the
+pipeline was checked at both ends with simulated dwarf (W50 ≈ 25 km/s) and
+spiral (W50 ≈ 260 km/s) profiles at S/N 10 with RFI spikes and a baseline:</p>
+<table>
+<thead>
+<tr>
+<th>channels</th>
+<th>dwarf</th>
+<th>spiral</th>
+<th>time per fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 km/s, 1000 channels</td>
+<td>W50 25 (22–29) for 28</td>
+<td>mean W50 error −3 km/s over 4 seeds</td>
+<td>13–19 s</td>
+</tr>
+<tr>
+<td>5 km/s, 512 channels</td>
+<td>26 (23–30) for 26</td>
+<td>+4 km/s</td>
+<td>8–10 s</td>
+</tr>
+<tr>
+<td>15 km/s, 170 channels</td>
+<td>26 (22–30) for 25, flagged <code>unresolved</code></td>
+<td>268 (258–277) for 260</td>
+<td>5–11 s</td>
+</tr>
+</tbody>
+</table>
+<p>Everything physical is in km/s (model, priors, derived widths), and the
+channel response integrates the profile over channels of any width. The
+longest run of outlier channels the RFI pre-stage may mask was once three
+channels; at 15 km/s that masked 25 km/s dwarfs (3 of 3 lost), so it is now
+<code>rfi.max_width</code> = 20 km/s (at least one channel). A line narrower than one
+channel cannot be told from a spike at that resolution; the <code>unresolved</code>
+flag (W50 below two channels) marks it. The cost of a fit scales with the
+number of channels times the supersampling that the narrowest allowed
+Δv_rand needs (7 at 15 km/s, 1 at 1 km/s).</p>
+<h2 id="real-data-low-sn-alfalfa-sources">Real data: low-S/N ALFALFA sources<a class="headerlink" href="#real-data-low-sn-alfalfa-sources" title="Permanent link">&para;</a></h2>
+<p>Ten sources from the ALFALFA α.40 catalogue (Haynes et al. 2011), drawn at
+random: six with HIcode 1 (S/N 6.5–9) and four with HIcode 2 (S/N 5–6.5,
+confirmed by an optical redshift). The spectra come from NED (baseline
+subtracted, Hanning smoothed, 5.2 km/s channels) and are fitted in a
+±1000 km/s window with the default configuration and
+<code>model.response: boxcar+hanning</code>; widths and fluxes are converted to the cz
+scale of the catalogue.</p>
+<p><img alt="hiprofile fits of ten low-S/N ALFALFA spectra against the catalogue" src="../img/alfalfa_study.png" /></p>
+<table>
+<thead>
+<tr>
+<th>AGC</th>
+<th>code</th>
+<th>S/N</th>
+<th>W50 ALFALFA</th>
+<th>W50 hiprofile (16–84 %)</th>
+<th>naive</th>
+<th>Springob</th>
+<th>S ALFALFA</th>
+<th>S hiprofile</th>
+<th>note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>238702</td>
+<td>1</td>
+<td>7.1</td>
+<td>139 ± 8</td>
+<td>167 (143–208)</td>
+<td>214</td>
+<td>163</td>
+<td>0.92 ± 0.07</td>
+<td>1.02 (0.70–1.22)</td>
+<td>second component = window-edge artefact</td>
+</tr>
+<tr>
+<td>258145</td>
+<td>1</td>
+<td>6.9</td>
+<td>210 ± 59</td>
+<td>210 (187–233)</td>
+<td>– ¹</td>
+<td>– ¹</td>
+<td>0.85 ± 0.07</td>
+<td>0.75 (0.62–0.89)</td>
+<td>second component on a 3 mJy bump 700 km/s away</td>
+</tr>
+<tr>
+<td>102780</td>
+<td>1</td>
+<td>7.6</td>
+<td>190 ± 5</td>
+<td>186 (179–193)</td>
+<td>190</td>
+<td>194</td>
+<td>1.04 ± 0.07</td>
+<td>1.07 (0.93–1.21)</td>
+<td></td>
+</tr>
+<tr>
+<td>219208</td>
+<td>1</td>
+<td>7.4</td>
+<td>369 ± 18</td>
+<td>387 (357–410)</td>
+<td>352</td>
+<td>389</td>
+<td>1.45 ± 0.11</td>
+<td>1.25 (1.01–1.47)</td>
+<td></td>
+</tr>
+<tr>
+<td>258284</td>
+<td>1</td>
+<td>8.5</td>
+<td>476 ± 32</td>
+<td>506 (478–531)</td>
+<td>514</td>
+<td>441</td>
+<td>2.12 ± 0.13</td>
+<td>1.95 (1.70–2.23)</td>
+<td></td>
+</tr>
+<tr>
+<td>257950</td>
+<td>1</td>
+<td>7.3</td>
+<td>49 ± 6</td>
+<td>63 (50–88)</td>
+<td>50</td>
+<td>54</td>
+<td>0.51 ± 0.05</td>
+<td>0.63 (0.52–0.76)</td>
+<td></td>
+</tr>
+<tr>
+<td>232843</td>
+<td>2</td>
+<td>5.2</td>
+<td>111 ± 11</td>
+<td>399 (86–427)</td>
+<td>407</td>
+<td>418</td>
+<td>0.62 ± 0.08</td>
+<td>1.23 (0.96–1.47)</td>
+<td>bimodal: one horn or the full profile</td>
+</tr>
+<tr>
+<td>732650</td>
+<td>2</td>
+<td>6.2</td>
+<td>63 ± 41</td>
+<td>210 (199–219)</td>
+<td>204</td>
+<td>–</td>
+<td>0.38 ± 0.03</td>
+<td>1.21 (1.11–1.32)</td>
+<td>neighbour AGC 231950 in the beam</td>
+</tr>
+<tr>
+<td>260144</td>
+<td>2</td>
+<td>5.8</td>
+<td>136 ± 50</td>
+<td>308 (211–392)</td>
+<td>193</td>
+<td>135</td>
+<td>0.66 ± 0.06</td>
+<td>1.01 (0.78–1.26)</td>
+<td>neighbour AGC 260955 in the beam</td>
+</tr>
+<tr>
+<td>203516</td>
+<td>2</td>
+<td>6.0</td>
+<td>81 ± 8</td>
+<td>74 (62–89)</td>
+<td>73</td>
+<td>79</td>
+<td>0.60 ± 0.07</td>
+<td>0.64 (0.54–0.75)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>W50 in km/s, S in Jy km/s; naive and Springob measured by hiprofile on the
+same spectra, in the window around the posterior. ¹ The classical window
+is centred on the first fitted component, here the bump, not the catalogue
+source. The systemic velocities agree within 1.7σ of the posterior errors
+(3–78 km/s) for all sources but the confused AGC 732650.</p>
+<ul>
+<li><strong>HIcode 1:</strong> all six widths and fluxes agree with the catalogue within
+  the combined errors. In two spectra hiprofile prefers N = 2, but the
+  catalogue source is one of the components and is measured correctly; the
+  extra component sits on the rising edge of the extracted window or on a
+  broad 3 mJy bump that is not in the catalogue. The automated Springob
+  widths reproduce the catalogue's (which were measured the same way,
+  interactively) to 4–35 km/s, about as well as the posterior medians do.</li>
+<li><strong>HIcode 2:</strong> one of four agrees. Two are confused: a catalogued
+  neighbour 2.9′ and 3.8′ away (inside the 3.5′ Arecibo beam) overlaps in
+  velocity, and the single-spectrum fit measures the blend, which the
+  ALFALFA team separated with the maps; in AGC 260144 the Springob edge
+  fit happens to pick the catalogue galaxy's flanks (135 km/s) and the
+  posterior is broad (211–392 km/s) and flagged <code>prior_dominated</code>. In the
+  third (AGC 232843, S/N 5.2) the catalogue measured the bright horn only;
+  the posterior is bimodal between that and a 400 km/s profile with the
+  weaker emission on the far side, and its 16–84 % range covers both.</li>
+<li><strong>Solid-body fraction:</strong> the f medians are 0.08–0.27, apart from the two
+  blends of two galaxies (0.45, 0.52), whose summed profiles are genuinely
+  dome-shaped.</li>
+<li><strong>Noise:</strong> the automatic Hanning + white model gives ρ₁ = 0.64–0.66. With
+  an exact Hanning model every fit was flagged with χ²_red up to 10⁴: real
+  smoothed spectra have a little power at the Nyquist frequency, where the
+  exact kernel has none, and the whitening amplified it by orders of
+  magnitude; the estimated white part (0.5–4 % here) removes that.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
